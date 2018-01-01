@@ -50,6 +50,6 @@ Temporary Items
 # ==== bw_plex stuff
 
 media.db
-theme/
+themes/
 hashes.pklz
 *.py[co]

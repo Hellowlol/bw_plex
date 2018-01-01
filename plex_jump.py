@@ -53,13 +53,9 @@ THEMES = os.path.join(ROOT, 'themes')
 #HASHES_DIR = os.path.join(ROOT, 'hashes')
 FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
 
-#PMS = PlexServer(url, token)
-#click.echo('Started auto jump on %s' % PMS.friendlyName)
-
 # Create default dirs.
 makedirs(THEMES, exist_ok=True)
-#makedirs(PREPROCESSED, exist_ok=True)
-#makedirs(HASHES_DIR, exist_ok=True)
+
 
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
