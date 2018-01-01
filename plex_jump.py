@@ -62,7 +62,7 @@ makedirs(THEMES, exist_ok=True)
 #makedirs(HASHES_DIR, exist_ok=True)
 
 if os.path.exists(FP_HASHES):
-    LOG.info('Loading existing db')
+    LOG.info('Loading existing files in db')
     HT = HashTable(FP_HASHES)
     for n in HT.names:
         LOG.debug('%s', n)
