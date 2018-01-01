@@ -47,5 +47,9 @@ Temporary Items
 .apdisk
 
 
+# ==== bw_plex stuff
+
+media.db
 theme/
 hashes.pklz
+*.py[co]

@@ -5,11 +5,9 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-eng = create_engine('sqlite:///foo.db')
-#eng = create_engine('sqlite://', echo=True)
+eng = create_engine('sqlite:///media.db')
 session_factory = sessionmaker(bind=eng)
 sess = scoped_session(session_factory)
-#SESSION = sess()
 Base = declarative_base()
 
 
@@ -28,12 +26,8 @@ class Preprocessed(Base):
     location = Column('location', String, nullable=True)
     updatedAt = Column('updatedAt ', DateTime, nullable=True)
 
-
-
 # Create db.
 Base.metadata.create_all(eng)
-
-
 
 
 @contextmanager

@@ -53,8 +53,8 @@ THEMES = os.path.join(ROOT, 'themes')
 #HASHES_DIR = os.path.join(ROOT, 'hashes')
 FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
 
-PMS = PlexServer(url, token)
-click.echo('Started auto jump on %s' % PMS.friendlyName)
+#PMS = PlexServer(url, token)
+#click.echo('Started auto jump on %s' % PMS.friendlyName)
 
 # Create default dirs.
 makedirs(THEMES, exist_ok=True)
@@ -127,14 +127,6 @@ def find_next(media):
     except NotFound:
         LOG.debug(
             'Failed to find the next media item of %s'.media.grandparentTitle)
-
-
-#def process_next(media):
-#    """ Download the next ep as a .mp3."""
-#    # Check if we has the next item.
-#    LOG.debug('Processing the next media item %s', media._prettyfilename())
-#    fp = os.path.join(PREPROCESSED, '%s__%s.mp3' % (media._prettyfilename(), media.ratingKey))
-#    convert_and_trim_to_mp3(check_file_access(media), trim=600, outfile=fp)
 
 
 #@timecall(immediate=True)
@@ -213,25 +205,56 @@ def process_to_db(media, theme=None, vid=None, offset=None):
             LOG.debug('Added %s to db', media._prettyfilename())
 
 
-@click.group()
-@click.option('--debug', default=False, is_flag=True)
-def cli(debug):
-    """ Entry point for the cli."""
+@click.group(help='CLI tool that monitors and jumps the client to after the theme.')
+@click.option('--debug', '-d', default=False, is_flag=True, help='Add debug logging.')
+@click.option('--username', '-u', default=None, help='Your plex username')
+@click.option('--password', '-p', default=None, help='Your plex password')
+@click.option('--servername', '-s', default=None, help='The server you want to monitor.')
+@click.option('--url', default=None, help='url to the server you want to monitor')
+@click.option('--token', '-t', default=None, help='plex-x-token')
+@click.option('--config', '-c', default=None, help='Not in use atm.')
+def cli(debug, username, password, servername, url, token, config):
+    """ Entry point for the CLI."""
+    global PMS
+
+    # click.echo('debug %s' % debug)
+    # click.echo('username %s' % username)
+    # click.echo('password %s' % password)
+    # click.echo('servername %s' % servername)
+    # click.echo('url %s' % url)
+    # click.echo('token %s' % token)
+    # click.echo('config %s' % config)
+
     if debug:
         LOG.setLevel(logging.DEBUG)
     else:
         LOG.setLevel(logging.INFO)
 
+    if username and password and servername:
+        from plexapi.myplex import MyPlexAccount
+
+        acc = MyPlexAccount(username, password)
+        PMS = acc.resource(servername).connect()
+
+    elif url and token:
+        PMS = PlexServer(url, token)
+    else:
+        PMS = PlexServer('', '') # plexapi will pull config file..
+
+    # CONFIG is unused atm.
+    click.echo('Watching for media on %s' % PMS.friendlyName)
+
 
 @cli.command()
 def test_dexter():
+    """Test manual process_to_db."""
     results = PMS.search('Dexter')[0]
     eps = results.episodes()[5:8]
 
     for ep in eps:
         process_to_db(ep)
 
-
+"""
 @cli.command()
 def update_all():
     def zomg(media):
@@ -245,9 +268,11 @@ def update_all():
         has = [r.ratingKey for r in has]
 
     #for ep in results:
+"""
 
 
 @cli.command()
+@click.option('--force', default=False, is_flag=True)
 @timecall(immediate=True)
 def update_all_themes(force=False):
     """Find and download all themes"""
@@ -271,13 +296,10 @@ def update_all_themes(force=False):
     LOG.debug('Downloaded %s themes', len(items))
 
 
-def precompute():
-    pass
-
-
 @cli.command()
 def create_hash_table_from_themes():
-    from audfprint.audfprint import do_cmd, multiproc_add
+    """ Create a hashtable from the themes."""
+    from audfprint.audfprint import multiproc_add
 
     a = analyzer()
     m = matcher()
@@ -303,14 +325,17 @@ def create_hash_table_from_themes():
 
 #@timecall(immediate=True)
 def check_file_access(m):
-    LOG.debug('Checking file access')
+    """Check if we can reach the file directly
+       or if we have to download it via PMS.
 
-    # Let check preprocessed first..
-    cached_f = os.path.join(PREPROCESSED, '%s__%s.mp3' %
-                            (m._prettyfilename(), m.ratingKey))
-    if os.path.exists(cached_f):
-        LOG.debug('%s exists in cache.', cached_f)
-        return cached_f
+       Args:
+            m (plexapi.video.Episode)
+
+       Return:
+            filepath or http to the file.
+
+    """
+    LOG.debug('Checking file access')
 
     files = list(m.iterParts())
     for file in files:
@@ -324,6 +349,7 @@ def check_file_access(m):
 
 #@timecall(immediate=True)
 def client_jump_to(offset=None, sessionkey=None):
+    """Seek the client to the offset."""
 
     # Just check so we dont jump more then
     # once the first 60 sec
@@ -346,8 +372,8 @@ def client_jump_to(offset=None, sessionkey=None):
             client = media.players[0]  #<---
 
             # We can proxy this, but plexapi
-            #client.py l 184-185 must be fixed!
-            #client.proxyThroughServer(True, PMS)
+            # client.py l 184-185 must be fixed!
+            # client.proxyThroughServer(True, PMS)
 
             # This does not work on plex web since the fucker returns
             # the local url..
@@ -355,8 +381,8 @@ def client_jump_to(offset=None, sessionkey=None):
             client.seekTo(int(offset * 1000))
 
             # Some clients needs some time..
-            #time.sleep(0.2)
-            #client.play()
+            # time.sleep(0.2)
+            # client.play()
 
             return
 
@@ -419,7 +445,10 @@ def check(data):
                 try:
                     item = se.query(Preprocessed).filter_by(
                         ratingKey=ratingkey).one()
-                    LOG.debug('Found %s in the db with offset %s' % (item.prettyname, item.offset))
+
+                    LOG.debug('Found %s in the db with offset %s' % (
+                              item.prettyname, item.offset))
+
                     if item.offset:
                         POOL.apply_async(
                             client_jump_to, args=(item.offset, sessionkey))
@@ -434,20 +463,23 @@ def check(data):
 
 @cli.command()
 @click.argument('-f')
-def manual_match(f):
+def match(f):
+    """Manual match for a file. This is usefull for testing the a finds the correct end time"""
+    # assert f in H.names
     x = get_offset_end(f, HT)
     print(x)
 
 
 @cli.command()
-def start():
+def watch():
+    """Start watching the server for stuff to do."""
     ffs = PMS.startAlertListener(check)
 
     try:
         while True:
             time.sleep(0.1)
     except KeyboardInterrupt:
-        print('Aborting')
+        click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
 
