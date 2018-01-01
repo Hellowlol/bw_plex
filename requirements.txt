@@ -4,6 +4,8 @@ joblib
 numpy
 docopt
 click
+scipy
+matplotlib
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
