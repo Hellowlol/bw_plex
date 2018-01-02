@@ -170,7 +170,7 @@ class HashTable(object):
         """
         if name is None:
             name = self.__filename
-        
+
         # Merge in any provided params
         if params:
             for key in params:
@@ -195,6 +195,7 @@ class HashTable(object):
 
     def load(self, name):
         """ Read either pklz or mat-format hash table file """
+        self.__filename = name
         ext = os.path.splitext(name)[1]
         if ext == '.mat':
             self.load_matlab(name)
