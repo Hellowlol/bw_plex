@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from functools import partial
 import os
 
@@ -5,23 +8,18 @@ import logging
 import time
 from collections import defaultdict
 
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
-
-from plexapi import CONFIG
-from plexapi.server import PlexServer
-from plexapi.utils import download
-from plexapi.compat import makedirs
-from plexapi.exceptions import NotFound
-
 import multiprocessing
 
 try:
     from multiprocessing.pool import ThreadPool as Pool
 except ImportError:
     from multiprocessing.dummy import ThreadPool as Pool
+
+from plexapi import CONFIG
+from plexapi.server import PlexServer
+from plexapi.utils import download
+from plexapi.compat import makedirs
+from plexapi.exceptions import NotFound
 
 import click
 from audfprint.hash_table import HashTable
@@ -33,13 +31,12 @@ from misc import analyzer, matcher, get_offset_end, convert_and_trim
 from db import session_scope, Preprocessed
 
 
-
 POOL = Pool(10)
 
 url = ''  #CONFIG.get('auth.server_url') #
 token = ''  # CONFIG.get('auth.token') #
 frmt = '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'
-logging.basicConfig(format=frmt, level=logging.DEBUG)
+logging.basicConfig(format=frmt, level=logging.INFO)
 
 LOG = logging.getLogger(__file__)
 #LOG.setLevel(logging.DEBUG)
@@ -49,8 +46,6 @@ JUMP_LIST = []
 SHOWS = defaultdict(list)  # Fix this, should be all caps.
 ROOT = os.path.abspath('.')
 THEMES = os.path.join(ROOT, 'themes')
-#PREPROCESSED = os.path.join(ROOT, 'preprocessed')
-#HASHES_DIR = os.path.join(ROOT, 'hashes')
 FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
 
 # Create default dirs.
@@ -293,7 +288,8 @@ def update_all_themes(force=False):
 
 
 @cli.command()
-def create_hash_table_from_themes():
+@click.option('-n', help='threads', type=int, default=1)
+def create_hash_table_from_themes(n):
     """ Create a hashtable from the themes."""
     from audfprint.audfprint import multiproc_add
 
@@ -314,7 +310,7 @@ def create_hash_table_from_themes():
 
     LOG.debug('Creating hashtable, this might take a while..')
 
-    multiproc_add(a, HT, iter(all_files), report, multiprocessing.cpu_count())
+    multiproc_add(a, HT, iter(all_files), report, n)
     if HT and HT.dirty:
         HT.save(FP_HASHES)
 
