@@ -6,6 +6,7 @@ docopt
 click
 scipy
 matplotlib
+psutil
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
