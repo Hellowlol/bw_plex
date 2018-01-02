@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 #!/usr/bin/python
 """
 audfprint.py
@@ -215,8 +218,9 @@ def multiproc_add(analyzer, hash_tab, filename_iter, report, ncores):
         hash_tab.merge(hash_tabx)
         # finish that thread...
         pr[core].join()
-    # Should we save??
-    hash_tab.save('backup.zomg')
+
+    if hash_tab.dirty:
+        hash_tab.save()
 
 
 def matcher_file_match_to_msgs(matcher, analyzer, hash_tab, filename):

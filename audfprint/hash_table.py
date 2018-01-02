@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 hash_table.py
 
@@ -161,10 +164,13 @@ class HashTable(object):
         hits.resize( (nhits, 4) )
         return hits
 
-    def save(self, name, params=None, file_object=None):
+    def save(self, name=None, params=None, file_object=None):
         """ Save hash table to file <name>,
             including optional addition params
         """
+        if name is None:
+            name = self.__filename
+        
         # Merge in any provided params
         if params:
             for key in params:
