@@ -7,6 +7,8 @@ click
 scipy
 matplotlib
 psutil
+profilehooks
+sqlalchemy
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
