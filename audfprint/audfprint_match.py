@@ -303,7 +303,7 @@ class Matcher(object):
                     still_looking = False
         return results[:nresults, :]
 
-    @timecall(immediate=True)
+    #@timecall(immediate=True)
     def match_hashes(self, ht, hashes, hashesfor=None):
         """ Match audio against fingerprint hash table.
             Return top N matches as (id, filteredmatches, timoffs, rawmatches,

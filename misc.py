@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import logging
 import subprocess
@@ -8,7 +11,7 @@ from profilehooks import timecall
 from audfprint.audfprint_match import Matcher
 from audfprint.audfprint_analyze import Analyzer
 
-LOG = logging.getLogger(__file__)
+LOG = logging.getLogger(__name__)
 
 
 def to_time(sec):
@@ -30,12 +33,19 @@ def analyzer():
 def matcher():
     m = Matcher()
     m.find_time_range = True
-    m.search_depth = 200
+    m.search_depth = 2000
     m.verbose = True
+    m.max_matches = 100
+    #m.exact_count = True
+    #m.time_quantile = 0.02
+    # This need to be high as we might get to many hashes before
+    # we have found the end.
+    m.max_alignments_per_id = 10000
+    #m.sort_by_time = True
     return m
 
 
-@timecall(immediate=True)
+#@timecall(immediate=True)
 def get_offset_end(vid, hashtable):
     an = analyzer()
     match = matcher()
@@ -53,7 +63,7 @@ def get_offset_end(vid, hashtable):
             start_time = min_time * t_hop
             LOG.debug('Started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
                                                                   end_time, to_time(end_time)))
-            return start_time, end_time
+    return start_time, end_time
 
     LOG.debug('no result just returning -1')
 
@@ -109,7 +119,7 @@ def in_dir(root, ratingkey):
             return fp
 
 
-@timecall(immediate=True)
+#@timecall(immediate=True)
 def convert_and_trim(afile, fs=8000, trim=None):
     tmp = tempfile.NamedTemporaryFile(
         mode='r+b', prefix='offset_', suffix='.wav')
@@ -157,6 +167,15 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
         raise Exception("FFMpeg failed")
 
     return outfile
+
+
+def find_theme():
+    #  TODO..
+    # We need to get better themes as we cant find the long themes if the fingerprints are to short. 
+    # Or we find it but we are jumping to short :(
+    pass
+
+
 
 
 if __name__ == '__main__':

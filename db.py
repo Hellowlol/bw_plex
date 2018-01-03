@@ -20,6 +20,8 @@ class Preprocessed(Base):
     ep_title = Column('ep_title', String)
     ratingKey = Column('ratingKey', Integer)
     offset = Column('offset', Integer)
+    offset_str = Column('offset_str', String)
+    correct_time = Column('correct_time', String, nullable=True)
     prettyname = Column('prettyname', String, nullable=True)
     duration = Column('duration', Integer)
     grandparentRatingKey = Column('grandparentRatingKey', Integer)

@@ -1,44 +1,39 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from functools import partial
-import os
-
 import logging
+import multiprocessing
+import os
+import re
 import time
 from collections import defaultdict
-
-import multiprocessing
 
 try:
     from multiprocessing.pool import ThreadPool as Pool
 except ImportError:
     from multiprocessing.dummy import ThreadPool as Pool
 
-from plexapi import CONFIG
-from plexapi.server import PlexServer
-from plexapi.utils import download
+import click
 from plexapi.compat import makedirs
 from plexapi.exceptions import NotFound
-
-import click
-from audfprint.hash_table import HashTable
-from sqlalchemy.orm.exc import NoResultFound
+from plexapi.server import PlexServer
+from plexapi.utils import download
 from profilehooks import timecall
+from sqlalchemy.orm.exc import NoResultFound
 
-
-from misc import analyzer, matcher, get_offset_end, convert_and_trim
+from audfprint.hash_table import HashTable
+from misc import analyzer, get_offset_end, convert_and_trim, to_time
 from db import session_scope, Preprocessed
 
 
 POOL = Pool(10)
 
-url = ''  #CONFIG.get('auth.server_url') #
-token = ''  # CONFIG.get('auth.token') #
+url = ''
+token = ''
 frmt = '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'
-logging.basicConfig(format=frmt, level=logging.INFO)
+logging.basicConfig(format=frmt, level=logging.DEBUG) # <-- default for now.
 
-LOG = logging.getLogger(__file__)
+LOG = logging.getLogger(__name__)
 #LOG.setLevel(logging.DEBUG)
 
 IN_PROG = []
@@ -51,15 +46,12 @@ FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
 # Create default dirs.
 makedirs(THEMES, exist_ok=True)
 
-
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
     HT = HashTable(FP_HASHES)
     for n in HT.names:
         LOG.debug('%s', n)
-    #print(HT.names)
-    #print(HT.table)
-    #print(HT.)
+
 else:
     LOG.info('Creating new db')
     HT = HashTable()
@@ -67,9 +59,9 @@ else:
     HT.load(FP_HASHES)
 
 # Disable some logging..
-logging.getLogger("plexapi").setLevel(logging.WARNING)
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
+#logging.getLogger("plexapi").setLevel(logging.WARNING)
+#logging.getLogger("requests").setLevel(logging.WARNING)
+#logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def load_themes():
@@ -141,7 +133,7 @@ def download_theme(media, force=False):
         if theme is None:
             theme = media.show().theme
 
-    name = '%s__%s' % (name.replace('*', ''), rk)
+    name = '%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk) # make a proper cleaning in misc.
     f_name = '%s.mp3' % name
     f_path = os.path.join(THEMES, f_name)
 
@@ -187,6 +179,7 @@ def process_to_db(media, theme=None, vid=None, offset=None):
                 show_name=media.grandparentTitle,
                 ep_title=media.title,
                 offset=end,
+                offset_str=to_time(end),
                 duration=media.duration,
                 ratingKey=media.ratingKey,
                 grandparentRatingKey=media.grandparentRatingKey,
@@ -240,7 +233,7 @@ def cli(debug, username, password, servername, url, token, config):
 def test_dexter():
     """Test manual process_to_db."""
     results = PMS.search('Dexter')[0]
-    eps = results.episodes()[5:8]
+    eps = results.episodes()
 
     for ep in eps:
         process_to_db(ep)
@@ -268,7 +261,6 @@ def update_all():
 def update_all_themes(force=False):
     """Find and download all themes"""
     LOG.debug('Updating all themes')
-    r = []
 
     # Lets read from the disk before we do any http calls
     load_themes()
@@ -294,7 +286,6 @@ def create_hash_table_from_themes(n):
     from audfprint.audfprint import multiproc_add
 
     a = analyzer()
-    m = matcher()
     all_files = []
 
     for root, dir, files in os.walk(THEMES):
@@ -363,9 +354,6 @@ def client_jump_to(offset=None, sessionkey=None):
             JUMP_LIST.append((sessionkey, now))
             client = media.players[0]  #<---
 
-            # We can proxy this, but plexapi
-            # client.py l 184-185 must be fixed!
-            # client.proxyThroughServer(True, PMS)
 
             # This does not work on plex web since the fucker returns
             # the local url..
@@ -416,6 +404,11 @@ def task(item, sessionkey):
         if end:
             client_jump_to(end, sessionkey)
         process_to_db(media, theme=theme, vid=vid, offset=end)
+
+   	try:
+   		os.remove(vid)
+   	except IOError:
+   		LOG.excetion('Failed to delete %s', vid)
 
     # Should we start processing the next ep?
     LOG.debug('Check if we can find the next media item.')
