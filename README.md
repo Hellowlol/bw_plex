@@ -8,9 +8,9 @@ pip install -r requirements.txt
 ## Usage
 bw_plex only works on python 2. :(
 
-1. Download all the themes from pms using `plexjump.py update_all_themes`
-2. Create audiofingerprints of the themes so the videos can be matched against something. `plexjump.py create_hash_table_from_themes`
-3. Start using `plexjump.py watch`
+1. Download all the themes from pms using `plex_jump.py update_all_themes`
+2. Create audiofingerprints of the themes so the videos can be matched against something. `plex_jump.py create_hash_table_from_themes`
+3. Start using `plex_jump.py watch`
 
 ```
 Usage: plex_jump.py [OPTIONS] COMMAND [ARGS]...
