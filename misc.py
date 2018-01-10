@@ -6,7 +6,11 @@ import logging
 import subprocess
 import tempfile
 
+from collections import defaultdict
+
+import requests
 from profilehooks import timecall
+from bs4 import BeautifulSoup
 
 from audfprint.audfprint_match import Matcher
 from audfprint.audfprint_analyze import Analyzer
@@ -169,11 +173,80 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
     return outfile
 
 
-def find_theme():
-    #  TODO..
-    # We need to get better themes as we cant find the long themes if the fingerprints are to short. 
-    # Or we find it but we are jumping to short :(
-    pass
+
+def search_tunes(name, rk):
+    # Pretty much everything is solen from https://github.com/robwebset/script.tvtunes/blob/master/resources/lib/themeFetcher.py
+    # Thanks!
+    baseurl = 'http://www.televisiontunes.com'
+    res = requests.get('http://www.televisiontunes.com/search.php', params={'q': name})
+    result = defaultdict(list)
+    if res:
+        soup = BeautifulSoup(res.text, 'html5lib')
+
+        search_results = soup.select('div.jp-title > ul > li > a')
+        if search_results:
+            for sr in search_results:
+                # Since this can be may shows lets atleast try to get the correct one.
+                sname = sr.text.strip()
+                if sname == name:
+                    result['%s__%s' % (name, rk)].append(baseurl + sr['href'])
+
+    if result:
+        # Find the real download url.
+        fin_res = {}
+        final_urls = []
+        for k, v in result.items():
+
+            for item in v:
+                res2 = requests.get(item)
+                if res2:
+                    sub_soup = BeautifulSoup(res2.text, 'html5lib')
+
+                    link = sub_soup.find('a', id='download_song')
+                    final_urls.append(baseurl + link['href'])
+
+        # this is buggy fix me plx
+        fin_res[k] = final_urls
+
+    return fin_res
+
+
+def search_for_theme_youtube(name, rk=1337, save_path=None):
+    import youtube_dl
+
+    if save_path is None:
+        save_path = os.getcwd()
+    
+    fp = os.path.join(save_path, '%s__%s__' % (name, rk))
+    # Youtuble dl requires the template to be unicode.
+    t = u'%s' % fp
+
+    ydl_opts = {
+        'verbose': True,
+        #'max_downloads': 5,
+        #'playlist_end': 4,
+        'outtmpl': t + u'%(autonumber)s.%(ext)s',
+        'default_search': 'ytsearch',
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3', # this should be converted straight to .wav
+            'preferredquality': '192',
+        }],
+        #'logger': LOG,
+    }
+
+    ydl = youtube_dl.YoutubeDL(ydl_opts)
+
+    #def nothing(*args, **kwargs):
+    #    pass
+
+    #ydl.to_screen = nothing
+
+    with ydl:
+        ydl.download([name + ' theme song'])
+
+    return fp
 
 
 
@@ -188,4 +261,5 @@ if __name__ == '__main__':
         n = get_offset_end(fp, HT)
         print(n)
 
-    zomg()
+    #search_for_theme_youtube('solsidan')
+    #search_tunes('Dexter', 1)

@@ -22,7 +22,7 @@ from profilehooks import timecall
 from sqlalchemy.orm.exc import NoResultFound
 
 from audfprint.hash_table import HashTable
-from misc import analyzer, get_offset_end, convert_and_trim, to_time
+from misc import analyzer, get_offset_end, convert_and_trim, to_time, search_for_theme_youtube
 from db import session_scope, Preprocessed
 
 
@@ -34,17 +34,18 @@ frmt = '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'
 logging.basicConfig(format=frmt, level=logging.DEBUG) # <-- default for now.
 
 LOG = logging.getLogger(__name__)
-#LOG.setLevel(logging.DEBUG)
 
 IN_PROG = []
 JUMP_LIST = []
 SHOWS = defaultdict(list)  # Fix this, should be all caps.
 ROOT = os.path.abspath('.')
 THEMES = os.path.join(ROOT, 'themes')
+TEMP_THEMES = os.path.join(ROOT, 'temp_themes')
 FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
 
 # Create default dirs.
 makedirs(THEMES, exist_ok=True)
+makedirs(TEMP_THEMES, exist_ok=True)
 
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
@@ -53,7 +54,7 @@ if os.path.exists(FP_HASHES):
         LOG.debug('%s', n)
 
 else:
-    LOG.info('Creating new db')
+    LOG.info('Creating new hashtable db')
     HT = HashTable()
     HT.save(FP_HASHES)
     HT.load(FP_HASHES)
@@ -150,7 +151,7 @@ def download_theme(media, force=False):
     return f_path
 
 
-def process_to_db(media, theme=None, vid=None, offset=None):
+def process_to_db(media, theme=None, vid=None, end=None, start=None):
     """Process a plex media item to the db
 
        Args:
@@ -167,19 +168,21 @@ def process_to_db(media, theme=None, vid=None, offset=None):
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
 
-    if offset is None:
+    # Lets skip the start time for now. This need to be added later to support shows
+    # that have show, theme song show.
+    if end is None:
         global HT
         start, end = get_offset_end(vid, HT)
-    else:
-        end = offset
 
     if end is not None:
         with session_scope() as se:
             p = Preprocessed(
                 show_name=media.grandparentTitle,
                 ep_title=media.title,
-                offset=end,
-                offset_str=to_time(end),
+                theme_end=end,
+                theme_start=start,
+                theme_start_str=to_time(start),
+                theme_end_str=to_time(end),
                 duration=media.duration,
                 ratingKey=media.ratingKey,
                 grandparentRatingKey=media.grandparentRatingKey,
@@ -208,7 +211,7 @@ def cli(debug, username, password, servername, url, token, config):
     # click.echo('url %s' % url)
     # click.echo('token %s' % token)
     # click.echo('config %s' % config)
-
+    
     if debug:
         LOG.setLevel(logging.DEBUG)
     else:
@@ -225,9 +228,10 @@ def cli(debug, username, password, servername, url, token, config):
     else:
         PMS = PlexServer('', '') # plexapi will pull config file..
 
+
     # CONFIG is unused atm.
     click.echo('Watching for media on %s' % PMS.friendlyName)
-
+    
 
 @cli.command()
 def test_dexter():
@@ -238,21 +242,24 @@ def test_dexter():
     for ep in eps:
         process_to_db(ep)
 
-"""
+
 @cli.command()
-def update_all():
-    def zomg(media):
-        return media.episodes()
+@click.option('--fp', default=None, help='where to create the config file.')
+def create_config(fp=None):
+    if fp is None:
+        fp = os.path.join(ROOT, 'config.ini')
 
-    result = find_all_shows(func=zomg)
+    from config import read_or_make
+    read_or_make(fp)
 
-    # Lets remove the one we already has processed.
-    with session_scope() as se:
-        f = se.query(Preprocessed).all()
-        has = [r.ratingKey for r in has]
 
-    #for ep in results:
-"""
+@cli.command()
+@click.option('--force', default=False, is_flag=True)
+def find_theme_youtube(force):
+    shows = find_all_shows()
+    LOG.debug('Downloading all themes from youtube. This might take a while..')
+    for show in shows:
+        search_for_theme_youtube(show.title, rk=show.ratingKey, save_path=TEMP_THEMES)
 
 
 @cli.command()
@@ -419,8 +426,10 @@ def task(item, sessionkey):
 
 
 def check(data):
+    
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
+        print('data')
         sess = data.get('PlaySessionStateNotification')[0]
         offset = 60000  # just check the first 60 sec
         if offset > sess.get('viewOffset', 0):
@@ -431,12 +440,13 @@ def check(data):
                     item = se.query(Preprocessed).filter_by(
                         ratingKey=ratingkey).one()
 
-                    LOG.debug('Found %s in the db with offset %s' % (
-                              item.prettyname, item.offset))
+                    
 
-                    if item.offset:
+                    if item and item.theme_end:
+                        LOG.debug('Found %s in the db with theme_end %s' % (
+                              item.prettyname, item.theme_end))
                         POOL.apply_async(
-                            client_jump_to, args=(item.offset, sessionkey))
+                            client_jump_to, args=(item.theme_end, sessionkey))
                     return
                 except NoResultFound:
                     pass

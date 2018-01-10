@@ -51,5 +51,7 @@ Temporary Items
 
 media.db
 themes/
+temp_themes/
 hashes.pklz
 *.py[co]
+config.ini

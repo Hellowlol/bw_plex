@@ -9,6 +9,8 @@ matplotlib
 psutil
 profilehooks
 sqlalchemy
+configobj
+youtube-dl
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
