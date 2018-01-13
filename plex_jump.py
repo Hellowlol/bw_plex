@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import multiprocessing
 import os
 import re
 import time
@@ -16,13 +15,16 @@ except ImportError:
 import click
 from plexapi.compat import makedirs
 from plexapi.exceptions import NotFound
+from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
 from plexapi.utils import download
 from profilehooks import timecall
 from sqlalchemy.orm.exc import NoResultFound
 
 from audfprint.hash_table import HashTable
+
 from misc import analyzer, get_offset_end, convert_and_trim, to_time, search_for_theme_youtube
+from config import read_or_make
 from db import session_scope, Preprocessed
 
 
@@ -35,6 +37,7 @@ logging.basicConfig(format=frmt, level=logging.DEBUG) # <-- default for now.
 
 LOG = logging.getLogger(__name__)
 
+
 IN_PROG = []
 JUMP_LIST = []
 SHOWS = defaultdict(list)  # Fix this, should be all caps.
@@ -42,6 +45,7 @@ ROOT = os.path.abspath('.')
 THEMES = os.path.join(ROOT, 'themes')
 TEMP_THEMES = os.path.join(ROOT, 'temp_themes')
 FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
+CONFIG = read_or_make(os.path.join(ROOT, 'config.ini'))
 
 # Create default dirs.
 makedirs(THEMES, exist_ok=True)
@@ -60,7 +64,7 @@ else:
     HT.load(FP_HASHES)
 
 # Disable some logging..
-#logging.getLogger("plexapi").setLevel(logging.WARNING)
+logging.getLogger("plexapi").setLevel(logging.WARNING)
 #logging.getLogger("requests").setLevel(logging.WARNING)
 #logging.getLogger("urllib3").setLevel(logging.WARNING)
 
@@ -151,19 +155,21 @@ def download_theme(media, force=False):
     return f_path
 
 
-def process_to_db(media, theme=None, vid=None, end=None, start=None):
+def process_to_db(media, theme=None, vid=None, start=None, end=None):
     """Process a plex media item to the db
 
        Args:
             media (Episode obj):
             theme: path to the theme.
             vid: path to the stripped wav of the media item.
-            offset: where in the video file did the theme end.
+            start: of theme.
+            end (int): of theme.
 
     """
     LOG.debug('Started to process %s', media._prettyfilename())
     if theme is None:
-        theme = download_theme(media)
+        theme = search_for_theme_youtube(media.title, rk=media.ratingKey, save_path=THEMES)
+        #theme = download_theme(media)
 
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
@@ -203,6 +209,7 @@ def process_to_db(media, theme=None, vid=None, end=None, start=None):
 def cli(debug, username, password, servername, url, token, config):
     """ Entry point for the CLI."""
     global PMS
+    global CONFIG
 
     # click.echo('debug %s' % debug)
     # click.echo('username %s' % username)
@@ -211,27 +218,26 @@ def cli(debug, username, password, servername, url, token, config):
     # click.echo('url %s' % url)
     # click.echo('token %s' % token)
     # click.echo('config %s' % config)
-    
+
     if debug:
         LOG.setLevel(logging.DEBUG)
     else:
         LOG.setLevel(logging.INFO)
 
-    if username and password and servername:
-        from plexapi.myplex import MyPlexAccount
+    if config and os.path.isfile(config):
+        CONFIG = read_or_make(config)
 
+    url = url or CONFIG.get('url')
+    token = token or CONFIG.get('token')
+
+    if url and token:
+        PMS = PlexServer(url, token)
+
+    elif username and password and servername:
         acc = MyPlexAccount(username, password)
         PMS = acc.resource(servername).connect()
 
-    elif url and token:
-        PMS = PlexServer(url, token)
-    else:
-        PMS = PlexServer('', '') # plexapi will pull config file..
 
-
-    # CONFIG is unused atm.
-    click.echo('Watching for media on %s' % PMS.friendlyName)
-    
 
 @cli.command()
 def test_dexter():
@@ -243,7 +249,7 @@ def test_dexter():
         process_to_db(ep)
 
 
-@cli.command()
+@click.command()
 @click.option('--fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
     if fp is None:
@@ -254,12 +260,25 @@ def create_config(fp=None):
 
 
 @cli.command()
+@click.option('-file', default=None)
 @click.option('--force', default=False, is_flag=True)
-def find_theme_youtube(force):
+@click.option('-n', help='threads', type=int, default=0)
+def find_theme_youtube(file, force, n):
+
+    if file is not None:
+        search_for_theme_youtube(file, rk=1, save_path=TEMP_THEMES)
+        return
+
     shows = find_all_shows()
     LOG.debug('Downloading all themes from youtube. This might take a while..')
+
+    if n: # untested
+        POOL.map(search_for_theme_youtube,
+                 [(s.title, s.ratingKey, TEMP_THEMES) for s in shows], 1)
+
     for show in shows:
-        search_for_theme_youtube(show.title, rk=show.ratingKey, save_path=TEMP_THEMES)
+        search_for_theme_youtube(show.title, rk=show.ratingKey,
+                                 save_path=TEMP_THEMES)
 
 
 @cli.command()
@@ -361,7 +380,6 @@ def client_jump_to(offset=None, sessionkey=None):
             JUMP_LIST.append((sessionkey, now))
             client = media.players[0]  #<---
 
-
             # This does not work on plex web since the fucker returns
             # the local url..
             client = PMS.client(client.title).connect()
@@ -382,12 +400,18 @@ def task(item, sessionkey):
         return
 
     # Lets try to download the theme.
-    n = download_theme(media)
-    if n:
-        SHOWS[media.grandparentRatingKey] = n
-    else:
+    if not theme in HT.names:
+        theme = search_for_theme_youtube(media.grandparentTitle,
+                    rk=media.grandparentRatingKey,
+                    save_path=THEMES)
+        SHOWS[media.grandparentRatingKey] = theme
+
+    #n = download_theme(media)
+    #if n:
+    #    SHOWS[media.grandparentRatingKey] = n
+    #else:
         # lets skip if we don't have a theme.
-        return
+    #    return
 
     LOG.debug('Convert %s to .wav', os.path.basename(n))
     theme = convert_and_trim(SHOWS[media.grandparentRatingKey], fs=11025)
@@ -401,7 +425,9 @@ def task(item, sessionkey):
     try:
         HT.name_to_id(theme)
     except ValueError:
-        LOG.debug('Theme %s does not exists in the %s' % (os.path.basename(theme), FP_HASHES))
+        LOG.debug('Theme %s does not exists in the %s' % (
+                  os.path.basename(theme), FP_HASHES))
+
         analyzer().ingest(HT, theme)
         HT = HT.save_then_reload(FP_HASHES)
 
@@ -410,12 +436,13 @@ def task(item, sessionkey):
         # End is -1 if not found. Or a positiv int.
         if end:
             client_jump_to(end, sessionkey)
-        process_to_db(media, theme=theme, vid=vid, offset=end)
 
-   	try:
-   		os.remove(vid)
-   	except IOError:
-   		LOG.excetion('Failed to delete %s', vid)
+        process_to_db(media, theme=theme, vid=vid, start=start, end=end)
+
+    try:
+        os.remove(vid)
+    except IOError:
+        LOG.excetion('Failed to delete %s', vid)
 
     # Should we start processing the next ep?
     LOG.debug('Check if we can find the next media item.')
@@ -426,10 +453,10 @@ def task(item, sessionkey):
 
 
 def check(data):
-    
+
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
-        print('data')
+
         sess = data.get('PlaySessionStateNotification')[0]
         offset = 60000  # just check the first 60 sec
         if offset > sess.get('viewOffset', 0):
@@ -439,8 +466,6 @@ def check(data):
                 try:
                     item = se.query(Preprocessed).filter_by(
                         ratingKey=ratingkey).one()
-
-                    
 
                     if item and item.theme_end:
                         LOG.debug('Found %s in the db with theme_end %s' % (
@@ -468,6 +493,7 @@ def match(f):
 @cli.command()
 def watch():
     """Start watching the server for stuff to do."""
+    click.echo('Watching for media on %s' % PMS.friendlyName)
     ffs = PMS.startAlertListener(check)
 
     try:

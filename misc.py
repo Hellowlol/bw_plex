@@ -3,6 +3,7 @@
 
 import os
 import logging
+import re
 import subprocess
 import tempfile
 
@@ -74,53 +75,18 @@ def get_offset_end(vid, hashtable):
     return start_time, end_time
 
 
-def partial_dl(part, fn, stop=6, chunk=8000):
-    # this should check the parts location first imo.
-    # so we read directly from file.
-    stop = part.size // stop
-    p = os.path.join(os.getcwd(), '%s.mkv' % fn)
+def get_valid_filename(s):
 
-    try:
-        N = 0
-        with open(part.location, 'r') as ip:
-            with open(p, 'wb') as outp:
-                while True:
-                    data = ip.read(chunk)
-                    N += chunk
-                    if stop and N > stop:
-                        break
-                    else:
-                        outp.write(data)
+    head = os.path.dirname(s)
+    tail = os.path.basename(s)
 
-        return p
-    except Exception as e:
-        #logging.exception(e)
-        print('local copy failed.')
+    clean_tail = str(tail).strip()
+    clean_tail = re.sub(r'(?u)[^-_\w.() ]', '', clean_tail)
 
-    print('copy via plex')
-    session = part._session
-
-    url = part._server.url('%s?download=1' % part.key)
-
-    r = session.get(url, stream=True)
-
-    with open(p, 'wb') as handle:
-        sofa = 0
-        for it in r.iter_content(chunk):
-            print(sofa)
-            if stop and sofa > stop:
-                break
-            handle.write(it)
-            sofa += chunk
-
-    return p
-
-
-def in_dir(root, ratingkey):
-    for f in os.listdir(root):
-        if ratingkey in f:
-            fp = os.path.join(root, f)
-            return fp
+    if head:
+        return os.path.join(head, u'%s' % clean_tail)
+    else:
+        return clean_tail
 
 
 #@timecall(immediate=True)
@@ -155,17 +121,20 @@ def convert_and_trim(afile, fs=8000, trim=None):
 #@timecall(immediate=True)
 def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
     if outfile is None:
-        tmp = tempfile.NamedTemporaryFile(mode='r+b', prefix='offset_', suffix='.mp3')
+        tmp = tempfile.NamedTemporaryFile(mode='r+b', prefix='offset_',
+                                          suffix='.mp3')
         tmp_name = tmp.name
         tmp.close()
         outfile = tmp_name
 
-    cmd = ['ffmpeg', '-i', afile, '-ss', '0', '-t', str(trim), '-codec:a', 'libmp3lame', '-qscale:a', '6', outfile]
+    cmd = ['ffmpeg', '-i', afile, '-ss', '0', '-t',
+           str(trim), '-codec:a', 'libmp3lame', '-qscale:a', '6', outfile]
 
     print('calling ffmepg with %s' % ' '.join(cmd))
 
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-    o,e = psox.communicate()
+
+    o, e = psox.communicate()
     if not psox.returncode == 0:
         print(e)
         raise Exception("FFMpeg failed")
@@ -216,21 +185,20 @@ def search_for_theme_youtube(name, rk=1337, save_path=None):
 
     if save_path is None:
         save_path = os.getcwd()
-    
+
     fp = os.path.join(save_path, '%s__%s__' % (name, rk))
+    fp = get_valid_filename(fp)
     # Youtuble dl requires the template to be unicode.
     t = u'%s' % fp
 
     ydl_opts = {
         'verbose': True,
-        #'max_downloads': 5,
-        #'playlist_end': 4,
         'outtmpl': t + u'%(autonumber)s.%(ext)s',
         'default_search': 'ytsearch',
-        'format': 'bestaudio/best',
+        'format': 'bestaudio',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3', # this should be converted straight to .wav
+            'preferredcodec': 'wav',
             'preferredquality': '192',
         }],
         #'logger': LOG,
@@ -244,11 +212,13 @@ def search_for_theme_youtube(name, rk=1337, save_path=None):
     #ydl.to_screen = nothing
 
     with ydl:
-        ydl.download([name + ' theme song'])
+        try:
+            ydl.download([name + ' theme song'])
+            return t
+        except:
+            LOG.exception('Failed to download theme song %s' % name)
 
     return fp
-
-
 
 
 if __name__ == '__main__':
