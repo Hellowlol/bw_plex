@@ -83,10 +83,10 @@ def load_themes():
 
 def find_all_shows(func=None):
     """ Helper of get all the shows on a server.
-        Very usefull if your pass a func so it run in a threadpool
+
 
         Args:
-            func (callable)
+            func (callable): Run this function in a threadpool.
 
         Returns: List
 
@@ -112,8 +112,7 @@ def find_next(media):
         return nxt_ep
 
     except NotFound:
-        LOG.debug(
-            'Failed to find the next media item of %s'.media.grandparentTitle)
+        LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
 
 
 def download_theme_plex(media, force=False):
@@ -237,7 +236,7 @@ def cli(debug, username, password, servername, url, token, config):
 
 def get_theme(media):
     """Get the current location of the theme or download
-       the damn thing and convert it ready for matching."""
+       the damn thing and convert it so it's ready for matching."""
 
     if media.TYPE == 'show':
         name = media.title
@@ -260,8 +259,12 @@ def get_theme(media):
 
 
 @cli.command()
-@click.option('-name', help='Find process the selected episodes.', default=None)
+@click.option('-name', help='Search for a show.', default=None)
 def process(name=None):
+    """Manual process some/all eps.
+       You will asked for what you want to process
+
+    """
     load_themes()
     all_eps = []
     shows = find_all_shows()
@@ -281,6 +284,16 @@ def process(name=None):
 @click.command()
 @click.option('--fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
+    """Create a config.
+
+       Args:
+            fp(str): Where to create the config. If omitted it will be written to the root.
+
+       Returns:
+            None
+
+
+    """
     if fp is None:
         fp = os.path.join(ROOT, 'config.ini')
 
@@ -293,7 +306,17 @@ def create_config(fp=None):
 @click.argument('url')
 @click.option('-rk', help='Add rating key')
 def fix_shitty_theme(name, url, rk=None):
-    """Set the correct fingerprint of the show in the hashes.db"""
+    """Set the correct fingerprint of the show in the hashes.db and
+       process the eps of that show in the db against the new theme fingerprint.
+
+       Args:
+            name(str): name of the show
+            url(str): the youtube url to the correct theme.
+            rk(None, str): ratingkey of that show. Pass auto if your lazy.
+
+       Returns:
+            None
+    """
     fp = search_for_theme_youtube(name, url=url, save_path=THEMES)
 
     # Assist for the lazy bastards..
@@ -425,7 +448,16 @@ def check_file_access(m):
 
 
 def client_jump_to(offset=None, sessionkey=None):
-    """Seek the client to the offset."""
+    """Seek the client to the offset.
+
+       Args:
+            offset(int): Default None
+            sessionkey(int): So we made sure we control the correct client.
+
+       Returns:
+            None
+
+    """
 
     # Just check so we dont jump more then
     # once the first 60 sec
