@@ -194,7 +194,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
             LOG.debug('Added %s to media.db', media._prettyfilename())
 
 
-@click.group(help='CLI tool that monitors and jumps the client to after the theme.')
+@click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
 @click.option('--debug', '-d', default=True, is_flag=True, help='Add debug logging.')
 @click.option('--username', '-u', default=None, help='Your plex username')
 @click.option('--password', '-p', default=None, help='Your plex password')
