@@ -1,0 +1,24 @@
+language: python
+python:
+  - "2.7"
+before_install:
+    - sudo add-apt-repository -y ppa:mc3man/trusty-media
+    - sudo apt-get update
+    - sudo apt-get dist-upgrade
+    - sudo apt-get install -y ffmpeg
+    - pip install --upgrade pip
+    #- pip install codecov
+    #- pip install pytest pytest-cov
+# command to install dependencies
+install: "pip install -r requirements.txt"
+script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/ --cov-report term-missing
+after_success:
+  - codecov
+deploy:
+  provider: pypi
+  user: Hellowlol
+  password:
+    secure: e6r9hGA/CAtNyGuuhC3ziGBC9b0vVgWzihchqOAEOCqvTZmdpKsIViu8/co2joVpcgSN+HqZmI1hbJ5JG9rN3qc4OBldbsa8J2rGW6NdJHPWAeuBV8rTEqdVIki6Rp9dD+A8oviwL01oDYlCQlAAwigOXRtmoUv4mpK0EXZpaVGzpjpvMVmY0ITy6wJ5hQ7g1P5otbq3mexgpEM7v0tUMYR2emHJJWHV5UVdkFzEIyyv+hb5DvjxBbJ+8FJe88rNMTrcEq83iec6vTq+CH59OlCgTI1kgpJ57QHK3ntaVggKVEMImW8MugY+fscnMy05KQECJ50COwc8/sp7eE9SdVM8GnOQdOJJQ7zX4IJe8inS469nJMByfMTEM2YyJCSQC77gRhpZdrgwL4kQbnSMoBf2daMluR+1vxfWDUF7vdE4rOZPpu1J5Tqwz/bpr0fE55G89ObIVuX+gJ6VrSxwcAY4tyTzf8cmWEG4p/IqkRfNzPVMCI+3hHX0CUB258vVPgPcp/4Izsuqnu68/ymY2BdJyQKzjApc7hKVr+aKIlpahUWdGKaWbZ+wu6RLUSU8NVkv76O+ELvyatQaUFBpigGEQmNdSBCngwb3kslHoIZ98XPWnsZumfzP4HylcVrCYnPk30q7dQnaEYSbs8oLvtX3VDIRiKpvDyRip/g3bTI=
+  on:
+    tags: true
+    branch: master
