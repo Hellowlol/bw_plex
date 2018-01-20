@@ -6,7 +6,7 @@ https://github.com/pypa/sampleproject
 """
 
 import os
-from setuptools import setup, find_packages
+from setuptools import setup
 
 # Possibly convert the README.md to .rst-format
 try:
@@ -43,6 +43,7 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     use_scm_version=True,
     setup_requires=['setuptools_scm', 'pypandoc'],
+    #version='0.0.1',
 
     description='Skip intros.',
     long_description=README,
@@ -59,7 +60,7 @@ setup(
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
-        'Development Status :: 2 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: End Users/Desktop',
@@ -78,7 +79,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(),
+    packages=['bw_plex'],
 
 
     # List run-time dependencies here.  These will be installed by pip when

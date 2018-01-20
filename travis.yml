@@ -2,15 +2,15 @@ language: python
 python:
   - "2.7"
 before_install:
-    #- sudo apt-get install ffmpeg
+    - sudo apt-get install ffmpeg
     - pip install --upgrade pip
     #- pip install codecov
     #- pip install pytest pytest-cov
 # command to install dependencies
 install: "pip install -r requirements.txt"
-#script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/nrk_api --cov-report term-missing
-#after_success:
-#  - codecov
+script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/ --cov-report term-missing
+after_success:
+  - codecov
 deploy:
   provider: pypi
   user: Hellowlol
