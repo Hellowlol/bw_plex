@@ -6,11 +6,12 @@ import logging
 import re
 import subprocess
 import tempfile
+import shutil
 
 from collections import defaultdict
 
-import requests
 from profilehooks import timecall
+import requests
 from bs4 import BeautifulSoup
 
 from audfprint.audfprint_match import Matcher
@@ -40,8 +41,7 @@ def matcher():
     m.find_time_range = True
     m.search_depth = 2000
     m.verbose = True
-    m.max_matches = 100
-    #m.exact_count = True
+    m.exact_count = True
     #m.time_quantile = 0.02
     # This need to be high as we might get to many hashes before
     # we have found the end.
@@ -50,7 +50,7 @@ def matcher():
     return m
 
 
-#@timecall(immediate=True)
+@timecall(immediate=True)
 def get_offset_end(vid, hashtable):
     an = analyzer()
     match = matcher()
@@ -90,9 +90,11 @@ def get_valid_filename(s):
 
 
 #@timecall(immediate=True)
-def convert_and_trim(afile, fs=8000, trim=None):
-    tmp = tempfile.NamedTemporaryFile(
-        mode='r+b', prefix='offset_', suffix='.wav')
+def convert_and_trim(afile, fs=8000, trim=None, theme=False):
+    tmp = tempfile.NamedTemporaryFile(mode='r+b',
+                                      prefix='offset_',
+                                      suffix='.wav')
+
     tmp_name = tmp.name
     tmp.close()
     if trim is None:
@@ -100,6 +102,7 @@ def convert_and_trim(afile, fs=8000, trim=None):
             'ffmpeg', '-loglevel', 'panic', '-i', afile, '-ac', '1', '-ar',
             str(fs), '-acodec', 'pcm_s16le', tmp_name
         ]
+
     else:
         cmd = [
             'ffmpeg', '-loglevel', 'panic', '-i', afile, '-ac', '1', '-ar',
@@ -107,18 +110,23 @@ def convert_and_trim(afile, fs=8000, trim=None):
             tmp_name
         ]
 
-    LOG.debug('calling ffmepg with %s' % ' '.join(cmd))
+    LOG.debug('calling ffmpeg with %s' % ' '.join(cmd))
 
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
     o, e = psox.communicate()
+
     if not psox.returncode == 0:
-        print(e)
         raise Exception("FFMpeg failed")
 
-    return tmp_name
+    if theme:
+        shutil.move(tmp_name, afile)
+        LOG.debug('Done converting %s', afile)
+        return afile
+    else:
+        LOG.debug('Done converting %s', tmp_name)
+        return tmp_name
 
 
-#@timecall(immediate=True)
 def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
     if outfile is None:
         tmp = tempfile.NamedTemporaryFile(mode='r+b', prefix='offset_',
@@ -180,7 +188,8 @@ def search_tunes(name, rk):
     return fin_res
 
 
-def search_for_theme_youtube(name, rk=1337, save_path=None):
+def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
+    LOG.debug('Searching youtube for %s', name)
     import youtube_dl
 
     if save_path is None:
@@ -193,7 +202,8 @@ def search_for_theme_youtube(name, rk=1337, save_path=None):
 
     ydl_opts = {
         'verbose': True,
-        'outtmpl': t + u'%(autonumber)s.%(ext)s',
+        'outtmpl': t + u'.%(ext)s',
+        #'outtmpl': t + u'%(autonumber)s.%(ext)s',
         'default_search': 'ytsearch',
         'format': 'bestaudio',
         'postprocessors': [{
@@ -213,12 +223,55 @@ def search_for_theme_youtube(name, rk=1337, save_path=None):
 
     with ydl:
         try:
-            ydl.download([name + ' theme song'])
-            return t
+            if url:
+                ydl.download([url])
+            else:
+                ydl.download([name + ' theme song'])
+            return t + '.wav'
+
         except:
             LOG.exception('Failed to download theme song %s' % name)
 
-    return fp
+    return fp + '.wav'
+
+
+def choose(msg, items, attr):
+    import click
+    result = []
+
+    if not len(items):
+        return result
+
+    click.echo('')
+    for i, item in enumerate(items):
+        name = attr(item) if callable(attr) else getattr(item, attr)
+        click.echo('%s %s' % (i, name))
+
+    click.echo('')
+
+    while True:
+        try:
+            inp = click.prompt('%s' % msg)
+            if any(s in inp for s in (':', '::', '-')):
+                idx = slice(*map(lambda x: int(x.strip()) if x.strip() else None, inp.split(':')))
+                result =  items[idx]
+                break
+            elif ',' in inp:
+                ips = [int(i.strip()) for i in inp.split()]
+                result = [items[z] for z in ips]
+                break
+
+            else:
+                result = items[int(inp)]
+                break
+
+        except(ValueError, IndexError):
+            pass
+
+    if not isinstance(result, list):
+        result = [result]
+
+    return result
 
 
 if __name__ == '__main__':
@@ -230,6 +283,3 @@ if __name__ == '__main__':
         HT = HashTable(ht)
         n = get_offset_end(fp, HT)
         print(n)
-
-    #search_for_theme_youtube('solsidan')
-    #search_tunes('Dexter', 1)

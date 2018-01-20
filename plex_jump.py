@@ -18,12 +18,11 @@ from plexapi.exceptions import NotFound
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
 from plexapi.utils import download
-from profilehooks import timecall
 from sqlalchemy.orm.exc import NoResultFound
 
 from audfprint.hash_table import HashTable
 
-from misc import analyzer, get_offset_end, convert_and_trim, to_time, search_for_theme_youtube
+from misc import analyzer, choose, get_offset_end, convert_and_trim, to_time, search_for_theme_youtube
 from config import read_or_make
 from db import session_scope, Preprocessed
 
@@ -65,8 +64,8 @@ else:
 
 # Disable some logging..
 logging.getLogger("plexapi").setLevel(logging.WARNING)
-#logging.getLogger("requests").setLevel(logging.WARNING)
-#logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def load_themes():
@@ -106,9 +105,9 @@ def find_all_shows(func=None):
 
 def find_next(media):
     """ Find the next media item or None."""
+    LOG.debug('Check if we can find the next media item.')
     try:
-        nxt_ep = media.show().episode(
-            season=media.seasonNumber, episode=media.index + 1)
+        nxt_ep = media.show().episode(season=media.seasonNumber, episode=media.index + 1)
         LOG.debug('Found %s', nxt_ep._prettyfilename())
         return nxt_ep
 
@@ -117,8 +116,7 @@ def find_next(media):
             'Failed to find the next media item of %s'.media.grandparentTitle)
 
 
-#@timecall(immediate=True)
-def download_theme(media, force=False):
+def download_theme_plex(media, force=False):
     """Download a theme using PMS. And add it to shows cache.
 
        force (bool): Download even if the theme exists.
@@ -168,8 +166,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
     """
     LOG.debug('Started to process %s', media._prettyfilename())
     if theme is None:
-        theme = search_for_theme_youtube(media.title, rk=media.ratingKey, save_path=THEMES)
-        #theme = download_theme(media)
+        theme = convert_and_trim(get_theme(media), fs=11025, theme=True)
 
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
@@ -195,11 +192,11 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
                 prettyname=media._prettyfilename(),
                 updatedAt=media.updatedAt)
             se.add(p)
-            LOG.debug('Added %s to db', media._prettyfilename())
+            LOG.debug('Added %s to media.db', media._prettyfilename())
 
 
 @click.group(help='CLI tool that monitors and jumps the client to after the theme.')
-@click.option('--debug', '-d', default=False, is_flag=True, help='Add debug logging.')
+@click.option('--debug', '-d', default=True, is_flag=True, help='Add debug logging.')
 @click.option('--username', '-u', default=None, help='Your plex username')
 @click.option('--password', '-p', default=None, help='Your plex password')
 @click.option('--servername', '-s', default=None, help='The server you want to monitor.')
@@ -238,14 +235,46 @@ def cli(debug, username, password, servername, url, token, config):
         PMS = acc.resource(servername).connect()
 
 
+def get_theme(media):
+    """Get the current location of the theme or download
+       the damn thing and convert it ready for matching."""
+
+    if media.TYPE == 'show':
+        name = media.title
+        rk = media.ratingKey
+    else:
+        name = media.grandparentTitle
+        rk = media.grandparentRatingKey
+
+    theme = SHOWS.get(rk)
+
+    if theme is None:
+        theme = search_for_theme_youtube(name,
+                                         rk=rk,
+                                         save_path=THEMES)
+
+        theme = convert_and_trim(theme, fs=11025, theme=True)
+        SHOWS[rk] = theme
+
+    return theme
+
 
 @cli.command()
-def test_dexter():
-    """Test manual process_to_db."""
-    results = PMS.search('Dexter')[0]
-    eps = results.episodes()
+@click.option('-name', help='Find process the selected episodes.', default=None)
+def process(name=None):
+    load_themes()
+    all_eps = []
+    shows = find_all_shows()
+    if name:
+        shows = [s for s in shows if s.title.lower().startswith(name.lower())]
 
-    for ep in eps:
+    shows = choose('Select what show to process', shows, 'title')
+    for show in shows:
+        eps = show.episodes()
+        eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
+        all_eps += eps
+
+    for ep in all_eps:
         process_to_db(ep)
 
 
@@ -260,13 +289,50 @@ def create_config(fp=None):
 
 
 @cli.command()
-@click.option('-file', default=None)
+@click.argument('name')
+@click.argument('url')
+@click.option('-rk', help='Add rating key')
+def fix_shitty_theme(name, url, rk=None):
+    """Set the correct fingerprint of the show in the hashes.db"""
+    fp = search_for_theme_youtube(name, url=url, save_path=THEMES)
+
+    # Assist for the lazy bastards..
+    if rk == 'auto':
+        item = PMS.search(name)
+        if item:
+            if name == item[0].title:
+                rk = item[0].ratingKey
+
+    for fp in HT.names:
+        if os.path.basename(fp).lower() == name.lower():
+            HT.remove(fp)
+
+    analyzer().ingest(HT, fp)
+    HT.save()
+    to_pp = []
+
+    if rk:  # TODO a
+        with session_scope() as se:
+            item = se.query(Preprocessed).filter_by(grandparentRatingKey=rk)
+
+            for i in item:
+                to_pp.append(PMS.fetchItem(i.ratingKey))
+                # Prob should have edit, but we do this so we can use process_to_db.
+                se.delete(i)
+
+        for media in to_pp:
+            process_to_db(media)
+
+
+@cli.command()
+@click.option('-show', default=None)
 @click.option('--force', default=False, is_flag=True)
 @click.option('-n', help='threads', type=int, default=0)
-def find_theme_youtube(file, force, n):
+@click.option('-p', help='create a fingerprint from the video')
+def find_theme_youtube(show, force, u, n, p):
 
-    if file is not None:
-        search_for_theme_youtube(file, rk=1, save_path=TEMP_THEMES)
+    if show is not None:
+        search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
         return
 
     shows = find_all_shows()
@@ -281,6 +347,7 @@ def find_theme_youtube(file, force, n):
                                  save_path=TEMP_THEMES)
 
 
+'''
 @cli.command()
 @click.option('--force', default=False, is_flag=True)
 @timecall(immediate=True)
@@ -303,18 +370,20 @@ def update_all_themes(force=False):
 
     items = find_all_shows(func=lol)
     LOG.debug('Downloaded %s themes', len(items))
+'''
 
 
 @cli.command()
 @click.option('-n', help='threads', type=int, default=1)
-def create_hash_table_from_themes(n):
+@click.option('-dir', default=None)
+def create_hash_table_from_themes(n, dir):
     """ Create a hashtable from the themes."""
     from audfprint.audfprint import multiproc_add
 
     a = analyzer()
     all_files = []
 
-    for root, dir, files in os.walk(THEMES):
+    for root, dir, files in os.walk(dir or THEMES):
         for f in files:
             fp = os.path.join(root, f)
             # We need to check this since when themes are downloaded
@@ -332,7 +401,6 @@ def create_hash_table_from_themes(n):
         HT.save(FP_HASHES)
 
 
-#@timecall(immediate=True)
 def check_file_access(m):
     """Check if we can reach the file directly
        or if we have to download it via PMS.
@@ -344,7 +412,7 @@ def check_file_access(m):
             filepath or http to the file.
 
     """
-    LOG.debug('Checking file access')
+    LOG.debug('Checking if we can reach %s directly', m._prettyfilename())
 
     files = list(m.iterParts())
     for file in files:
@@ -356,7 +424,6 @@ def check_file_access(m):
             return PMS.url('%s?download=1' % file.key)
 
 
-#@timecall(immediate=True)
 def client_jump_to(offset=None, sessionkey=None):
     """Seek the client to the offset."""
 
@@ -378,7 +445,7 @@ def client_jump_to(offset=None, sessionkey=None):
         # or we can proxy thru the server..
         if sessionkey and int(sessionkey) == media.sessionKey:
             JUMP_LIST.append((sessionkey, now))
-            client = media.players[0]  #<---
+            client = media.players[0]
 
             # This does not work on plex web since the fucker returns
             # the local url..
@@ -395,29 +462,13 @@ def client_jump_to(offset=None, sessionkey=None):
 def task(item, sessionkey):
     global HT
     media = PMS.fetchItem(int(item))
-    LOG.debug('Found %s', media._prettyfilename())
+    # LOG.debug('Found %s', media._prettyfilename())
     if media.TYPE not in ('episode', 'show'):
         return
 
-    # Lets try to download the theme.
-    if not theme in HT.names:
-        theme = search_for_theme_youtube(media.grandparentTitle,
-                    rk=media.grandparentRatingKey,
-                    save_path=THEMES)
-        SHOWS[media.grandparentRatingKey] = theme
+    theme = get_theme(media)
 
-    #n = download_theme(media)
-    #if n:
-    #    SHOWS[media.grandparentRatingKey] = n
-    #else:
-        # lets skip if we don't have a theme.
-    #    return
-
-    LOG.debug('Convert %s to .wav', os.path.basename(n))
-    theme = convert_and_trim(SHOWS[media.grandparentRatingKey], fs=11025)
-
-    LOG.debug('Download the first 10 minutes of %s as .wav',
-              media._prettyfilename())
+    LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
     vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
 
     # Check if this shows theme exist in the hash table.
@@ -425,7 +476,7 @@ def task(item, sessionkey):
     try:
         HT.name_to_id(theme)
     except ValueError:
-        LOG.debug('Theme %s does not exists in the %s' % (
+        LOG.debug('No fingerprint for theme %s does exists in the %s' % (
                   os.path.basename(theme), FP_HASHES))
 
         analyzer().ingest(HT, theme)
@@ -435,7 +486,10 @@ def task(item, sessionkey):
     if end is not None:
         # End is -1 if not found. Or a positiv int.
         if end:
-            client_jump_to(end, sessionkey)
+            try:
+                client_jump_to(end, sessionkey)
+            except:  # FIXME
+                pass
 
         process_to_db(media, theme=theme, vid=vid, start=start, end=end)
 
@@ -445,7 +499,7 @@ def task(item, sessionkey):
         LOG.excetion('Failed to delete %s', vid)
 
     # Should we start processing the next ep?
-    LOG.debug('Check if we can find the next media item.')
+
     nxt = find_next(media)
     process_to_db(nxt)
 
@@ -468,10 +522,9 @@ def check(data):
                         ratingKey=ratingkey).one()
 
                     if item and item.theme_end:
-                        LOG.debug('Found %s in the db with theme_end %s' % (
-                              item.prettyname, item.theme_end))
-                        POOL.apply_async(
-                            client_jump_to, args=(item.theme_end, sessionkey))
+                        LOG.debug('Found %s in the db with theme_end %s' % (item.prettyname, item.theme_end))
+                        POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
+
                     return
                 except NoResultFound:
                     pass
@@ -484,7 +537,7 @@ def check(data):
 @cli.command()
 @click.argument('-f')
 def match(f):
-    """Manual match for a file. This is usefull for testing the a finds the correct end time"""
+    """Manual match for a file. This is usefull for testing the a finds the correct end time."""
     # assert f in H.names
     x = get_offset_end(f, HT)
     print(x)
@@ -493,6 +546,7 @@ def match(f):
 @cli.command()
 def watch():
     """Start watching the server for stuff to do."""
+    load_themes()
     click.echo('Watching for media on %s' % PMS.friendlyName)
     ffs = PMS.startAlertListener(check)
 
@@ -503,6 +557,13 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
+        #if HT and HT.dirty:
+        #    HT.save()
+
+
+@cli.command()
+def test_task():
+    task(26461, 1)
 
 
 if __name__ == '__main__':
