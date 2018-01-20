@@ -13,7 +13,7 @@ except ImportError:
     from multiprocessing.dummy import ThreadPool as Pool
 
 import click
-from plexapi.compat import makedirs
+#from plexapi.compat import makedirs
 from plexapi.exceptions import NotFound
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
@@ -21,6 +21,8 @@ from plexapi.utils import download
 from sqlalchemy.orm.exc import NoResultFound
 
 from audfprint.hash_table import HashTable
+
+from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, DEFAULT_FOLDER
 
 from misc import analyzer, choose, get_offset_end, convert_and_trim, to_time, search_for_theme_youtube
 from config import read_or_make
@@ -40,15 +42,6 @@ LOG = logging.getLogger(__name__)
 IN_PROG = []
 JUMP_LIST = []
 SHOWS = defaultdict(list)  # Fix this, should be all caps.
-ROOT = os.path.abspath('.')
-THEMES = os.path.join(ROOT, 'themes')
-TEMP_THEMES = os.path.join(ROOT, 'temp_themes')
-FP_HASHES = os.path.join(ROOT, 'hashes.pklz')
-CONFIG = read_or_make(os.path.join(ROOT, 'config.ini'))
-
-# Create default dirs.
-makedirs(THEMES, exist_ok=True)
-makedirs(TEMP_THEMES, exist_ok=True)
 
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
@@ -596,6 +589,10 @@ def watch():
 @cli.command()
 def test_task():
     task(26461, 1)
+
+
+def retard():
+    print('hello')
 
 
 if __name__ == '__main__':

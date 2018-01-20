@@ -10,12 +10,10 @@ import shutil
 
 from collections import defaultdict
 
-from profilehooks import timecall
+#from profilehooks import timecall
 import requests
 from bs4 import BeautifulSoup
 
-from audfprint.audfprint_match import Matcher
-from audfprint.audfprint_analyze import Analyzer
 
 LOG = logging.getLogger(__name__)
 
@@ -26,7 +24,7 @@ def to_time(sec):
 
 
 def analyzer():
-
+    from audfprint.audfprint_analyze import Analyzer
     a = Analyzer()
     a.n_fft = 512
     a.n_hop = a.n_fft / 2
@@ -37,6 +35,7 @@ def analyzer():
 
 
 def matcher():
+    from audfprint.audfprint_match import Matcher
     m = Matcher()
     m.find_time_range = True
     m.search_depth = 2000
@@ -50,7 +49,7 @@ def matcher():
     return m
 
 
-@timecall(immediate=True)
+#@timecall(immediate=True)
 def get_offset_end(vid, hashtable):
     an = analyzer()
     match = matcher()
@@ -68,7 +67,7 @@ def get_offset_end(vid, hashtable):
             start_time = min_time * t_hop
             LOG.debug('Started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
                                                                   end_time, to_time(end_time)))
-    return start_time, end_time
+            return start_time, end_time
 
     LOG.debug('no result just returning -1')
 
