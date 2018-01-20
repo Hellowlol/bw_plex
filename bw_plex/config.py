@@ -17,10 +17,11 @@ username = string(default='')
 password = string(default='')
 # This is a list of ratingKeys!
 ignore_show = list(default=[])
+logformat = string(='')
 
 """.splitlines()
 
-# 
+
 def read_or_make(fp):
     make_conf = False
     if not os.path.isfile(fp):

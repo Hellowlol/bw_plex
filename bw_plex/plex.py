@@ -3,7 +3,6 @@
 
 import logging
 import os
-import re
 import time
 from collections import defaultdict
 
@@ -13,28 +12,22 @@ except ImportError:
     from multiprocessing.dummy import ThreadPool as Pool
 
 import click
-#from plexapi.compat import makedirs
-from plexapi.exceptions import NotFound
-from plexapi.myplex import MyPlexAccount
-from plexapi.server import PlexServer
-from plexapi.utils import download
-from sqlalchemy.orm.exc import NoResultFound
 
+from sqlalchemy.orm.exc import NoResultFound
 from audfprint.hash_table import HashTable
 
-from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, DEFAULT_FOLDER
+from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES
 
-from misc import analyzer, choose, get_offset_end, convert_and_trim, to_time, search_for_theme_youtube
 from config import read_or_make
 from db import session_scope, Preprocessed
+from misc import (analyzer, convert_and_trim, choose, find_next,
+                  get_offset_end, get_pms, to_time, search_for_theme_youtube)
 
 
 POOL = Pool(10)
-
-url = ''
-token = ''
-frmt = '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'
-logging.basicConfig(format=frmt, level=logging.DEBUG) # <-- default for now.
+PMS = None
+frmt = CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s')
+logging.basicConfig(format=frmt, level=logging.DEBUG)
 
 LOG = logging.getLogger(__name__)
 
@@ -94,55 +87,6 @@ def find_all_shows(func=None):
         return POOL.map(func, all_shows)
 
     return all_shows
-
-
-def find_next(media):
-    """ Find the next media item or None."""
-    LOG.debug('Check if we can find the next media item.')
-    try:
-        nxt_ep = media.show().episode(season=media.seasonNumber, episode=media.index + 1)
-        LOG.debug('Found %s', nxt_ep._prettyfilename())
-        return nxt_ep
-
-    except NotFound:
-        LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
-
-
-def download_theme_plex(media, force=False):
-    """Download a theme using PMS. And add it to shows cache.
-
-       force (bool): Download even if the theme exists.
-
-       Return:
-            The filepath of the theme.
-
-    """
-    if media.TYPE == 'show':
-        name = media.title
-        rk = media.ratingKey
-        theme = media.theme
-    else:
-        name = media.grandparentTitle
-        rk = media.grandparentRatingKey
-        theme = media.grandparentTheme
-        if theme is None:
-            theme = media.show().theme
-
-    name = '%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk) # make a proper cleaning in misc.
-    f_name = '%s.mp3' % name
-    f_path = os.path.join(THEMES, f_name)
-
-    if not os.path.exists(f_path) or force and theme:
-        LOG.debug('Downloading %s', f_path)
-        dlt = download(PMS.url(theme), savepath=THEMES, filename=f_name)
-
-        if dlt:
-            SHOWS[rk] = f_path
-            return f_path
-    else:
-        LOG.debug('Skipping %s as it already exists', f_name)
-
-    return f_path
 
 
 def process_to_db(media, theme=None, vid=None, start=None, end=None):
@@ -219,12 +163,11 @@ def cli(debug, username, password, servername, url, token, config):
     url = url or CONFIG.get('url')
     token = token or CONFIG.get('token')
 
-    if url and token:
-        PMS = PlexServer(url, token)
+    if url and token or username and password:
 
-    elif username and password and servername:
-        acc = MyPlexAccount(username, password)
-        PMS = acc.resource(servername).connect()
+        PMS = get_pms(url=url, token=token,
+                      username=username,
+                      password=password)
 
 
 def get_theme(media):
@@ -285,10 +228,9 @@ def create_config(fp=None):
        Returns:
             None
 
-
     """
     if fp is None:
-        fp = os.path.join(ROOT, 'config.ini')
+        fp = os.path.join(DEFAULT_FOLDER, 'config.ini')
 
     from config import read_or_make
     read_or_make(fp)

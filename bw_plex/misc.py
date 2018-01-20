@@ -14,11 +14,86 @@ from collections import defaultdict
 import requests
 from bs4 import BeautifulSoup
 
+from plexapi.utils import download
+from plexapi.exceptions import NotFound
+
+from bw_plex import THEMES, CONFIG
+
 
 LOG = logging.getLogger(__name__)
 
 
+def get_pms(url=None, token=None, username=None,
+            password=None, servername=None):
+    from plexapi.myplex import MyPlexAccount
+    from plexapi.server import PlexServer
+
+    url = url or CONFIG.get('url')
+    token = token or CONFIG.get('token')
+
+    if url and token:
+        PMS = PlexServer(url, token)
+
+    elif username and password and servername:
+        acc = MyPlexAccount(username, password)
+        PMS = acc.resource(servername).connect()
+
+    return PMS
+
+
+def find_next(media):
+    """ Find the next media item or None."""
+    LOG.debug('Check if we can find the next media item.')
+    try:
+        nxt_ep = media.show().episode(season=media.seasonNumber, episode=media.index + 1)
+        LOG.debug('Found %s', nxt_ep._prettyfilename())
+        return nxt_ep
+
+    except NotFound:
+        LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
+
+
+def download_theme_plex(media, force=False):
+    """Download a theme using PMS. And add it to shows cache.
+
+       force (bool): Download even if the theme exists.
+
+       Return:
+            The filepath of the theme.
+
+    """
+    if media.TYPE == 'show':
+        name = media.title
+        rk = media.ratingKey
+        theme = media.theme
+    else:
+        name = media.grandparentTitle
+        rk = media.grandparentRatingKey
+        theme = media.grandparentTheme
+        if theme is None:
+            theme = media.show().theme
+
+    name = '%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk) # make a proper cleaning in misc.
+    f_name = '%s.mp3' % name
+    f_path = os.path.join(THEMES, f_name)
+
+    if not os.path.exists(f_path) or force and theme:
+        LOG.debug('Downloading %s', f_path)
+        dlt = download(PMS.url(theme), savepath=THEMES, filename=f_name)
+
+        if dlt:
+            SHOWS[rk] = f_path
+            return f_path
+    else:
+        LOG.debug('Skipping %s as it already exists', f_name)
+
+    return f_path
+
+
 def to_time(sec):
+    if sec == -1:
+        return '00:00'
+
     m, s = divmod(sec, 60)
     return '%02d:%02d' % (m, s)
 
@@ -147,7 +222,6 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
         raise Exception("FFMpeg failed")
 
     return outfile
-
 
 
 def search_tunes(name, rk):
