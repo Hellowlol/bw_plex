@@ -319,32 +319,6 @@ def find_theme_youtube(show, force):
                                  save_path=TEMP_THEMES)
 
 
-'''
-@cli.command()
-@click.option('--force', default=False, is_flag=True)
-@timecall(immediate=True)
-def update_all_themes(force=False):
-    """Find and download all themes"""
-    LOG.debug('Updating all themes')
-
-    # Lets read from the disk before we do any http calls
-    load_themes()
-    k = SHOWS.keys()
-
-    def lol(media):
-        if media.theme and media.ratingKey not in k:
-            f = download_theme(media, force=force)
-            # Sometime 0 bytes files get downloaded
-            if os.path.getsize(f) == 0:
-                LOG.debug('Deleted %s since the size was invalid' % f)
-                os.remove(f)
-            return f
-
-    items = find_all_shows(func=lol)
-    LOG.debug('Downloaded %s themes', len(items))
-'''
-
-
 @cli.command()
 @click.option('-n', help='threads', type=int, default=1)
 @click.option('-dir', default=None)
