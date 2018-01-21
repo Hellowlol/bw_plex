@@ -29,7 +29,7 @@ PMS = None
 frmt = CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s')
 logging.basicConfig(format=frmt, level=logging.DEBUG)
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger('plex')
 
 
 IN_PROG = []
