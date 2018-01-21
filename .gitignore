@@ -57,3 +57,4 @@ hashes.pklz
 config.ini
 .eggs
 bw_plex.egg-info
+dist

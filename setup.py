@@ -6,7 +6,7 @@ https://github.com/pypa/sampleproject
 """
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # Possibly convert the README.md to .rst-format
 try:
@@ -79,7 +79,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=['bw_plex'],
+    packages=find_packages(),
 
 
     # List run-time dependencies here.  These will be installed by pip when
