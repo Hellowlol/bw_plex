@@ -39,8 +39,8 @@ SHOWS = defaultdict(list)  # Fix this, should be all caps.
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
     HT = HashTable(FP_HASHES)
-    for n in HT.names:
-        LOG.debug('%s', n)
+    #for n in HT.names:
+    #    LOG.debug('%s', n)
 
 else:
     LOG.info('Creating new hashtable db')
@@ -285,9 +285,23 @@ def fix_shitty_theme(name, url, rk=None):
 @cli.command()
 @click.option('-show', default=None)
 @click.option('--force', default=False, is_flag=True)
-@click.option('-n', help='threads', type=int, default=0)
-@click.option('-p', help='create a fingerprint from the video')
-def find_theme_youtube(show, force, u, n, p):
+#@click.option('-n', help='threads', type=int, default=0)
+#@click.option('-p', help='create a fingerprint from the video')
+def find_theme_youtube(show, force):
+    """Iterate over all your shows and downloads the first match for
+       showname theme song on youtube.
+
+       Since this is best effort they are stored in the temp_theme dir
+       Copy them over to the theme folder and fixup any incorrect match by using
+       fix_shitty_theme.
+
+        Args:
+            show(str): name of the show
+            force(bool): does nothing
+
+        Returns:
+            None
+    """
 
     if show is not None:
         search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
@@ -296,9 +310,9 @@ def find_theme_youtube(show, force, u, n, p):
     shows = find_all_shows()
     LOG.debug('Downloading all themes from youtube. This might take a while..')
 
-    if n: # untested
-        POOL.map(search_for_theme_youtube,
-                 [(s.title, s.ratingKey, TEMP_THEMES) for s in shows], 1)
+    #if n: # untested
+    #    POOL.map(search_for_theme_youtube,
+    #             [(s.title, s.ratingKey, TEMP_THEMES) for s in shows], 1)
 
     for show in shows:
         search_for_theme_youtube(show.title, rk=show.ratingKey,
