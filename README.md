@@ -1,8 +1,13 @@
 # bw_plex
+[![Travis Status](https://travis-ci.org/Hellowlol/bw_plex.svg?branch=master)](https://travis-ci.org/Hellowlol/bw_plex)
+[![Cov](https://codecov.io/gh/hellowlol/nrk_api/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
+[![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
+[![PyPI version](https://badge.fury.io/py/bw_plex.svg)](https://pypi.python.org/pypi/bw_plex)
+
 binge watching for plex
 
 ## Install
-pip install bw_plex
+pip install bw_plex or pip install -e .
 
 
 ## Usage
@@ -34,6 +39,9 @@ Commands:
   test_task
   watch                          Start watching the server for stuff to do.
 ```
+
+The most common will be:
+```bw_plex watch```
 
 ## How it works:
 
