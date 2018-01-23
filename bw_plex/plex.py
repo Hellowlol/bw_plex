@@ -16,9 +16,7 @@ import click
 from sqlalchemy.orm.exc import NoResultFound
 from audfprint.hash_table import HashTable
 
-import bw_plex
-print(dir(bw_plex))
-from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES
+from bw_plex import FP_HASHES, CONFIG, DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG, INI_FILE
 
 from config import read_or_make
 from db import session_scope, Preprocessed
@@ -28,15 +26,10 @@ from misc import (analyzer, convert_and_trim, choose, find_next,
 
 POOL = Pool(10)
 PMS = None
-#frmt = CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s')
-#logging.basicConfig(format=frmt, level=logging.DEBUG)
-
-LOG = logging.getLogger('plex')
-
-
 IN_PROG = []
 JUMP_LIST = []
 SHOWS = defaultdict(list)  # Fix this, should be all caps.
+
 
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
@@ -50,10 +43,6 @@ else:
     HT.save(FP_HASHES)
     HT.load(FP_HASHES)
 
-# Disable some logging..
-logging.getLogger("plexapi").setLevel(logging.WARNING)
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def load_themes():
@@ -216,8 +205,10 @@ def process(name=None):
         eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
         all_eps += eps
 
-    for ep in all_eps:
-        process_to_db(ep)
+    if all_eps:
+        with click.progressbar(all_eps) as bar:
+            for ep in bar:
+                process_to_db(ep)
 
 
 @click.command()
@@ -233,7 +224,7 @@ def create_config(fp=None):
 
     """
     if fp is None:
-        fp = os.path.join(DEFAULT_FOLDER, 'config.ini')
+        fp = INI_FILE
 
     from config import read_or_make
     read_or_make(fp)

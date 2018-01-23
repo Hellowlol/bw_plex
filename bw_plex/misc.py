@@ -17,10 +17,7 @@ from bs4 import BeautifulSoup
 from plexapi.utils import download
 from plexapi.exceptions import NotFound
 
-from bw_plex import THEMES, CONFIG
-
-
-LOG = logging.getLogger(__name__)
+from bw_plex import THEMES, CONFIG, LOG
 
 
 def get_pms(url=None, token=None, username=None,
@@ -212,7 +209,7 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
     cmd = ['ffmpeg', '-i', afile, '-ss', '0', '-t',
            str(trim), '-codec:a', 'libmp3lame', '-qscale:a', '6', outfile]
 
-    print('calling ffmepg with %s' % ' '.join(cmd))
+    LOG.debug('calling ffmepg with %s' % ' '.join(cmd))
 
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
 
@@ -296,10 +293,11 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
     ydl = youtube_dl.YoutubeDL(ydl_opts)
 
-    #def nothing(*args, **kwargs):
-    #    pass
+    def nothing(*args, **kwargs):
+        pass
 
-    #ydl.to_screen = nothing
+    if CONFIG.get('level') == 'info':
+        ydl.to_screen = nothing
 
     with ydl:
         try:

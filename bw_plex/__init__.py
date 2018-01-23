@@ -11,42 +11,43 @@ THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
 TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')
 FP_HASHES = os.path.join(DEFAULT_FOLDER, 'hashes.pklz')
 LOG_FILE = os.path.join(DEFAULT_FOLDER, 'log.txt')
-log = logging.getLogger('bw_plex')
+LOG = logging.getLogger('bw_plex')
+INI_FILE = os.path.join(DEFAULT_FOLDER, 'config.ini')
 
 
 makedirs(DEFAULT_FOLDER, exist_ok=True)
 makedirs(THEMES, exist_ok=True)
 makedirs(TEMP_THEMES, exist_ok=True)
 
-CONFIG = read_or_make(os.path.join(DEFAULT_FOLDER, 'config.ini'))
+CONFIG = read_or_make(INI_FILE)
 
 if CONFIG.get('level') in ['', 'info']:  # Should we just use a int?
     lvl = logging.INFO
 else:
     lvl = logging.DEBUG
 
-print('ass')
-
 handle = logging.NullHandler()
 
 frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'))
 handle.setFormatter(frmt)
-log.addHandler(handle)
-
+LOG.addHandler(handle)
 
 # CONSOLE
 stream_handle = logging.StreamHandler()
 stream_handle.setFormatter(frmt)
-log.addHandler(stream_handle)
+LOG.addHandler(stream_handle)
 
-frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'))
 handle.setFormatter(frmt)
-log.addHandler(handle)
-
+LOG.addHandler(handle)
 
 # FILE
 rfh = RotatingFileHandler(LOG_FILE, 'a', 512000, 3)
 rfh.setFormatter(frmt)
-log.addHandler(rfh)
+LOG.addHandler(rfh)
 
-log.setLevel(lvl)
+LOG.setLevel(lvl)
+
+# Disable some logging..
+logging.getLogger("plexapi").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
