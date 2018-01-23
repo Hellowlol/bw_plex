@@ -1,7 +1,7 @@
 import os
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -34,7 +34,7 @@ class Preprocessed(Base):
     grandparentRatingKey = Column('grandparentRatingKey', Integer)
     location = Column('location', String, nullable=True)
     updatedAt = Column('updatedAt ', DateTime, nullable=True)
-    has_recap = Column('show_name', Bool, nullable=True)
+    has_recap = Column('show_name', Boolean, nullable=True)
 
 
 # Create db.
