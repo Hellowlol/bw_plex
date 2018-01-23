@@ -18,7 +18,8 @@ password = string(default='')
 # This is a list of ratingKeys!
 ignore_show = list(default=[])
 logformat = string(='')
-words = list(default=['previously on', 'last season'])
+words = list(default=[])
+level = string(default='')
 
 """.splitlines()
 

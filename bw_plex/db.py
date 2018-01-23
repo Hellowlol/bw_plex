@@ -34,7 +34,7 @@ class Preprocessed(Base):
     grandparentRatingKey = Column('grandparentRatingKey', Integer)
     location = Column('location', String, nullable=True)
     updatedAt = Column('updatedAt ', DateTime, nullable=True)
-    has_recap = Column('show_name', Boolean, nullable=True)
+    has_recap = Column('has_recap', Boolean, nullable=True)
 
 
 # Create db.

@@ -16,6 +16,8 @@ import click
 from sqlalchemy.orm.exc import NoResultFound
 from audfprint.hash_table import HashTable
 
+import bw_plex
+print(dir(bw_plex))
 from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES
 
 from config import read_or_make
@@ -26,8 +28,8 @@ from misc import (analyzer, convert_and_trim, choose, find_next,
 
 POOL = Pool(10)
 PMS = None
-frmt = CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s')
-logging.basicConfig(format=frmt, level=logging.DEBUG)
+#frmt = CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s')
+#logging.basicConfig(format=frmt, level=logging.DEBUG)
 
 LOG = logging.getLogger('plex')
 
@@ -126,7 +128,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
                 ratingKey=media.ratingKey,
                 grandparentRatingKey=media.grandparentRatingKey,
                 prettyname=media._prettyfilename(),
-                updatedAt=media.updatedAt)
+                updatedAt=media.updatedAt,
+                has_recap=False) # TODO
             se.add(p)
             LOG.debug('Added %s to media.db', media._prettyfilename())
 
