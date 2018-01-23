@@ -1,3 +1,4 @@
+import os
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
@@ -5,7 +6,11 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-eng = create_engine('sqlite:///media.db')
+from bw_plex import DEFAULT_FOLDER
+
+DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
+
+eng = create_engine('sqlite:///' + DB_PATH)
 session_factory = sessionmaker(bind=eng)
 sess = scoped_session(session_factory)
 Base = declarative_base()
@@ -29,6 +34,7 @@ class Preprocessed(Base):
     grandparentRatingKey = Column('grandparentRatingKey', Integer)
     location = Column('location', String, nullable=True)
     updatedAt = Column('updatedAt ', DateTime, nullable=True)
+    has_recap = Column('show_name', Bool, nullable=True)
 
 
 # Create db.

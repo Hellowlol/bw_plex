@@ -10,7 +10,7 @@ import shutil
 
 from collections import defaultdict
 
-#from profilehooks import timecall
+from profilehooks import timecall
 import requests
 from bs4 import BeautifulSoup
 
@@ -73,7 +73,7 @@ def download_theme_plex(media, force=False):
         if theme is None:
             theme = media.show().theme
 
-    name = '%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk) # make a proper cleaning in misc.
+    name = '%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk)  # make a proper cleaning in misc.
     f_name = '%s.mp3' % name
     f_path = os.path.join(THEMES, f_name)
 
@@ -261,6 +261,7 @@ def search_tunes(name, rk):
     return fin_res
 
 
+#@timecall(immediate=True)
 def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     LOG.debug('Searching youtube for %s', name)
     import youtube_dl
@@ -276,9 +277,11 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     ydl_opts = {
         'verbose': True,
         'outtmpl': t + u'.%(ext)s',
-        #'outtmpl': t + u'%(autonumber)s.%(ext)s',
         'default_search': 'ytsearch',
-        'format': 'bestaudio',
+        # So we select "best" here since this does not get throttled by
+        # youtube. Should it be a config option for ppl with data caps?
+        # Possible format could be bestaudio for those poor fuckers..
+        'format': 'best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'wav',
@@ -286,6 +289,10 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
         }],
         #'logger': LOG,
     }
+    # https://github.com/rg3/youtube-dl/issues/6923
+    #ydl_opts['external_downloader'] = 'aria2c'
+    #ydl_opts['external_downloader_args'] = []#['-x', '8', '-s', '8', '-k', '256k']
+
 
     ydl = youtube_dl.YoutubeDL(ydl_opts)
 
@@ -316,7 +323,7 @@ def choose(msg, items, attr):
         return result
 
     click.echo('')
-    for i, item in enumerate(items):
+    for i, item in reversed(list(enumerate(items))):
         name = attr(item) if callable(attr) else getattr(item, attr)
         click.echo('%s %s' % (i, name))
 
@@ -327,7 +334,7 @@ def choose(msg, items, attr):
             inp = click.prompt('%s' % msg)
             if any(s in inp for s in (':', '::', '-')):
                 idx = slice(*map(lambda x: int(x.strip()) if x.strip() else None, inp.split(':')))
-                result =  items[idx]
+                result = items[idx]
                 break
             elif ',' in inp:
                 ips = [int(i.strip()) for i in inp.split()]

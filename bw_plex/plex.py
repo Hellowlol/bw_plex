@@ -521,9 +521,6 @@ def test_task():
     task(26461, 1)
 
 
-def retard():
-    print('hello')
-
 
 if __name__ == '__main__':
     cli()
