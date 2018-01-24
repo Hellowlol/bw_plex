@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#!python2
 # -*- coding: utf-8 -*-
 
 import logging
@@ -12,7 +13,6 @@ except ImportError:
     from multiprocessing.dummy import ThreadPool as Pool
 
 import click
-
 from sqlalchemy.orm.exc import NoResultFound
 from audfprint.hash_table import HashTable
 
@@ -44,7 +44,6 @@ else:
     HT.load(FP_HASHES)
 
 
-
 def load_themes():
     LOG.debug('Loading themes')
     items = os.listdir(THEMES)
@@ -54,6 +53,7 @@ def load_themes():
             try:
                 show_rating = i.split('__')[1].split('.')[0]
                 SHOWS[show_rating] = i
+                print(SHOWS)
             except IndexError:
                 pass
 
@@ -91,7 +91,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
             end (int): of theme.
 
     """
-    LOG.debug('Started to process %s', media._prettyfilename())
+    name = media._prettyfilename()
+    LOG.debug('Started to process %s', name)
     if theme is None:
         theme = convert_and_trim(get_theme(media), fs=11025, theme=True)
 
@@ -120,7 +121,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
                 updatedAt=media.updatedAt,
                 has_recap=False) # TODO
             se.add(p)
-            LOG.debug('Added %s to media.db', media._prettyfilename())
+            LOG.debug('Added %s to media.db', name)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
@@ -174,6 +175,7 @@ def get_theme(media):
         rk = media.grandparentRatingKey
 
     theme = SHOWS.get(rk)
+    print(theme)
 
     if theme is None:
         theme = search_for_theme_youtube(name,
@@ -181,7 +183,7 @@ def get_theme(media):
                                          save_path=THEMES)
 
         theme = convert_and_trim(theme, fs=11025, theme=True)
-        SHOWS[rk] = theme
+        SHOWS[rk].append(theme)
 
     return theme
 
@@ -252,7 +254,7 @@ def fix_shitty_theme(name, url, rk=None):
     if rk == 'auto':
         item = PMS.search(name)
         if item:
-            if name == item[0].title:
+            if name.lower() == item[0].title.lower():
                 rk = item[0].ratingKey
 
     for fp in HT.names:
@@ -375,31 +377,19 @@ def client_jump_to(offset=None, sessionkey=None):
             None
 
     """
-
-    # Just check so we dont jump more then
-    # once the first 60 sec
-    now = time.time()
-    for item in JUMP_LIST:
-        sk, t = item
-        if now - t < 60:
-            return
-        else:
-            JUMP_LIST.remove(item)
-
-    LOG.debug('Called client_jump_to with %s', offset)
-    LOG.debug('Called with %s', sessionkey)
     for media in PMS.sessions():
         # Find the client.. This client does not have the correct address
         # or 'protocolCapabilities' so we have to get the correct one.
         # or we can proxy thru the server..
         if sessionkey and int(sessionkey) == media.sessionKey:
-            JUMP_LIST.append((sessionkey, now))
             client = media.players[0]
+            user = media.users[0].title
 
             # This does not work on plex web since the fucker returns
             # the local url..
             client = PMS.client(client.title).connect()
             client.seekTo(int(offset * 1000))
+            #LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
 
             # Some clients needs some time..
             # time.sleep(0.2)
@@ -438,12 +428,13 @@ def task(item, sessionkey):
             try:
                 client_jump_to(end, sessionkey)
             except:  # FIXME
-                pass
+                LOG.exception('Failed to jump %s', media._prettyfilename())
 
         process_to_db(media, theme=theme, vid=vid, start=start, end=end)
 
     try:
         os.remove(vid)
+        LOG.debug('Deleted %s', vid)
     except IOError:
         LOG.excetion('Failed to delete %s', vid)
 
@@ -456,31 +447,49 @@ def task(item, sessionkey):
 
 
 def check(data):
+    global JUMP_LIST
 
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
 
         sess = data.get('PlaySessionStateNotification')[0]
-        offset = 60000  # just check the first 60 sec
-        if offset > sess.get('viewOffset', 0):
-            ratingkey = sess.get('ratingKey')
-            sessionkey = sess.get('sessionKey')
-            with session_scope() as se:
-                try:
-                    item = se.query(Preprocessed).filter_by(
-                        ratingKey=ratingkey).one()
+        ratingkey = sess.get('ratingKey')
+        sessionkey = sess.get('sessionKey')
+        progress = sess.get('viewOffset', 0) / 1000 # converted to sec.
+        mode = CONFIG.get('mode', 'skip_only_theme')
 
-                    if item and item.theme_end:
-                        LOG.debug('Found %s in the db with theme_end %s' % (item.prettyname, item.theme_end))
-                        POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
 
-                    return
-                except NoResultFound:
-                    pass
+        with session_scope() as se:
+            try:
+                item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
 
-            if ratingkey not in IN_PROG:
-                IN_PROG.append(ratingkey)
-                POOL.apply_async(task, args=(ratingkey, sessionkey))
+                if item:
+                    LOG.debug('Found %s start %s, end %s, prog %s' % (item.prettyname,
+                              item.theme_start, item.theme_end, progress))
+
+                    if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
+                        if progress > item.theme_start and progress < item.theme_end:
+                            LOG.debug('%s is in the correct time range', item.prettyname)
+
+                            if sessionkey not in JUMP_LIST:
+                                JUMP_LIST.append(sessionkey)
+                                POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
+
+                        else:
+                            if item.theme_start - progress < 0:
+                                LOG.debug('Skipping %s as it not in the correct time range jumping in %s',
+                                        item.prettyname, item.theme_start - progress)
+
+                    if mode == 'check_recap':
+                        pass  # TODO
+
+            except NoResultFound:
+                pass
+
+        if ratingkey not in IN_PROG:
+            LOG.debug('Failed to find %s in the db', ratingkey)
+            IN_PROG.append(ratingkey)
+            POOL.apply_async(task, args=(ratingkey, sessionkey))
 
 
 @cli.command()
@@ -506,14 +515,13 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
-        #if HT and HT.dirty:
+        # if HT and HT.dirty:
         #    HT.save()
 
 
 @cli.command()
 def test_task():
     task(26461, 1)
-
 
 
 if __name__ == '__main__':
