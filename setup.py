@@ -31,7 +31,8 @@ REQ = ['librosa',
        'configobj',
        'youtube-dl',
        'beautifulsoup4',
-       'html5lib'
+       'html5lib',
+       'srt'
 ]
 
 
