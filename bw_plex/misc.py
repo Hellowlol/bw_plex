@@ -313,6 +313,51 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     return fp + '.wav'
 
 
+def has_recap(episode, phrase):
+    # untested
+    subs = download_subtitle(episode)
+
+    pat = re.compile(u'|'.join([re.escape(p) for p in phrase]))
+
+    for sub in subs:
+        for line in subs:
+            #
+            if re.search(pat, line.content):
+                return True, line.start.total_seconds()
+
+
+
+def download_subtitle(episode):
+    # untested
+    import srt
+    episode.reload()
+    pms = episode._server
+    to_dl = []
+    all_subs = []
+
+    for part in episode.iterParts():
+        if part.subtitleStreams():
+            for sub in part.subtitleStreams():
+                if sub.key and sub.codec == 'srt':
+                    to_dl.append(pms.url('%s?download=1' % sub.key))
+
+    for dl_url in to_dl:
+        r = requests.get(dl_url)
+        r.raise_for_status()
+        if r:
+            # some srt lib.
+            # https://pypi.python.org/pypi/srt/1.6.0
+            a_sub = list(srt.parse(r.text))
+            all_subs.append(a_sub)
+
+    return all_subs
+
+
+
+
+
+
+
 def choose(msg, items, attr):
     import click
     result = []

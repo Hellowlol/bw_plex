@@ -478,7 +478,7 @@ def check(data):
                         else:
                             if item.theme_start - progress < 0:
                                 LOG.debug('Skipping %s as it not in the correct time range jumping in %s',
-                                        item.prettyname, item.theme_start - progress)
+                                          item.prettyname, item.theme_start - progress)
 
                     if mode == 'check_recap':
                         pass  # TODO
