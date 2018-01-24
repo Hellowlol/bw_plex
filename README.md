@@ -14,7 +14,7 @@ pip install bw_plex or pip install -e .
 bw_plex only works on python 2. :(
 
 ```
-Usage: plex.py [OPTIONS] COMMAND [ARGS]...
+Usage: bw_plex [OPTIONS] COMMAND [ARGS]...
 
   CLI tool that monitors pms and jumps the client to after the theme.
 
