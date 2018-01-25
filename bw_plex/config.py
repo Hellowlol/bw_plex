@@ -3,7 +3,7 @@ import configobj
 from validate import Validator
 
 import bw_plex
-#from bw_plex import LOG
+
 
 vtor = Validator()
 

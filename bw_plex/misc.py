@@ -191,7 +191,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False):
 
     if theme:
         shutil.move(tmp_name, afile)
-        LOG.debug('Done converting %s', afile)
+        LOG.debug('Done converted and moved %s to %s', afile, THEMES)
         return afile
     else:
         LOG.debug('Done converting %s', tmp_name)

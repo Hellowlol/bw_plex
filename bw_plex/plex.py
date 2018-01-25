@@ -21,15 +21,14 @@ from bw_plex import FP_HASHES, CONFIG, DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG,
 from config import read_or_make
 from db import session_scope, Preprocessed
 from misc import (analyzer, convert_and_trim, choose, find_next,
-                  get_offset_end, get_pms, to_time, search_for_theme_youtube)
+                  get_offset_end, get_pms, has_recap, to_time, search_for_theme_youtube)
 
 
 POOL = Pool(10)
 PMS = None
 IN_PROG = []
 JUMP_LIST = []
-SHOWS = defaultdict(list)  # Fix this, should be all caps.
-
+SHOWS = {}
 
 if os.path.exists(FP_HASHES):
     LOG.info('Loading existing files in db')
@@ -49,11 +48,11 @@ def load_themes():
     items = os.listdir(THEMES)
 
     for i in items:
+        LOG.debug(i)
         if i:
             try:
                 show_rating = i.split('__')[1].split('.')[0]
-                SHOWS[show_rating] = i
-                print(SHOWS)
+                SHOWS[int(show_rating)] = i
             except IndexError:
                 pass
 
@@ -166,6 +165,7 @@ def cli(debug, username, password, servername, url, token, config):
 def get_theme(media):
     """Get the current location of the theme or download
        the damn thing and convert it so it's ready for matching."""
+    LOG.debug('theme media type %s', media.TYPE)
 
     if media.TYPE == 'show':
         name = media.title
@@ -174,8 +174,10 @@ def get_theme(media):
         name = media.grandparentTitle
         rk = media.grandparentRatingKey
 
+    #LOG.debug('theme rk %s', rk)
+    #LOG.debug('type rk %s', type(rk))
     theme = SHOWS.get(rk)
-    print(theme)
+    #LOG.debug('theme fp %s', theme)
 
     if theme is None:
         theme = search_for_theme_youtube(name,
@@ -183,8 +185,8 @@ def get_theme(media):
                                          save_path=THEMES)
 
         theme = convert_and_trim(theme, fs=11025, theme=True)
-        SHOWS[rk].append(theme)
-
+        SHOWS[rk] = theme
+    #print(SHOWS)
     return theme
 
 
@@ -377,19 +379,27 @@ def client_jump_to(offset=None, sessionkey=None):
             None
 
     """
+    if offset == -1:
+        return
+
     for media in PMS.sessions():
         # Find the client.. This client does not have the correct address
         # or 'protocolCapabilities' so we have to get the correct one.
         # or we can proxy thru the server..
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
-            user = media.users[0].title
+            user = media.usernames[0]
+
+            # To stop processing. from func task if we have used to much time..
+            if offset >= media.viewOffset / 1000:
+                LOG.debug('Didnt jump because of offset')
+                return
 
             # This does not work on plex web since the fucker returns
             # the local url..
             client = PMS.client(client.title).connect()
             client.seekTo(int(offset * 1000))
-            #LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
+            LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
 
             # Some clients needs some time..
             # time.sleep(0.2)
@@ -415,17 +425,17 @@ def task(item, sessionkey):
     try:
         HT.name_to_id(theme)
     except ValueError:
-        LOG.debug('No fingerprint for theme %s does exists in the %s' % (
-                  os.path.basename(theme), FP_HASHES))
+        LOG.debug('No fingerprint for theme %s does exists in the %s',
+                  os.path.basename(theme), FP_HASHES)
 
         analyzer().ingest(HT, theme)
         HT = HT.save_then_reload(FP_HASHES)
 
     start, end = get_offset_end(vid, HT)
-    if end is not None:
+    if end != -1:
         # End is -1 if not found. Or a positiv int.
         if end:
-            try:
+            try: # So this isnt correct anymore.. We are just skipping to the end.
                 client_jump_to(end, sessionkey)
             except:  # FIXME
                 LOG.exception('Failed to jump %s', media._prettyfilename())
@@ -441,9 +451,29 @@ def task(item, sessionkey):
     # Should we start processing the next ep?
 
     nxt = find_next(media)
-    process_to_db(nxt)
+    if nxt:
+        process_to_db(nxt)
 
-    IN_PROG.remove(item)
+    try:
+        IN_PROG.remove(item)
+    except:
+        pass
+
+def something(ratingkey):
+    # untested
+    global PMS
+    ep = PMS.fetchItem(int(ratingkey))
+    has, t = has_recap(ep, CONFIG.get('words'))
+    print(has, t)
+
+    if has:
+        with session_scope() as se:
+            try:
+                item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
+                item.recap = has
+                print('done')
+            except:
+                pass
 
 
 def check(data):
@@ -455,9 +485,8 @@ def check(data):
         sess = data.get('PlaySessionStateNotification')[0]
         ratingkey = sess.get('ratingKey')
         sessionkey = sess.get('sessionKey')
-        progress = sess.get('viewOffset', 0) / 1000 # converted to sec.
+        progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG.get('mode', 'skip_only_theme')
-
 
         with session_scope() as se:
             try:
@@ -465,7 +494,10 @@ def check(data):
 
                 if item:
                     LOG.debug('Found %s start %s, end %s, prog %s' % (item.prettyname,
-                              item.theme_start, item.theme_end, progress))
+                              item.theme_start_str, item.theme_end_str, progress))
+
+                    if item.recap is False:
+                        POOL.apply_async(something, args=(ratingkey))
 
                     if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
                         if progress > item.theme_start and progress < item.theme_end:
@@ -484,12 +516,10 @@ def check(data):
                         pass  # TODO
 
             except NoResultFound:
-                pass
-
-        if ratingkey not in IN_PROG:
-            LOG.debug('Failed to find %s in the db', ratingkey)
-            IN_PROG.append(ratingkey)
-            POOL.apply_async(task, args=(ratingkey, sessionkey))
+                if ratingkey not in IN_PROG:
+                    IN_PROG.append(ratingkey)
+                    LOG.debug('Failed to find %s in the db', ratingkey)
+                    POOL.apply_async(task, args=(ratingkey, sessionkey))
 
 
 @cli.command()
@@ -522,6 +552,37 @@ def watch():
 @cli.command()
 def test_task():
     task(26461, 1)
+
+@cli.command()
+def test_something():
+    load_themes()
+    # dexter s01e05
+    task(26447, 1)
+    something(26447)
+
+@cli.command()
+def test_check():
+    d = {
+            "PlaySessionStateNotification": [
+                {
+                    "guid": "",
+                    "key": "/library/metadata/65787",
+                    "playQueueItemID": 22631,
+                    "ratingKey": "65787",
+                    "sessionKey": "84",
+                    "state": "paused",
+                    "transcodeSession": "4avh8p7h64n4e9a16xsqvr9e",
+                    "url": "",
+                    "viewOffset": 244000
+                }
+            ],
+            "size": 1,
+            "type": "playing"
+            }
+
+    check(d)
+    POOL.close()
+    POOL.join()
 
 
 if __name__ == '__main__':
