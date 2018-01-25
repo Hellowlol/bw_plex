@@ -16,7 +16,7 @@ debug = boolean(default=False)
 username = string(default='')
 password = string(default='')
 logformat = string
-words = list(default=list('hello', 'cake'))
+words = list(default=list())
 ignore_show = list(default=list())
 level = string(default='info')
 

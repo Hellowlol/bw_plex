@@ -336,7 +336,19 @@ def download_subtitle(episode):
     return all_subs
 
 
+def to_sec(t):
+    try:
+        m, s = t.split(':')
+        return int(m) * 60 + int(s)
+    except:
+        return int(t)
+
+
+@timecall(immediate=True)
 def has_recap(episode, phrase):
+    if not phrase:
+        LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
+
     subs = download_subtitle(episode)
     pat = re.compile(u'|'.join([re.escape(p) for p in phrase]), re.IGNORECASE)
 
@@ -344,9 +356,10 @@ def has_recap(episode, phrase):
         for line in subs:
             for l in line:
                 if re.search(pat, l.content):
-                    return True, l.start.total_seconds()
+                    LOG.debug('%s matched %s', ', '.join(phrase), l.content)
+                    return True
 
-    return False, -1
+    return False
 
 
 def choose(msg, items, attr):

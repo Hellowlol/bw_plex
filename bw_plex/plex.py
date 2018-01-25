@@ -20,8 +20,8 @@ from bw_plex import FP_HASHES, CONFIG, DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG,
 
 from config import read_or_make
 from db import session_scope, Preprocessed
-from misc import (analyzer, convert_and_trim, choose, find_next,
-                  get_offset_end, get_pms, has_recap, to_time, search_for_theme_youtube)
+from misc import (analyzer, convert_and_trim, choose, find_next, get_offset_end,
+                  get_pms, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
 POOL = Pool(10)
@@ -106,21 +106,23 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
 
     if end is not None:
         with session_scope() as se:
-            p = Preprocessed(
-                show_name=media.grandparentTitle,
-                ep_title=media.title,
-                theme_end=end,
-                theme_start=start,
-                theme_start_str=to_time(start),
-                theme_end_str=to_time(end),
-                duration=media.duration,
-                ratingKey=media.ratingKey,
-                grandparentRatingKey=media.grandparentRatingKey,
-                prettyname=media._prettyfilename(),
-                updatedAt=media.updatedAt,
-                has_recap=False) # TODO
-            se.add(p)
-            LOG.debug('Added %s to media.db', name)
+            try:
+                item = se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
+            except NoResultFound:
+                p = Preprocessed(show_name=media.grandparentTitle,
+                                 ep_title=media.title,
+                                 theme_end=end,
+                                 theme_start=start,
+                                 theme_start_str=to_time(start),
+                                 theme_end_str=to_time(end),
+                                 duration=media.duration,
+                                 ratingKey=media.ratingKey,
+                                 grandparentRatingKey=media.grandparentRatingKey,
+                                 prettyname=media._prettyfilename(),
+                                 updatedAt=media.updatedAt,
+                                 has_recap=has_recap(media, CONFIG.get('words')))
+                se.add(p)
+                LOG.debug('Added %s to media.db', name)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
@@ -174,10 +176,7 @@ def get_theme(media):
         name = media.grandparentTitle
         rk = media.grandparentRatingKey
 
-    #LOG.debug('theme rk %s', rk)
-    #LOG.debug('type rk %s', type(rk))
     theme = SHOWS.get(rk)
-    #LOG.debug('theme fp %s', theme)
 
     if theme is None:
         theme = search_for_theme_youtube(name,
@@ -186,7 +185,6 @@ def get_theme(media):
 
         theme = convert_and_trim(theme, fs=11025, theme=True)
         SHOWS[rk] = theme
-    #print(SHOWS)
     return theme
 
 
@@ -393,9 +391,10 @@ def client_jump_to(offset=None, sessionkey=None):
             LOG.debug('client xx %s' % (media.viewOffset / 1000))
 
             # To stop processing. from func task if we have used to much time..
-            if offset <= media.viewOffset / 1000:
-                LOG.debug('Didnt jump because of offset')
-                return
+            # This will not work if/when credits etc are added. Need a better way.
+            # if offset <= media.viewOffset / 1000:
+            #    LOG.debug('Didnt jump because of offset')
+            #    return
 
             # This does not work on plex web since the fucker returns
             # the local url..
@@ -419,7 +418,7 @@ def task(item, sessionkey):
         return
 
     theme = get_theme(media)
-    LOG.debug('task theme', theme)
+    LOG.debug('task theme %s', theme)
 
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
     vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
@@ -438,11 +437,11 @@ def task(item, sessionkey):
     start, end = get_offset_end(vid, HT)
     if end != -1:
         # End is -1 if not found. Or a positiv int.
-        if end:
-            try: # So this isnt correct anymore.. We are just skipping to the end.
-                client_jump_to(end, sessionkey)
-            except:  # FIXME
-                LOG.exception('Failed to jump %s', media._prettyfilename())
+        #if end:
+        #    try: # So this isnt correct anymore.. We are just skipping to the end.
+        #        client_jump_to(end, sessionkey)
+        #    except:  # FIXME
+        #        LOG.exception('Failed to jump %s', media._prettyfilename())
 
         process_to_db(media, theme=theme, vid=vid, start=start, end=end)
 
@@ -462,22 +461,6 @@ def task(item, sessionkey):
         IN_PROG.remove(item)
     except:
         pass
-
-def something(ratingkey):
-    # untested
-    global PMS
-    ep = PMS.fetchItem(int(ratingkey))
-    has, t = has_recap(ep, CONFIG.get('words'))
-    print(has, t)
-
-    if has:
-        with session_scope() as se:
-            try:
-                item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
-                item.recap = has
-                print('done')
-            except:
-                pass
 
 
 def check(data):
@@ -499,9 +482,6 @@ def check(data):
                 if item:
                     LOG.debug('Found %s start %s, end %s, prog %s' % (item.prettyname,
                               item.theme_start_str, item.theme_end_str, to_time(progress)))
-
-                    #if item.recap is False:
-                    #    POOL.apply_async(something, args=(ratingkey))
 
                     if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
                         if progress > item.theme_start and progress < item.theme_end:
@@ -555,39 +535,27 @@ def watch():
 
 
 @cli.command()
-def test_task():
-    task(26461, 1)
+@click.argument('show')
+@click.argument('season')
+@click.argument('episode')
+@click.argument('t')
+def set_manual_time(show, season, episode, t):
+    """Helper to set a manual end time for the theme."""
+    # Untested
+    LOG.debug('Trying to set manual time')
+    result = PMS.search(show)
 
-@cli.command()
-def test_something():
-    load_themes()
-    # dexter s01e05
-    task(26447, 1)
-    something(26447)
+    if result:
+        show = result[0]
 
-@cli.command()
-def test_check():
-    d = {
-            "PlaySessionStateNotification": [
-                {
-                    "guid": "",
-                    "key": "/library/metadata/65787",
-                    "playQueueItemID": 22631,
-                    "ratingKey": "65787",
-                    "sessionKey": "84",
-                    "state": "paused",
-                    "transcodeSession": "4avh8p7h64n4e9a16xsqvr9e",
-                    "url": "",
-                    "viewOffset": 244000
-                }
-            ],
-            "size": 1,
-            "type": "playing"
-            }
+        if show.title.lower() == show.lower():
+            ep = show.episode(season=season, episode=episode)
 
-    check(d)
-    POOL.close()
-    POOL.join()
+            with session_scope() as se:
+                item = se.query(Preprocessed).filter_by(ratingKey=ep.ratingKey).one()
+                sec = to_sec(t)
+                LOG.debug('Set correct_time for %s to %s', ep._prettyfilename(), sec)
+                item.correct_time = sec
 
 
 if __name__ == '__main__':
