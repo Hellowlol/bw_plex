@@ -379,6 +379,7 @@ def client_jump_to(offset=None, sessionkey=None):
             None
 
     """
+    LOG.debug('Called jump with %s %s', offset, sessionkey)
     if offset == -1:
         return
 
@@ -389,9 +390,10 @@ def client_jump_to(offset=None, sessionkey=None):
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
+            LOG.debug('client xx %s' % (media.viewOffset / 1000))
 
             # To stop processing. from func task if we have used to much time..
-            if offset >= media.viewOffset / 1000:
+            if offset <= media.viewOffset / 1000:
                 LOG.debug('Didnt jump because of offset')
                 return
 
@@ -404,6 +406,7 @@ def client_jump_to(offset=None, sessionkey=None):
             # Some clients needs some time..
             # time.sleep(0.2)
             # client.play()
+            JUMP_LIST.remove(sessionkey)
 
             return
 
@@ -416,6 +419,7 @@ def task(item, sessionkey):
         return
 
     theme = get_theme(media)
+    LOG.debug('task theme', theme)
 
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
     vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
@@ -484,7 +488,7 @@ def check(data):
 
         sess = data.get('PlaySessionStateNotification')[0]
         ratingkey = sess.get('ratingKey')
-        sessionkey = sess.get('sessionKey')
+        sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG.get('mode', 'skip_only_theme')
 
@@ -494,10 +498,10 @@ def check(data):
 
                 if item:
                     LOG.debug('Found %s start %s, end %s, prog %s' % (item.prettyname,
-                              item.theme_start_str, item.theme_end_str, progress))
+                              item.theme_start_str, item.theme_end_str, to_time(progress)))
 
-                    if item.recap is False:
-                        POOL.apply_async(something, args=(ratingkey))
+                    #if item.recap is False:
+                    #    POOL.apply_async(something, args=(ratingkey))
 
                     if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
                         if progress > item.theme_start and progress < item.theme_end:
@@ -505,6 +509,7 @@ def check(data):
 
                             if sessionkey not in JUMP_LIST:
                                 JUMP_LIST.append(sessionkey)
+                                LOG.debug('Should have called jump')
                                 POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
 
                         else:
