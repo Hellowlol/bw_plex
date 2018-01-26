@@ -543,8 +543,22 @@ def watch():
 @click.argument('episode', type=int)
 @click.argument('start')
 @click.argument('end')
-def set_manual_time(showname, season, episode, start, end):
-    """Helper to set a manual end time for the theme."""
+def set_manual_theme_time(showname, season, episode, start, end):
+    """Set a manual start and end time for a theme.
+
+       Args:
+           showname(str): name of the show you want to find
+           season(int): season number fx 1
+           episode(int): episode number 1
+           start(int, str): This can be in seconds or MM:SS format
+           start(int, str): This can be in seconds or MM:SS format
+
+       Returns:
+            None
+
+
+
+    """
     LOG.debug('Trying to set manual time')
     result = PMS.search(showname)
 
