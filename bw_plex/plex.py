@@ -545,9 +545,7 @@ def watch():
 @click.argument('end')
 def set_manual_time(showname, season, episode, start, end):
     """Helper to set a manual end time for the theme."""
-    # Untested
     LOG.debug('Trying to set manual time')
-    print(showname, season, episode)
     result = PMS.search(showname)
 
     if result:
