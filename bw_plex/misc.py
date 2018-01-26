@@ -238,17 +238,16 @@ def search_tunes(name, rk):
                 if sname == name:
                     result['%s__%s' % (name, rk)].append(baseurl + sr['href'])
 
+    fin_res = {}
+
     if result:
         # Find the real download url.
-        fin_res = {}
-        final_urls = []
         for k, v in result.items():
-
+            final_urls = []
             for item in v:
                 res2 = requests.get(item)
                 if res2:
                     sub_soup = BeautifulSoup(res2.text, 'html5lib')
-
                     link = sub_soup.find('a', id='download_song')
                     final_urls.append(baseurl + link['href'])
 
@@ -296,8 +295,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     def nothing(*args, **kwargs):
         pass
 
-    if CONFIG.get('level') == 'info':
-        ydl.to_screen = nothing
+    ydl.to_screen = nothing
 
     with ydl:
         try:
@@ -407,11 +405,5 @@ def choose(msg, items, attr):
 
 
 if __name__ == '__main__':
-    def zomg():
-        print('zomg')
-        ht = '' # path to db
-        fp = '' # path to wav.
-        from audfprint.hash_table import HashTable
-        HT = HashTable(ht)
-        n = get_offset_end(fp, HT)
-        print(n)
+    print(search_tunes('Dexter', 1))
+

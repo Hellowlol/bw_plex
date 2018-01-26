@@ -1,9 +1,11 @@
 import os
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 
 from plexapi.compat import makedirs
 from .config import read_or_make
+
 
 VERSION = '0.0.1'
 DEFAULT_FOLDER = os.path.expanduser('~/.config/bw_plex')
@@ -51,3 +53,5 @@ LOG.setLevel(lvl)
 logging.getLogger("plexapi").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
