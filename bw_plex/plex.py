@@ -5,7 +5,6 @@
 import logging
 import os
 import time
-from collections import defaultdict
 
 try:
     from multiprocessing.pool import ThreadPool as Pool
@@ -16,7 +15,7 @@ import click
 from sqlalchemy.orm.exc import NoResultFound
 from audfprint.hash_table import HashTable
 
-from bw_plex import FP_HASHES, CONFIG, DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG, INI_FILE
+from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
 from config import read_or_make
 from db import session_scope, Preprocessed
@@ -48,11 +47,12 @@ def load_themes():
     items = os.listdir(THEMES)
 
     for i in items:
-        LOG.debug(i)
-        if i:
+        fp = os.path.join(THEMES, i)
+        LOG.debug(fp)
+        if fp:
             try:
                 show_rating = i.split('__')[1].split('.')[0]
-                SHOWS[int(show_rating)] = i
+                SHOWS[int(show_rating)] = fp
             except IndexError:
                 pass
 
@@ -90,6 +90,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
             end (int): of theme.
 
     """
+    global HT
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
     if theme is None:
@@ -101,13 +102,12 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
     # Lets skip the start time for now. This need to be added later to support shows
     # that have show, theme song show.
     if end is None:
-        global HT
         start, end = get_offset_end(vid, HT)
 
     if end is not None:
         with session_scope() as se:
             try:
-                item = se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
+                se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
             except NoResultFound:
                 p = Preprocessed(show_name=media.grandparentTitle,
                                  ep_title=media.title,
@@ -161,7 +161,8 @@ def cli(debug, username, password, servername, url, token, config):
 
         PMS = get_pms(url=url, token=token,
                       username=username,
-                      password=password)
+                      password=password,
+                      servername=servername)
 
 
 def get_theme(media):
@@ -208,9 +209,8 @@ def process(name=None):
         all_eps += eps
 
     if all_eps:
-        with click.progressbar(all_eps) as bar:
-            for ep in bar:
-                process_to_db(ep)
+        for ep in all_eps:
+            process_to_db(ep)
 
 
 @click.command()
@@ -228,7 +228,6 @@ def create_config(fp=None):
     if fp is None:
         fp = INI_FILE
 
-    from config import read_or_make
     read_or_make(fp)
 
 
@@ -281,8 +280,6 @@ def fix_shitty_theme(name, url, rk=None):
 @cli.command()
 @click.option('-show', default=None)
 @click.option('--force', default=False, is_flag=True)
-#@click.option('-n', help='threads', type=int, default=0)
-#@click.option('-p', help='create a fingerprint from the video')
 def find_theme_youtube(show, force):
     """Iterate over all your shows and downloads the first match for
        showname theme song on youtube.
@@ -375,7 +372,6 @@ def client_jump_to(offset=None, sessionkey=None):
 
        Returns:
             None
-
     """
     LOG.debug('Called jump with %s %s', offset, sessionkey)
     if offset == -1:
@@ -411,6 +407,15 @@ def client_jump_to(offset=None, sessionkey=None):
 
 
 def task(item, sessionkey):
+    """Main func for processing a episode.
+
+       Args:
+            item(str): a episode's ratingkey
+            sessionkey(str): streams sessionkey
+
+       Returns:
+            None
+    """
     global HT
     media = PMS.fetchItem(int(item))
     # LOG.debug('Found %s', media._prettyfilename())
@@ -464,8 +469,6 @@ def task(item, sessionkey):
 
 
 def check(data):
-    global JUMP_LIST
-
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
 
@@ -535,27 +538,36 @@ def watch():
 
 
 @cli.command()
-@click.argument('show')
-@click.argument('season')
-@click.argument('episode')
-@click.argument('t')
-def set_manual_time(show, season, episode, t):
+@click.argument('showname')
+@click.argument('season', type=int)
+@click.argument('episode', type=int)
+@click.argument('start')
+@click.argument('end')
+def set_manual_time(showname, season, episode, start, end):
     """Helper to set a manual end time for the theme."""
     # Untested
     LOG.debug('Trying to set manual time')
-    result = PMS.search(show)
+    print(showname, season, episode)
+    result = PMS.search(showname)
 
     if result:
         show = result[0]
 
-        if show.title.lower() == show.lower():
+        if show.title.lower() == showname.lower():
             ep = show.episode(season=season, episode=episode)
 
             with session_scope() as se:
                 item = se.query(Preprocessed).filter_by(ratingKey=ep.ratingKey).one()
-                sec = to_sec(t)
-                LOG.debug('Set correct_time for %s to %s', ep._prettyfilename(), sec)
-                item.correct_time = sec
+                start = to_sec(start)
+                end = to_sec(end)
+
+                if start:
+                    item.correct_time_start = start
+
+                if end:
+                    item.correct_time_end = end
+
+                LOG.debug('Set correct_time for %s to start %s end %s', ep._prettyfilename(), start, end)
 
 
 if __name__ == '__main__':

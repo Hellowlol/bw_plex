@@ -28,7 +28,8 @@ class Preprocessed(Base):
     theme_end_str = Column('theme_end_str', String)
     theme_start = Column('theme_start', Integer)
     theme_start_str = Column('theme_start_str', String)
-    correct_time = Column('correct_time', String, nullable=True)  # This for manual override.
+    correct_time_start = Column('correct_time_start', String, nullable=True)  # This for manual override.
+    correct_time_end = Column('correct_time_end', String, nullable=True)  # This for manual override.
     prettyname = Column('prettyname', String, nullable=True)
     duration = Column('duration', Integer)
     grandparentRatingKey = Column('grandparentRatingKey', Integer)

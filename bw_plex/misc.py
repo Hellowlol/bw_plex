@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import logging
 import re
 import subprocess
 import tempfile
@@ -187,6 +186,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False):
     o, e = psox.communicate()
 
     if not psox.returncode == 0:
+        LOG.exception(e)
         raise Exception("FFMpeg failed")
 
     if theme:
@@ -284,7 +284,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
             'preferredcodec': 'wav',
             'preferredquality': '192',
         }],
-        #'logger': LOG,
+        'logger': LOG,
     }
     # https://github.com/rg3/youtube-dl/issues/6923
     #ydl_opts['external_downloader'] = 'aria2c'
@@ -330,8 +330,11 @@ def download_subtitle(episode):
         r = requests.get(dl_url)
         r.raise_for_status()
         if r:
-            a_sub = list(srt.parse(r.text))
-            all_subs.append(a_sub)
+            try:
+                a_sub = list(srt.parse(r.text))
+                all_subs.append(a_sub)
+            except ValueError:
+                LOG.exception('Failed to parse subtitle')
 
     return all_subs
 
@@ -346,16 +349,18 @@ def to_sec(t):
 
 @timecall(immediate=True)
 def has_recap(episode, phrase):
+    LOG.debug(phrase)
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
+        return False
 
     subs = download_subtitle(episode)
-    pat = re.compile(u'|'.join([re.escape(p) for p in phrase]), re.IGNORECASE)
+    pattern = re.compile(u'|'.join([re.escape(p) for p in phrase]), re.IGNORECASE)
 
     for sub in subs:
         for line in subs:
             for l in line:
-                if re.search(pat, l.content):
+                if re.search(pattern, l.content):
                     LOG.debug('%s matched %s', ', '.join(phrase), l.content)
                     return True
 
