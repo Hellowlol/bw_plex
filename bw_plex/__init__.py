@@ -7,7 +7,7 @@ from plexapi.compat import makedirs
 from .config import read_or_make
 
 
-VERSION = '0.0.1'
+#VERSION = '0.0.1'
 DEFAULT_FOLDER = os.path.expanduser('~/.config/bw_plex')
 THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
 TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')

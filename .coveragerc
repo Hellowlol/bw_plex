@@ -1,0 +1,13 @@
+[run]
+source = bw_plex
+omit = bw_plex/audfprint/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.

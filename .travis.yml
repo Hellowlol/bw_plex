@@ -4,7 +4,7 @@ python:
 before_install:
     - sudo add-apt-repository -y ppa:mc3man/trusty-media
     - sudo apt-get -y update
-    - sudo apt-get -y dist-upgrade
+    #- sudo apt-get -y dist-upgrade
     - sudo apt-get -y install ffmpeg
     - pip install --upgrade pip
     - pip install codecov
