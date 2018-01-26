@@ -6,7 +6,7 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-from bw_plex import DEFAULT_FOLDER
+from . import DEFAULT_FOLDER
 
 DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
 

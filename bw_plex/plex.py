@@ -13,14 +13,14 @@ except ImportError:
 
 import click
 from sqlalchemy.orm.exc import NoResultFound
-from audfprint.hash_table import HashTable
+from .audfprint.hash_table import HashTable
 
-from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
+from . import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
-from config import read_or_make
-from db import session_scope, Preprocessed
-from misc import (analyzer, convert_and_trim, choose, find_next, get_offset_end,
-                  get_pms, has_recap, to_sec, to_time, search_for_theme_youtube)
+from .config import read_or_make
+from .db import session_scope, Preprocessed
+from .misc import (analyzer, convert_and_trim, choose, find_next, get_offset_end,
+                   get_pms, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
 POOL = Pool(10)
