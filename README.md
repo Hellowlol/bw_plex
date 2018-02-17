@@ -4,13 +4,14 @@
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
 [![PyPI version](https://badge.fury.io/py/bw_plex.svg)](https://pypi.python.org/pypi/bw_plex)
 [![Code Health](https://landscape.io/github/Hellowlol/bw_plex/master/landscape.svg?style=flat)](https://landscape.io/github/Hellowlol/bw_plex/master)
-[![Github commits (since latest release)](https://img.shields.io/github/commits-since/Hellowlol/subtitleedit/latest.svg)](https://github.com/Hellowlol/bw_plex/compare)
+[![Github commits (since latest release)](https://img.shields.io/github/commits-since/Hellowlol/bw_plex/latest.svg)](https://github.com/Hellowlol/bw_plex/compare)
 
 
 binge watching for plex
 
 ## Install
-pip install bw_plex or pip install -e .
+You should install this from github as this project isnt stable.
+pip install -e git+https://github.com/Hellowlol/bw_plex.git
 
 
 ## Usage
@@ -35,11 +36,10 @@ Commands:
   create_hash_table_from_themes  Create a hashtable from the themes.
   find_theme_youtube             Iterate over all your shows and downloads
                                  the...
-  fix_shitty_theme               Set the correct fingerprint of the show
-                                 in...
+  fix_shitty_theme               Set the correct fingerprint of the show in...
   match                          Manual match for a file.
   process                        Manual process some/all eps.
-  test_task
+  set_manual_theme_time          Set a manual start and end time for a theme.
   watch                          Start watching the server for stuff to do.
 ```
 
