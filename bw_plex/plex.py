@@ -258,10 +258,11 @@ def fix_shitty_theme(name, url, rk=None):
 
     for fp in HT.names:
         if os.path.basename(fp).lower() == name.lower():
+            LOG.debug('Removing %s from the hashtable', fp)
             HT.remove(fp)
 
     analyzer().ingest(HT, fp)
-    HT.save()
+    HT.save(FP_HASHES)
     to_pp = []
 
     if rk:  # TODO a
@@ -284,8 +285,8 @@ def find_theme_youtube(show, force):
     """Iterate over all your shows and downloads the first match for
        showname theme song on youtube.
 
-       Since this is best effort they are stored in the temp_theme dir
-       Copy them over to the theme folder and fixup any incorrect match by using
+       Since this is best effort (at best.. )they are stored in the temp_theme dir
+       Copy them over to the theme folder and run create_hash_table_from_themes and fix any mismatch with
        fix_shitty_theme.
 
         Args:
@@ -314,15 +315,15 @@ def find_theme_youtube(show, force):
 
 @cli.command()
 @click.option('-n', help='threads', type=int, default=1)
-@click.option('-dir', default=None)
-def create_hash_table_from_themes(n, dir):
+@click.option('-directory', default=None)
+def create_hash_table_from_themes(n, directory):
     """ Create a hashtable from the themes."""
     from audfprint.audfprint import multiproc_add
 
     a = analyzer()
     all_files = []
 
-    for root, dir, files in os.walk(dir or THEMES):
+    for root, _, files in os.walk(directory or THEMES):
         for f in files:
             fp = os.path.join(root, f)
             # We need to check this since when themes are downloaded
@@ -384,7 +385,7 @@ def client_jump_to(offset=None, sessionkey=None):
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
-            LOG.debug('client xx %s' % (media.viewOffset / 1000))
+            LOG.debug('client %s %s' % (client.title, (media.viewOffset / 1000)))
 
             # To stop processing. from func task if we have used to much time..
             # This will not work if/when credits etc are added. Need a better way.
@@ -442,12 +443,6 @@ def task(item, sessionkey):
     start, end = get_offset_end(vid, HT)
     if end != -1:
         # End is -1 if not found. Or a positiv int.
-        #if end:
-        #    try: # So this isnt correct anymore.. We are just skipping to the end.
-        #        client_jump_to(end, sessionkey)
-        #    except:  # FIXME
-        #        LOG.exception('Failed to jump %s', media._prettyfilename())
-
         process_to_db(media, theme=theme, vid=vid, start=start, end=end)
 
     try:

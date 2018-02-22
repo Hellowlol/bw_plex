@@ -14,7 +14,6 @@ import requests
 from bs4 import BeautifulSoup
 
 from plexapi.utils import download
-from plexapi.exceptions import NotFound
 
 from bw_plex import THEMES, CONFIG, LOG
 
@@ -37,16 +36,29 @@ def get_pms(url=None, token=None, username=None,
     return PMS
 
 
-def find_next(media):
-    """ Find the next media item or None."""
-    LOG.debug('Check if we can find the next media item.')
-    try:
-        nxt_ep = media.show().episode(season=media.seasonNumber, episode=media.index + 1)
-        LOG.debug('Found %s', nxt_ep._prettyfilename())
-        return nxt_ep
+#def find_next(media):
+#    """ Find the next media item or None."""
+#    LOG.debug('Check if we can find the next media item.')
+#    try:
+#        nxt_ep = media.show().episode(season=media.seasonNumber, episode=media.index + 1)
+#        LOG.debug('Found %s', nxt_ep._prettyfilename())
+#        return nxt_ep
+#
+#    except NotFound:
+#        LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
 
-    except NotFound:
-        LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
+
+def find_next(media):
+    """Find what ever you have that is next ep."""
+    LOG.debug('Check if we can find the next media item.')
+    eps = media.show().episodes()
+
+    for ep in eps:
+        if ep.seasonNumber >= media.seasonNumber and ep.index > media.index:
+            LOG.debug('Found %s', ep._prettyfilename())
+            return ep
+
+    LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
 
 
 def download_theme_plex(media, force=False):
@@ -345,7 +357,7 @@ def to_sec(t):
         return int(t)
 
 
-@timecall(immediate=True)
+#@timecall(immediate=True)
 def has_recap(episode, phrase):
     LOG.debug(phrase)
     if not phrase:
@@ -356,11 +368,10 @@ def has_recap(episode, phrase):
     pattern = re.compile(u'|'.join([re.escape(p) for p in phrase]), re.IGNORECASE)
 
     for sub in subs:
-        for line in subs:
-            for l in line:
-                if re.search(pattern, l.content):
-                    LOG.debug('%s matched %s', ', '.join(phrase), l.content)
-                    return True
+        for line in sub:
+            if re.search(pattern, line.content):
+                LOG.debug('%s matched %s', ', '.join(phrase), line.content)
+                return True
 
     return False
 

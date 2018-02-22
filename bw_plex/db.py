@@ -36,6 +36,10 @@ class Preprocessed(Base):
     location = Column('location', String, nullable=True)
     updatedAt = Column('updatedAt ', DateTime, nullable=True)
     has_recap = Column('has_recap', Boolean, nullable=True)
+    credits_start = Column('credits_start', Integer, nullable=True)
+    credits_start_str = Column('credits_start_str', String, nullable=True)
+    credits_end = Column('credits_end', Integer, nullable=True)
+    credits_end_str = Column('credits_end_str', String, nullable=True)
 
 
 # Create db.
