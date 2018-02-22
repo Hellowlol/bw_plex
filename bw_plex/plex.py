@@ -234,7 +234,7 @@ def create_config(fp=None):
 @cli.command()
 @click.argument('name')
 @click.argument('url')
-@click.option('-rk', help='Add rating key')
+@click.option('-rk', help='Add rating key', default='auto')
 def fix_shitty_theme(name, url, rk=None):
     """Set the correct fingerprint of the show in the hashes.db and
        process the eps of that show in the db against the new theme fingerprint.
@@ -252,9 +252,10 @@ def fix_shitty_theme(name, url, rk=None):
     # Assist for the lazy bastards..
     if rk == 'auto':
         item = PMS.search(name)
+        item = choose('Select correct show', item, lambda x: '%s %s' % (x.title, x.TYPE))
         if item:
-            if name.lower() == item[0].title.lower():
-                rk = item[0].ratingKey
+            #if name.lower() == item[0].title.lower():
+            rk = item[0].ratingKey
 
     for fp in HT.names:
         if os.path.basename(fp).lower() == name.lower():
@@ -341,6 +342,12 @@ def create_hash_table_from_themes(n, directory):
         HT.save(FP_HASHES)
 
 
+@click.command()
+def test_basic():
+    """Test command for myself."""
+    pass
+
+
 def check_file_access(m):
     """Check if we can reach the file directly
        or if we have to download it via PMS.
@@ -374,7 +381,8 @@ def client_jump_to(offset=None, sessionkey=None):
        Returns:
             None
     """
-    LOG.debug('Called jump with %s %s', offset, sessionkey)
+    global JUMP_LIST
+    LOG.debug('Called jump with %s %s %s', offset, to_time(offset), sessionkey)
     if offset == -1:
         return
 
@@ -403,6 +411,7 @@ def client_jump_to(offset=None, sessionkey=None):
             # time.sleep(0.2)
             # client.play()
             JUMP_LIST.remove(sessionkey)
+            time.sleep(1)
 
             return
 
@@ -468,6 +477,10 @@ def check(data):
             'PlaySessionStateNotification'):
 
         sess = data.get('PlaySessionStateNotification')[0]
+
+        if sess.get('state') != 'playing':
+            return
+
         ratingkey = sess.get('ratingKey')
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
@@ -478,7 +491,7 @@ def check(data):
                 item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
 
                 if item:
-                    LOG.debug('Found %s start %s, end %s, prog %s' % (item.prettyname,
+                    LOG.debug('Found %s theme start %s, theme end %s, progress %s' % (item.prettyname,
                               item.theme_start_str, item.theme_end_str, to_time(progress)))
 
                     if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
@@ -487,13 +500,17 @@ def check(data):
 
                             if sessionkey not in JUMP_LIST:
                                 JUMP_LIST.append(sessionkey)
-                                LOG.debug('Should have called jump')
                                 POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
 
                         else:
                             if item.theme_start - progress < 0:
+                                n = item.theme_start - progress
+                                if n > 0:
+                                    part = 'jumping in %s' % to_time(n)
+                                else:
+                                    part = 'should have jumped %s ago' % to_time(n)
                                 LOG.debug('Skipping %s as it not in the correct time range jumping in %s',
-                                          item.prettyname, item.theme_start - progress)
+                                          item.prettyname, part)
 
                     if mode == 'check_recap':
                         pass  # TODO

@@ -359,7 +359,7 @@ def to_sec(t):
 
 #@timecall(immediate=True)
 def has_recap(episode, phrase):
-    LOG.debug(phrase)
+    LOG.debug('Checking this this episode has a recap with phrase %s using subtitles', ''.join(phrase))
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
         return False
