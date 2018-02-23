@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 
 from plexapi.utils import download
 
-from bw_plex import THEMES, CONFIG, LOG
+from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
 
 def get_pms(url=None, token=None, username=None,
@@ -116,6 +116,24 @@ def analyzer():
     a.density = 20
     return a
 
+def get_hashtable():
+    from audfprint.hash_table import HashTable
+
+    if os.path.exists(FP_HASHES):
+        LOG.info('Loading existing files in db')
+        HT = HashTable(FP_HASHES)
+        #for n in HT.names:
+        #    LOG.debug('%s', n)
+
+    else:
+        LOG.info('Creating new hashtable db')
+        HT = HashTable()
+        HT.save(FP_HASHES)
+        HT.load(FP_HASHES)
+
+    return HT
+
+
 
 def matcher():
     from audfprint.audfprint_match import Matcher
@@ -148,8 +166,8 @@ def get_offset_end(vid, hashtable):
             #print(tophitid, nhashaligned, aligntime, nhashraw, rank, min_time, max_time)
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.debug('Started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
-                                                                  end_time, to_time(end_time)))
+            LOG.debug('Theme song started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
+                                                                             end_time, to_time(end_time)))
             return start_time, end_time
 
     LOG.debug('no result just returning -1')
@@ -359,7 +377,7 @@ def to_sec(t):
 
 #@timecall(immediate=True)
 def has_recap(episode, phrase):
-    LOG.debug('Checking this this episode has a recap with phrase %s using subtitles', ''.join(phrase))
+    LOG.debug('Checking this this episode has a recap with phrase %s using subtitles', ', '.join(phrase))
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
         return False

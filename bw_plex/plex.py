@@ -13,14 +13,13 @@ except ImportError:
 
 import click
 from sqlalchemy.orm.exc import NoResultFound
-from .audfprint.hash_table import HashTable
 
 from . import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
 from .config import read_or_make
 from .db import session_scope, Preprocessed
 from .misc import (analyzer, convert_and_trim, choose, find_next, get_offset_end,
-                   get_pms, has_recap, to_sec, to_time, search_for_theme_youtube)
+                   get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
 POOL = Pool(10)
@@ -28,18 +27,7 @@ PMS = None
 IN_PROG = []
 JUMP_LIST = []
 SHOWS = {}
-
-if os.path.exists(FP_HASHES):
-    LOG.info('Loading existing files in db')
-    HT = HashTable(FP_HASHES)
-    #for n in HT.names:
-    #    LOG.debug('%s', n)
-
-else:
-    LOG.info('Creating new hashtable db')
-    HT = HashTable()
-    HT.save(FP_HASHES)
-    HT.load(FP_HASHES)
+HT = None
 
 
 def load_themes():
@@ -196,7 +184,10 @@ def process(name=None):
        You will asked for what you want to process
 
     """
+    global HT
+
     load_themes()
+
     all_eps = []
     shows = find_all_shows()
     if name:
@@ -208,6 +199,7 @@ def process(name=None):
         eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
         all_eps += eps
 
+    HT = get_hashtable()
     if all_eps:
         for ep in all_eps:
             process_to_db(ep)
@@ -247,6 +239,8 @@ def fix_shitty_theme(name, url, rk=None):
        Returns:
             None
     """
+    global HT
+    HT = get_hashtable()
     fp = search_for_theme_youtube(name, url=url, save_path=THEMES)
 
     # Assist for the lazy bastards..
@@ -320,6 +314,8 @@ def find_theme_youtube(show, force):
 def create_hash_table_from_themes(n, directory):
     """ Create a hashtable from the themes."""
     from audfprint.audfprint import multiproc_add
+    global HT
+    HT = get_hashtable()
 
     a = analyzer()
     all_files = []
@@ -333,7 +329,7 @@ def create_hash_table_from_themes(n, directory):
                 all_files.append(fp)
 
     def report(s):  # this shitty reporter they want sucks balls..
-        print(s)
+        pass  #print(s)
 
     LOG.debug('Creating hashtable, this might take a while..')
 
@@ -468,11 +464,13 @@ def task(item, sessionkey):
 
     try:
         IN_PROG.remove(item)
-    except:
-        pass
+    except ValueError:
+        LOG.debug('Failed to remove %s from IN_PROG', item)
 
 
 def check(data):
+    global JUMP_LIST
+
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
 
@@ -491,13 +489,13 @@ def check(data):
                 item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
 
                 if item:
-                    LOG.debug('Found %s theme start %s, theme end %s, progress %s' % (item.prettyname,
-                              item.theme_start_str, item.theme_end_str, to_time(progress)))
+                    LOG.debug('Found %s theme start %s, theme end %s, progress %s', item.prettyname,
+                              item.theme_start_str, item.theme_end_str, to_time(progress))
 
                     if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
                         if progress > item.theme_start and progress < item.theme_end:
                             LOG.debug('%s is in the correct time range', item.prettyname)
-
+                            print(JUMP_LIST)
                             if sessionkey not in JUMP_LIST:
                                 JUMP_LIST.append(sessionkey)
                                 POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
@@ -527,6 +525,8 @@ def check(data):
 def match(f):
     """Manual match for a file. This is usefull for testing the a finds the correct end time."""
     # assert f in H.names
+    global HT
+    HT = get_hashtable()
     x = get_offset_end(f, HT)
     print(x)
 
@@ -535,6 +535,8 @@ def match(f):
 def watch():
     """Start watching the server for stuff to do."""
     load_themes()
+    global HT
+    HT = get_hashtable()
     click.echo('Watching for media on %s' % PMS.friendlyName)
     ffs = PMS.startAlertListener(check)
 
@@ -553,33 +555,33 @@ def watch():
 @click.argument('showname')
 @click.argument('season', type=int)
 @click.argument('episode', type=int)
+@click.argument('type', default='theme')
 @click.argument('start')
 @click.argument('end')
-def set_manual_theme_time(showname, season, episode, start, end):
+def set_manual_theme_time(showname, season, episode, type, start, end):
     """Set a manual start and end time for a theme.
 
        Args:
            showname(str): name of the show you want to find
            season(int): season number fx 1
            episode(int): episode number 1
+           type(str): theme, credit # Still TODO Stuff for credits
            start(int, str): This can be in seconds or MM:SS format
            start(int, str): This can be in seconds or MM:SS format
 
        Returns:
             None
-
-
-
     """
     LOG.debug('Trying to set manual time')
     result = PMS.search(showname)
 
     if result:
-        show = result[0]
 
-        if show.title.lower() == showname.lower():
-            ep = show.episode(season=season, episode=episode)
+        items = choose('Select show', result, 'title')
+        show = items[0]
+        ep = show.episode(season=season, episode=episode)
 
+        if ep:
             with session_scope() as se:
                 item = se.query(Preprocessed).filter_by(ratingKey=ep.ratingKey).one()
                 start = to_sec(start)
@@ -591,7 +593,7 @@ def set_manual_theme_time(showname, season, episode, start, end):
                 if end:
                     item.correct_time_end = end
 
-                LOG.debug('Set correct_time for %s to start %s end %s', ep._prettyfilename(), start, end)
+                LOG.debug('Set correct_time %s for %s to start %s end %s', type, ep._prettyfilename(), start, end)
 
 
 if __name__ == '__main__':
