@@ -12,10 +12,12 @@ binge watching for plex
 ## Install
 You should install this from github as this project isnt stable.
 ```pip install -e git+https://github.com/Hellowlol/bw_plex.git```
+You should also install a speedup for the websocket-client package. ```pip install wsaccel```
 
 
 ## Usage
 bw_plex only works on python 2. :(
+Note: This tool only works on your local network.
 
 ```
 Usage: bw_plex [OPTIONS] COMMAND [ARGS]...
@@ -50,7 +52,7 @@ The most common will be:
 
 bw_plex will connect to PMS using websocket and listen for any playing events.
 It will then download the theme and the first 10 minutes of the episode and try to figure out when the theme starts and ends. The result is stored in a sqlite db.
-This process is rather slow so the first episode might get skipped. The next episode will be queued up so its ready when you start to watch it.
+This process is rather slow so the first episode will be . The next episode will be queued up so its ready when you start to watch it.
 bw_plex will then seek the client to where the theme ended in that episode.
 
 
