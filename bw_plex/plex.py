@@ -22,7 +22,7 @@ from .misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ff
                    get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
-POOL = Pool(10)
+POOL = Pool(20)
 PMS = None
 IN_PROG = []
 JUMP_LIST = []

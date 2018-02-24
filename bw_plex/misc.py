@@ -18,16 +18,6 @@ from plexapi.utils import download
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
 
-def with_in(first, second, dev=5):
-
-    x = first - second
-    y = second - first
-
-    if abs(x) <= dev and abs(y) <= dev or first <= second:
-        return True
-    return False
-
-
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None):
     from plexapi.myplex import MyPlexAccount
@@ -114,6 +104,7 @@ def analyzer():
     a.density = 20
     return a
 
+
 def get_hashtable():
     from audfprint.hash_table import HashTable
 
@@ -130,7 +121,6 @@ def get_hashtable():
         HT.load(FP_HASHES)
 
     return HT
-
 
 
 def matcher():
@@ -173,7 +163,7 @@ def get_offset_end(vid, hashtable):
     return start_time, end_time
 
 
-def find_offset_ffmpeg(afile, trim=600):
+def find_offset_ffmpeg(afile, trim=600, dev=7):
 
     cmd = [
         'ffmpeg', '-i', afile, '-t', str(trim), '-vf',
@@ -181,7 +171,7 @@ def find_offset_ffmpeg(afile, trim=600):
         '-f', 'null', '-'
     ]
 
-    #print(' '.join(cmd))
+    LOG.debug('Calling ffind_offset_ffmpeg with command %s', ' '.join(cmd))
 
     proc = subprocess.Popen(
         cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -219,19 +209,33 @@ def find_offset_ffmpeg(afile, trim=600):
         else:
             break
 
-    LOG.debug('final_video %s', final_video)
-    LOG.debug('final_audio %s', final_audio)
+    fa = []
+    fv = []
+    for ll in final_video:
+        fv.append([to_time(i) for i in ll])
+
+    for aa in final_audio:
+        fa.append([to_time(i) for i in aa])
+
+
+
+    LOG.debug('final_video', fv)
+    LOG.debug('final_audio', fa)
+
     # the sub lists are [start, end, duration]
     for video in reversed(final_video):
         for aud in final_audio:
             # Sometime times there are black shit the first 15 sec. lets skip that to remove false positives
             if video[1] > 15:  # end time of black shit..
-                # if silence is within black shit its ok.
-                if aud and video and with_in(aud[0], video[0]) and with_in(aud[1], video[1]):
-                    print(to_time(video[1]))
-                    return video[1]
+                # if silence is within black shit its ok. Allow dev sec deviance.
+                if aud and video and abs(aud[0] - video[0]) <= dev and abs(aud[1] - video[0]) <= dev:
+                    LOG.debug(to_time(video[0]))
+                    return video[0]
 
     return -1
+
+
+
 
 
 def get_valid_filename(s):
