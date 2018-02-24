@@ -18,7 +18,7 @@ from . import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
 from .config import read_or_make
 from .db import session_scope, Preprocessed
-from .misc import (analyzer, convert_and_trim, choose, find_next, get_offset_end,
+from .misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                    get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
@@ -79,6 +79,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
 
     """
     global HT
+
+    ff = -1
+
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
     if theme is None:
@@ -91,6 +94,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
     # that have show, theme song show.
     if end is None:
         start, end = get_offset_end(vid, HT)
+        ff = find_offset_ffmpeg(check_file_access(media))
 
     if end is not None:
         with session_scope() as se:
@@ -103,6 +107,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
                                  theme_start=start,
                                  theme_start_str=to_time(start),
                                  theme_end_str=to_time(end),
+                                 ffmpeg_end=ff,
+                                 ffmpeg_end_str=to_time(ff),
                                  duration=media.duration,
                                  ratingKey=media.ratingKey,
                                  grandparentRatingKey=media.grandparentRatingKey,

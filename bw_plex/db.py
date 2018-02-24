@@ -42,6 +42,8 @@ class Preprocessed(Base):
     credits_start_str = Column('credits_start_str', String, nullable=True)
     credits_end = Column('credits_end', Integer, nullable=True)
     credits_end_str = Column('credits_end_str', String, nullable=True)
+    ffmpeg_end = Column('ffmpeg_end', Integer, nullable=True)
+    ffmpeg_end_str = Column('ffmpeg_end_str', String, nullable=True)
 
 
 # Create db.

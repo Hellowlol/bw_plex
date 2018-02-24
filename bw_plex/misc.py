@@ -18,6 +18,16 @@ from plexapi.utils import download
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
 
+def with_in(first, second, dev=5):
+
+    x = first - second
+    y = second - first
+
+    if abs(x) <= dev and abs(y) <= dev or first <= second:
+        return True
+    return False
+
+
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None):
     from plexapi.myplex import MyPlexAccount
@@ -34,18 +44,6 @@ def get_pms(url=None, token=None, username=None,
         PMS = acc.resource(servername).connect()
 
     return PMS
-
-
-#def find_next(media):
-#    """ Find the next media item or None."""
-#    LOG.debug('Check if we can find the next media item.')
-#    try:
-#        nxt_ep = media.show().episode(season=media.seasonNumber, episode=media.index + 1)
-#        LOG.debug('Found %s', nxt_ep._prettyfilename())
-#        return nxt_ep
-#
-#    except NotFound:
-#        LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
 
 
 def find_next(media):
@@ -173,6 +171,67 @@ def get_offset_end(vid, hashtable):
     LOG.debug('no result just returning -1')
 
     return start_time, end_time
+
+
+def find_offset_ffmpeg(afile, trim=600):
+
+    cmd = [
+        'ffmpeg', '-i', afile, '-t', str(trim), '-vf',
+        'blackdetect=d=0.5:pix_th=0.10', '-af', 'silencedetect=n=-50dB:d=0.5',
+        '-f', 'null', '-'
+    ]
+
+    #print(' '.join(cmd))
+
+    proc = subprocess.Popen(
+        cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    temp_silence = []
+    final_audio = []
+    final_video = []
+
+    audio_reg = re.compile('silence_\w+:\s+?(-?\d+\.\d+|\d)')
+    black_reg = re.compile('black_\w+:(\d+\.\d+|\d)')
+
+    while True:
+        line = proc.stderr.readline()
+        line = line.decode('utf-8').strip()
+
+        if line:
+            audio_res = re.findall(audio_reg, line)
+
+            # Audio shit is sometime on several lines...
+            if audio_res:
+                temp_silence.extend(audio_res)
+
+            if len(temp_silence) == 3:
+                k = temp_silence[:]
+                kk = [float(i) for i in k]
+                final_audio.append(kk)
+                temp_silence[:] = []
+
+            video_res = re.findall(black_reg, line)
+
+            if video_res:
+                f = [float(i) for i in video_res]
+                final_video.append(f)
+
+        else:
+            break
+
+    LOG.debug('final_video %s', final_video)
+    LOG.debug('final_audio %s', final_audio)
+    # the sub lists are [start, end, duration]
+    for video in reversed(final_video):
+        for aud in final_audio:
+            # Sometime times there are black shit the first 15 sec. lets skip that to remove false positives
+            if video[1] > 15:  # end time of black shit..
+                # if silence is within black shit its ok.
+                if aud and video and with_in(aud[0], video[0]) and with_in(aud[1], video[1]):
+                    print(to_time(video[1]))
+                    return video[1]
+
+    return -1
 
 
 def get_valid_filename(s):
@@ -434,5 +493,6 @@ def choose(msg, items, attr):
 
 
 if __name__ == '__main__':
-    print(search_tunes('Dexter', 1))
+    #print(search_tunes('Dexter', 1))
+    print(find_offset_ffmpeg(r'C:\steffen\test_plexapi\Dexter.S03E01.Our.Father.720p.BluRay.x264-SiNNERS.mkv'))
 
