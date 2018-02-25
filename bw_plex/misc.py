@@ -219,8 +219,8 @@ def find_offset_ffmpeg(afile, trim=600, dev=7):
 
 
 
-    LOG.debug('final_video', fv)
-    LOG.debug('final_audio', fa)
+    LOG.debug('final_video %s', fv)
+    LOG.debug('final_audio %s', fa)
 
     # the sub lists are [start, end, duration]
     for video in reversed(final_video):
