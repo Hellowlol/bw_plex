@@ -498,5 +498,5 @@ def choose(msg, items, attr):
 
 if __name__ == '__main__':
     #print(search_tunes('Dexter', 1))
-    print(find_offset_ffmpeg(r'C:\steffen\test_plexapi\Dexter.S03E01.Our.Father.720p.BluRay.x264-SiNNERS.mkv'))
+    print(find_offset_ffmpeg(r'X:\Breaking bad\Season 05\breaking.bad.s05e02.720p.hdtv.x264-orenji.mkv'))
 

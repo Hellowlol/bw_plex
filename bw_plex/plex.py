@@ -211,6 +211,12 @@ def process(name=None):
             process_to_db(ep)
 
 
+@cli.command()
+@click.argument('name')
+def ffmeg_process(name):
+    click.echo(find_offset_ffmpeg(name))
+
+
 @click.command()
 @click.option('--fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
