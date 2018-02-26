@@ -213,7 +213,7 @@ def process(name=None):
 
 @cli.command()
 @click.argument('name')
-def ffmeg_process(name):
+def ffmpeg_process(name):
     click.echo(find_offset_ffmpeg(name))
 
 
