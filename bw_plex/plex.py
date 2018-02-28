@@ -184,6 +184,44 @@ def get_theme(media):
 
 
 @cli.command()
+@click.argument('client_name')
+def manual_check_db(client_name):
+
+    client = PMS.client(client_name).connect()
+    db_items = []
+
+    with session_scope() as se:
+        items = se.query(Preprocessed)
+        db_items = [i for i in items]
+        db_items.sorted(lambda k: k.ratingKey)
+
+        for item in db_items:
+            click.echo('Checking %s themestart %s themeend %s blackshit %s' %
+                item.prettyname, item.theme_start, item.theme_end_str, item.blackshit)
+
+            if item.theme_start == -1 or item.theme_end == -1:
+                click.echo('Exists in the db but the start of the theme was not found.'
+                    ' Check the audio file and run it again.')
+
+            if item.ffmpeg_end:
+                click.echo('Found ffmpeg_end at %s' % item.ffmpeg_end_str)
+                click.echo('')
+                if item.ffmpeg_end > 30:
+                    j = item.ffmpeg_end - 20
+                else:
+                    j = item.ffmpeg_end
+
+                client.playMedia(PMS.fetchItem(item.ratingkey))
+                client.seekTo(j * 1000)
+
+                match = click.prompt('Was this ffmpeg_end match correct?')
+
+                if not match:
+                    item.correct_time_end = int(match)
+
+
+
+@cli.command()
 @click.option('-name', help='Search for a show.', default=None)
 def process(name=None):
     """Manual process some/all eps.
