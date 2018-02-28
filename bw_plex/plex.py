@@ -184,10 +184,14 @@ def get_theme(media):
 
 
 @cli.command()
-@click.argument('client_name')
+@click.option('-client_name', default=None)
 def manual_check_db(client_name):
 
-    client = PMS.client(client_name).connect()
+    if client_name is None:
+        choose('Select what client to use', PMS.clients(), 'title')
+    else:
+        client = PMS.client(client_name).connect()
+
     db_items = []
 
     with session_scope() as se:
