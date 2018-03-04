@@ -259,7 +259,8 @@ def manual_check_db(client_name):
 
 @cli.command()
 @click.option('-name', help='Search for a show.', default=None)
-def process(name=None):
+@click.option('-sample', help='Process N episodes of all shows.', default=0, type=int)
+def process(name=None, sample=0):
     """Manual process some/all eps.
        You will asked for what you want to process
 
@@ -272,17 +273,23 @@ def process(name=None):
     shows = find_all_shows()
     if name:
         shows = [s for s in shows if s.title.lower().startswith(name.lower())]
+        shows = choose('Select what show to process', shows, 'title')
 
-    shows = choose('Select what show to process', shows, 'title')
-    for show in shows:
-        eps = show.episodes()
-        eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
-        all_eps += eps
+        for show in shows:
+            eps = show.episodes()
+            eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
+            all_eps += eps
+
+    if sample:
+        for show in shows:
+            all_eps += show.episodes()[:sample]
+
+    # We should clean all_eps so we dont process stuff that has been processed before..
 
     HT = get_hashtable()
     if all_eps:
-        for ep in all_eps:
-            process_to_db(ep)
+        POOL.map(process_to_db, all_eps, 2)
+
 
 
 @cli.command()
