@@ -106,7 +106,7 @@ def analyzer():
 
 
 def get_hashtable():
-    from audfprint.hash_table import HashTable
+    from bw_plex.audfprint.hash_table import HashTable
 
     if os.path.exists(FP_HASHES):
         LOG.info('Loading existing files in db')

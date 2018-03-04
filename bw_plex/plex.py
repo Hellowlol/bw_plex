@@ -14,11 +14,11 @@ except ImportError:
 import click
 from sqlalchemy.orm.exc import NoResultFound
 
-from . import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
+from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
-from .config import read_or_make
-from .db import session_scope, Preprocessed
-from .misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
+from bw_plex.config import read_or_make
+from bw_plex.db import session_scope, Preprocessed
+from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                    get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
@@ -188,7 +188,7 @@ def get_theme(media):
 def manual_check_db(client_name):
 
     if client_name is None:
-        choose('Select what client to use', PMS.clients(), 'title')
+        client = choose('Select what client to use', PMS.clients(), 'title')[0]
     else:
         client = PMS.client(client_name).connect()
 
@@ -197,31 +197,63 @@ def manual_check_db(client_name):
     with session_scope() as se:
         items = se.query(Preprocessed)
         db_items = [i for i in items]
-        db_items.sorted(lambda k: k.ratingKey)
+        db_items.sort(key=lambda k: k.ratingKey)
 
         for item in db_items:
             click.echo('Checking %s themestart %s themeend %s blackshit %s' %
-                item.prettyname, item.theme_start, item.theme_end_str, item.blackshit)
+                (item.prettyname, item.theme_start, item.theme_end_str, item.ffmpeg_end))
 
             if item.theme_start == -1 or item.theme_end == -1:
                 click.echo('Exists in the db but the start of the theme was not found.'
                     ' Check the audio file and run it again.')
 
+            if item.theme_end != -1:
+                click.echo('Found theme at start %s %s end %s %s' % (item.theme_start, item.theme_start_str,
+                    item.theme_end, item.theme_end_str))
+
+                client.playMedia(PMS.fetchItem(item.ratingKey))
+                time.sleep(1)
+
+                client.seekTo(item.theme_start * 1000)
+
+                start_match = click.prompt('Was theme_start correct?')
+                if start_match:
+                    if start_match == 'y':
+                        start_match = item.theme_start
+                    else:
+                        start_match = to_sec(start_match)
+                        item.correct_time_start = start_match
+
+                client.seekTo(item.theme_end * 1000)
+                end_match = click.prompt('Was theme_end correct?')
+                if end_match:
+                    if end_match == 'y':
+                        end_match = item.theme_end
+                    else:
+                        end_match = to_sec(end_match)
+                        item.correct_theme_start = end_match
+
+
             if item.ffmpeg_end:
-                click.echo('Found ffmpeg_end at %s' % item.ffmpeg_end_str)
+                click.echo('Found ffmpeg_end at sec %s time %s' % (item.ffmpeg_end, item.ffmpeg_end_str))
                 click.echo('')
                 if item.ffmpeg_end > 30:
                     j = item.ffmpeg_end - 20
                 else:
                     j = item.ffmpeg_end
 
-                client.playMedia(PMS.fetchItem(item.ratingkey))
+                client.playMedia(PMS.fetchItem(item.ratingKey))
+                time.sleep(1)
                 client.seekTo(j * 1000)
 
                 match = click.prompt('Was this ffmpeg_end match correct?')
 
-                if not match:
-                    item.correct_time_end = int(match)
+                if match:
+                    if match == 'y':
+                        match = item.ffmpeg_end
+                    else:
+                        match = to_sec(match)
+                    item.correct_ffmpeg = int(match)
 
 
 

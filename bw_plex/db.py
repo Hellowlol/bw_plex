@@ -30,8 +30,8 @@ class Preprocessed(Base):
     theme_end_str = Column('theme_end_str', String)
     theme_start = Column('theme_start', Integer)
     theme_start_str = Column('theme_start_str', String)
-    correct_time_start = Column('correct_time_start', String, nullable=True)  # This for manual override.
-    correct_time_end = Column('correct_time_end', String, nullable=True)  # This for manual override.
+    correct_theme_start = Column('correct_theme_start', Integer, nullable=True)  # This for manual override.
+    correct_theme_end = Column('correct_theme_end', Integer, nullable=True)  # This for manual override.
     prettyname = Column('prettyname', String, nullable=True)
     duration = Column('duration', Integer)
     grandparentRatingKey = Column('grandparentRatingKey', Integer)
@@ -44,6 +44,7 @@ class Preprocessed(Base):
     credits_end_str = Column('credits_end_str', String, nullable=True)
     ffmpeg_end = Column('ffmpeg_end', Integer, nullable=True)
     ffmpeg_end_str = Column('ffmpeg_end_str', String, nullable=True)
+    correct_ffmpeg = Column('correct_ffmpeg', Integer, nullable=True)  # This for manual override.
 
 
 # Create db.
