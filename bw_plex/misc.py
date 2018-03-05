@@ -95,7 +95,7 @@ def to_time(sec):
 
 
 def analyzer():
-    from audfprint.audfprint_analyze import Analyzer
+    from bw_plex.audfprint.audfprint_analyze import Analyzer
     a = Analyzer()
     a.n_fft = 512
     a.n_hop = a.n_fft / 2
@@ -124,7 +124,7 @@ def get_hashtable():
 
 
 def matcher():
-    from audfprint.audfprint_match import Matcher
+    from bw_plex.audfprint.audfprint_match import Matcher
     m = Matcher()
     m.find_time_range = True
     m.search_depth = 2000
@@ -217,8 +217,6 @@ def find_offset_ffmpeg(afile, trim=600, dev=7):
     for aa in final_audio:
         fa.append([to_time(i) for i in aa])
 
-
-
     LOG.debug('final_video %s', fv)
     LOG.debug('final_audio %s', fa)
 
@@ -233,9 +231,6 @@ def find_offset_ffmpeg(afile, trim=600, dev=7):
                     return video[0]
 
     return -1
-
-
-
 
 
 def get_valid_filename(s):

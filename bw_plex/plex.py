@@ -67,7 +67,7 @@ def find_all_shows(func=None):
     return all_shows
 
 
-def process_to_db(media, theme=None, vid=None, start=None, end=None):
+def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None):
     """Process a plex media item to the db
 
        Args:
@@ -81,7 +81,6 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
     global HT
 
     ff = -1
-
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
     if theme is None:
@@ -94,7 +93,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
     # that have show, theme song show.
     if end is None:
         start, end = get_offset_end(vid, HT)
-        ff = find_offset_ffmpeg(check_file_access(media))
+
+    if ffmpeg_end is None:
+        ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
 
     if end is not None:
         with session_scope() as se:
@@ -107,7 +108,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None):
                                  theme_start=start,
                                  theme_start_str=to_time(start),
                                  theme_end_str=to_time(end),
-                                 ffmpeg_end=ff,
+                                 ffmpeg_end=ffmpeg_end,
                                  ffmpeg_end_str=to_time(ff),
                                  duration=media.duration,
                                  ratingKey=media.ratingKey,
@@ -185,82 +186,100 @@ def get_theme(media):
 
 @cli.command()
 @click.option('-client_name', default=None)
-def manual_check_db(client_name):
-
+@click.option('-skip_done', default=False, is_flag=True)
+def manual_check_db(client_name, skip_done):
+    """Do a manual check of the db. This will start playback on a client and seek the video file where we have found
+       theme start/end and ffmpeg_end. You will be asked if its a correct match, press y or set the correct time in
+       mm:ss format.
+    """
     if client_name is None:
         client = choose('Select what client to use', PMS.clients(), 'title')[0]
     else:
         client = PMS.client(client_name).connect()
 
-    db_items = []
-
     with session_scope() as se:
-        items = se.query(Preprocessed)
-        db_items = [i for i in items]
-        db_items.sort(key=lambda k: k.ratingKey)
+        items = se.query(Preprocessed).all()
+        click.echo('')
 
-        for item in db_items:
-            click.echo('Checking %s themestart %s themeend %s blackshit %s' %
-                (item.prettyname, item.theme_start, item.theme_end_str, item.ffmpeg_end))
+        for item in sorted(items, key=lambda k: k.ratingKey):
+
+            click.echo('%s %s' % (click.style('Checking', fg='white'),
+                                  click.style(item.prettyname, bold=True, fg='green')))
+            click.echo('theme_start %s theme_end %s ffmpeg_end %s' % (item.theme_start,
+                                                                      item.theme_end_str,
+                                                                      item.ffmpeg_end))
+            click.echo('*%s*' % ('-' * 80))
+            click.echo('')
 
             if item.theme_start == -1 or item.theme_end == -1:
                 click.echo('Exists in the db but the start of the theme was not found.'
-                    ' Check the audio file and run it again.')
+                           ' Check the audio file and run it again.')
 
             if item.theme_end != -1:
-                click.echo('Found theme at start %s %s end %s %s' % (item.theme_start, item.theme_start_str,
-                    item.theme_end, item.theme_end_str))
 
-                client.playMedia(PMS.fetchItem(item.ratingKey))
-                time.sleep(1)
+                if (not skip_done and item.correct_theme_start) or not item.correct_theme_start:
 
-                client.seekTo(item.theme_start * 1000)
+                    click.echo('Found theme_start at %s %s theme_end %s %s' % (item.theme_start, item.theme_start_str,
+                        item.theme_end, item.theme_end_str))
 
-                start_match = click.prompt('Was theme_start correct?')
-                if start_match:
-                    if start_match == 'y':
-                        start_match = item.theme_start
-                    else:
-                        start_match = to_sec(start_match)
-                        item.correct_time_start = start_match
+                    client.playMedia(PMS.fetchItem(item.ratingKey))
+                    time.sleep(1)
 
-                client.seekTo(item.theme_end * 1000)
-                end_match = click.prompt('Was theme_end correct?')
-                if end_match:
-                    if end_match == 'y':
-                        end_match = item.theme_end
-                    else:
-                        end_match = to_sec(end_match)
-                        item.correct_theme_start = end_match
+                    client.seekTo(item.theme_start * 1000)
+                    start_match = click.prompt('Was theme_start at %s correct?' % item.theme_start_str)
+                    if start_match:
+                        if start_match == 'y':
+                            item.correct_theme_start = item.theme_start
+                        else:
+                            item.correct_theme_start = to_sec(start_match)
 
+                if (not skip_done and item.correct_theme_end) or not item.correct_theme_end:
+
+                    client.seekTo(item.theme_end * 1000)
+                    end_match = click.prompt('Was theme_end at %s correct?' % item.theme_end_str)
+                    if end_match:
+                        if end_match == 'y':
+                            item.correct_theme_end = item.theme_end
+                        else:
+                            item.correct_theme_end = to_sec(end_match)
 
             if item.ffmpeg_end:
-                click.echo('Found ffmpeg_end at sec %s time %s' % (item.ffmpeg_end, item.ffmpeg_end_str))
-                click.echo('')
-                if item.ffmpeg_end > 30:
-                    j = item.ffmpeg_end - 20
-                else:
-                    j = item.ffmpeg_end
-
-                client.playMedia(PMS.fetchItem(item.ratingKey))
-                time.sleep(1)
-                client.seekTo(j * 1000)
-
-                match = click.prompt('Was this ffmpeg_end match correct?')
-
-                if match:
-                    if match == 'y':
-                        match = item.ffmpeg_end
+                if (not skip_done and item.correct_ffmpeg) or not item.correct_ffmpeg:
+                    click.echo('Found ffmpeg_end at sec %s time %s' % (item.ffmpeg_end, item.ffmpeg_end_str))
+                    if item.ffmpeg_end > 30:
+                        j = item.ffmpeg_end - 20
                     else:
-                        match = to_sec(match)
-                    item.correct_ffmpeg = int(match)
+                        j = item.ffmpeg_end
+
+                    client.playMedia(PMS.fetchItem(item.ratingKey))
+                    time.sleep(1)
+                    client.seekTo(j * 1000)
+
+                    match = click.prompt('Was ffmpeg_end at %s correct?' % item.ffmpeg_end_str)
+
+                    if match:
+                        if match == 'y':
+                            item.correct_ffmpeg = item.ffmpeg_end
+                        else:
+                            item.correct_ffmpeg = to_sec(match)
+
+            click.clear()
+
+            # Commit thit shit after each loop.
+            if se.dirty:
+                se.commit()
+
+        click.echo('Done')
+
 
 
 
 @cli.command()
 @click.option('-name', help='Search for a show.', default=None)
-@click.option('-sample', help='Process N episodes of all shows.', default=0, type=int)
-def process(name=None, sample=0):
+@click.option('-sample', default=0, help='Process N episodes of all shows.', type=int)
+@click.option('-threads', help='Threads to uses', default=1, type=int)
+@click.option('-skip_done', help='Skip media items that exist in the db', is_flag=True)
+def process(name, sample, threads, skip_done):
     """Manual process some/all eps.
        You will asked for what you want to process
 
@@ -284,11 +303,20 @@ def process(name=None, sample=0):
         for show in shows:
             all_eps += show.episodes()[:sample]
 
-    # We should clean all_eps so we dont process stuff that has been processed before..
+    if skip_done:
+        # Now there must be a betty way..
+        with session_scope() as se:
+            items = se.query(Preprocessed).all()
+            for item in items:
+                for ep in all_eps:
+                    if ep.ratingKey == item.ratingKey:
+                        click.secho('Removing as %s already is processed' % item.prettyname, fg='red')
+                        all_eps.remove(ep)
 
     HT = get_hashtable()
     if all_eps:
-        POOL.map(process_to_db, all_eps, 2)
+        p = Pool(threads)
+        p.map(process_to_db, all_eps, 1)
 
 
 
@@ -539,9 +567,10 @@ def task(item, sessionkey):
         HT = HT.save_then_reload(FP_HASHES)
 
     start, end = get_offset_end(vid, HT)
+    ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
     if end != -1:
         # End is -1 if not found. Or a positiv int.
-        process_to_db(media, theme=theme, vid=vid, start=start, end=end)
+        process_to_db(media, theme=theme, vid=vid, start=start, end=end, ffmpeg_end=ffmpeg_end)
 
     try:
         os.remove(vid)
@@ -588,7 +617,6 @@ def check(data):
                     if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
                         if progress > item.theme_start and progress < item.theme_end:
                             LOG.debug('%s is in the correct time range', item.prettyname)
-                            print(JUMP_LIST)
                             if sessionkey not in JUMP_LIST:
                                 JUMP_LIST.append(sessionkey)
                                 POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
