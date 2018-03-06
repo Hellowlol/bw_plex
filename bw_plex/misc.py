@@ -203,6 +203,10 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
                 if aud and video and abs(aud[0] - video[0]) <= dev and abs(aud[1] - video[0]) <= dev:
                     match_window.append(video)
 
+    if not match_window and not final_audio and final_video:
+        LOG.debug('There are no audio silence at all, taking a stab in the dark.')
+        return list(sorted([i for i in final_video if i[0] < 30 and i[1] > 396], key=lambda k: k[2]))[0][0]
+
     if match_window:
         m = list(sorted(match_window, key=lambda k: (k[1], k[2])))
         LOG.debug('Matching windows are %s', to_time_range(m))

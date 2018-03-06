@@ -342,6 +342,15 @@ def process(name, sample, threads, skip_done):
 
     if all_eps:
         p = Pool(threads)
+
+        # process_to_db craps out because if a race condition in get_theme(media)
+        # if the user is selecting n eps > 1 for the same theme.
+        # Lets just download the the themes first.
+        # Get all shows.
+        gr = set([i.grandparentRatingKey for i in all_eps])
+        if len(gr):
+            p.map(get_theme, [PMS.fetchItem(z) for z in gr], 1)
+
         p.map(prot, all_eps, 1)
         p.terminate()
 
