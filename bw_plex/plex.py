@@ -343,9 +343,15 @@ def process(name, sample, threads, skip_done):
 @click.argument('name', type=click.Path(exists=True))
 @click.option('-trim', default=600, help='Only get the first x seconds', type=int)
 @click.option('-dev', default=7, help='Accepted deviation between audio and video', type=int)
+@click.option('-da', default=0.5, type=float)
+@click.option('-dv', default=0.5, type=float)
 @click.option('-pix_th', default=0.10, type=float)
 @click.option('-au_db', default=50, type=int)
+def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):
     """Simple manual test for ffmpeg_process with knobs to turn."""
+
+    click.echo(find_offset_ffmpeg(name, trim=trim, dev=dev, duration_audio=da,
+                                  duration_video=dv, pix_th=pix_th, au_db=au_db))
 
 
 @click.command()
