@@ -757,11 +757,15 @@ def set_manual_theme_time(showname, season, episode, type, start, end):
 
                 # TODO HANDLE TYPE to set ffmpeg_ned
 
-                if start:
-                    item.correct_time_start = start
+                if type == 'ffmpeg':
+                    item.correct_ffmpeg = end
 
-                if end:
-                    item.correct_time_end = end
+                elif type == 'theme':
+                    if start:
+                        item.correct_time_start = start
+
+                    if end:
+                        item.correct_time_end = end
 
                 LOG.debug('Set correct_time %s for %s to start %s end %s', type, ep._prettyfilename(), start, end)
 
