@@ -288,7 +288,7 @@ def manual_check_db(client_name, skip_done):
 @click.option('-name', help='Search for a show.', default=None)
 @click.option('-sample', default=0, help='Process N episodes of all shows.', type=int)
 @click.option('-threads', help='Threads to uses', default=1, type=int)
-@click.option('-skip_done', help='Skip media items that exist in the db', is_flag=True)
+@click.option('-skip_done', help='Skip media items that exist in the db', default=True, is_flag=True)
 def process(name, sample, threads, skip_done):
     """Manual process some/all eps.
        You will asked for what you want to process
@@ -343,10 +343,9 @@ def process(name, sample, threads, skip_done):
     if all_eps:
         p = Pool(threads)
 
-        # process_to_db craps out because if a race condition in get_theme(media)
+        # process_to_db craps out because off a race condition in get_theme(media)
         # if the user is selecting n eps > 1 for the same theme.
-        # Lets just download the the themes first.
-        # Get all shows.
+        # Lets just download the the themes first so the shit is actually processed.
         gr = set([i.grandparentRatingKey for i in all_eps])
         if len(gr):
             p.map(get_theme, [PMS.fetchItem(z) for z in gr], 1)
