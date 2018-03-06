@@ -163,12 +163,13 @@ def get_offset_end(vid, hashtable):
     return start_time, end_time
 
 
-def find_offset_ffmpeg(afile, trim=600, dev=7):
+def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_video=0.5, pix_th=0.10, au_db=50):
+    v = 'blackdetect=d=%s:pix_th=%s' % (duration_video, pix_th)
+    a = 'silencedetect=n=-%sdB:d=%s' % (au_db, duration_audio)
 
     cmd = [
         'ffmpeg', '-i', afile, '-t', str(trim), '-vf',
-        'blackdetect=d=0.5:pix_th=0.10', '-af', 'silencedetect=n=-50dB:d=0.5',
-        '-f', 'null', '-'
+         v, '-af', a, '-f', 'null', '-'
     ]
 
     LOG.debug('Calling ffind_offset_ffmpeg with command %s', ' '.join(cmd))

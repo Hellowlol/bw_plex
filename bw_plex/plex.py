@@ -19,7 +19,7 @@ from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 from bw_plex.config import read_or_make
 from bw_plex.db import session_scope, Preprocessed
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                   get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
 
 
 POOL = Pool(20)
@@ -48,7 +48,6 @@ def load_themes():
 def find_all_shows(func=None):
     """ Helper of get all the shows on a server.
 
-
         Args:
             func (callable): Run this function in a threadpool.
 
@@ -74,8 +73,12 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             media (Episode obj):
             theme: path to the theme.
             vid: path to the stripped wav of the media item.
-            start: of theme.
-            end (int): of theme.
+            start (None, int): of theme.
+            end (None, int): of theme.
+            ffmpeg_end (None, int): What does ffmpeg think is the start of the ep.
+
+       Returns:
+            None
 
     """
     global HT
@@ -191,6 +194,13 @@ def manual_check_db(client_name, skip_done):
     """Do a manual check of the db. This will start playback on a client and seek the video file where we have found
        theme start/end and ffmpeg_end. You will be asked if its a correct match, press y or set the correct time in
        mm:ss format.
+
+       Args:
+            client_name (None, str): Name of the client you want to use (watch)
+            skip_done (bool): Skip shit that is verified before.
+
+       Returns:
+            None
     """
     if client_name is None:
         client = choose('Select what client to use', PMS.clients(), 'title')[0]
@@ -283,6 +293,15 @@ def process(name, sample, threads, skip_done):
     """Manual process some/all eps.
        You will asked for what you want to process
 
+       Args:
+            name (None): Pass a name of a show you want to process
+            sample (int): process x eps for all shows.
+            threads (int): How many thread to use
+            skip_done(bool): Should we skip stuff that is processed.
+
+       Return:
+            None
+
     """
     global HT
 
@@ -317,13 +336,16 @@ def process(name, sample, threads, skip_done):
     if all_eps:
         p = Pool(threads)
         p.map(process_to_db, all_eps, 1)
-
+        p.terminate()
 
 
 @cli.command()
-@click.argument('name')
-def ffmpeg_process(name):
-    click.echo(find_offset_ffmpeg(name))
+@click.argument('name', type=click.Path(exists=True))
+@click.option('-trim', default=600, help='Only get the first x seconds', type=int)
+@click.option('-dev', default=7, help='Accepted deviation between audio and video', type=int)
+@click.option('-pix_th', default=0.10, type=float)
+@click.option('-au_db', default=50, type=int)
+    """Simple manual test for ffmpeg_process with knobs to turn."""
 
 
 @click.command()
@@ -348,14 +370,16 @@ def create_config(fp=None):
 @click.argument('name')
 @click.argument('url')
 @click.option('-rk', help='Add rating key', default='auto')
-def fix_shitty_theme(name, url, rk=None):
+@click.option('-just_theme', default=False, is_flag=True)
+def fix_shitty_theme(name, url, rk, just_theme):
     """Set the correct fingerprint of the show in the hashes.db and
        process the eps of that show in the db against the new theme fingerprint.
 
        Args:
-            name(str): name of the show
-            url(str): the youtube url to the correct theme.
-            rk(None, str): ratingkey of that show. Pass auto if your lazy.
+            name (str): name of the show
+            url (str): the youtube url to the correct theme.
+            rk (str): ratingkey of that show. Pass auto if your lazy.
+            just_theme (bool): just add the theme song.
 
        Returns:
             None
@@ -380,6 +404,9 @@ def fix_shitty_theme(name, url, rk=None):
     analyzer().ingest(HT, fp)
     HT.save(FP_HASHES)
     to_pp = []
+
+    if just_theme:
+        return
 
     if rk:  # TODO a
         with session_scope() as se:
@@ -430,11 +457,20 @@ def find_theme_youtube(show, force):
 
 
 @cli.command()
-@click.option('-n', help='threads', type=int, default=1)
-@click.option('-directory', default=None)
+@click.option('-n', help='How many thread to use', type=int, default=1)
+@click.option('-directory', help='What directory you want to scan for themes.', default=None)
 def create_hash_table_from_themes(n, directory):
-    """ Create a hashtable from the themes."""
-    from audfprint.audfprint import multiproc_add
+    """ Create a hashtable from the themes.
+
+        Args:
+            n (int): How many theads to use.
+            directory (None, str): If you don't pass a directory will select the default one
+
+        Returns:
+            None
+
+    """
+    from bw_plex.audfprint.audfprint import multiproc_add
     global HT
     HT = get_hashtable()
 
@@ -578,8 +614,6 @@ def task(item, sessionkey):
     except IOError:
         LOG.excetion('Failed to delete %s', vid)
 
-    # Should we start processing the next ep?
-
     nxt = find_next(media)
     if nxt:
         process_to_db(nxt)
@@ -642,7 +676,7 @@ def check(data):
 
 
 @cli.command()
-@click.argument('-f')
+@click.argument('-f', type=click.Path(exists=True))
 def match(f):
     """Manual match for a file. This is usefull for testing the a finds the correct end time."""
     # assert f in H.names
@@ -707,6 +741,8 @@ def set_manual_theme_time(showname, season, episode, type, start, end):
                 item = se.query(Preprocessed).filter_by(ratingKey=ep.ratingKey).one()
                 start = to_sec(start)
                 end = to_sec(end)
+
+                # TODO HANDLE TYPE to set ffmpeg_ned
 
                 if start:
                     item.correct_time_start = start
