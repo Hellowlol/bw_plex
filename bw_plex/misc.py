@@ -163,6 +163,54 @@ def get_offset_end(vid, hashtable):
     return start_time, end_time
 
 
+def calc_offset(final_video, final_audio, dev=7, cutoff=15):
+    """Helper to find matching time ranges between audio silence and blackframes.
+       It simply returns the first matching blackframes with silence.
+
+       Args:
+            final_video(list): [[start, end, duration], ...]
+            final_audio(list): [[start, end, duration], ...]
+            dev (int): The deviation we should accept.
+
+       Returns:
+            int
+
+
+    """
+    match_window = []
+
+    def to_time_range(items):
+        # just to convert a seconds time range to MM:SS format
+        # so its easyer to match,
+        t = []
+        for i in items:
+            t.append([to_time(ii) for ii in i])
+        return t
+
+    LOG.debug('final_video %s', to_time_range(final_video))
+    LOG.debug('final_audio %s', to_time_range(final_audio))
+
+    LOG.debug('fin v %s', final_video)
+    LOG.debug('fin a %s', final_audio)
+
+    # So i could really use some help regarding this. Its shit but it kinda works.
+
+    for video in reversed(final_video):
+        for aud in final_audio:
+            # Sometime times there are black shit the first 15 sec. lets skip that to remove false positives
+            if video[1] > cutoff:  # end time of black shit..
+                # if silence is within black shit its ok. Allow dev sec deviance.
+                if aud and video and abs(aud[0] - video[0]) <= dev and abs(aud[1] - video[0]) <= dev:
+                    match_window.append(video)
+
+    if match_window:
+        m = list(sorted(match_window, key=lambda k: (k[1], k[2])))
+        LOG.debug('Matching windows are %s', to_time_range(m))
+        return m[0][0]
+
+    return -1
+
+
 def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_video=0.5, pix_th=0.10, au_db=50):
     v = 'blackdetect=d=%s:pix_th=%s' % (duration_video, pix_th)
     a = 'silencedetect=n=-%sdB:d=%s' % (au_db, duration_audio)
@@ -210,28 +258,8 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
         else:
             break
 
-    fa = []
-    fv = []
-    for ll in final_video:
-        fv.append([to_time(i) for i in ll])
+    return calc_offset(final_video, final_audio)
 
-    for aa in final_audio:
-        fa.append([to_time(i) for i in aa])
-
-    LOG.debug('final_video %s', fv)
-    LOG.debug('final_audio %s', fa)
-
-    # the sub lists are [start, end, duration]
-    for video in reversed(final_video):
-        for aud in final_audio:
-            # Sometime times there are black shit the first 15 sec. lets skip that to remove false positives
-            if video[1] > 15:  # end time of black shit..
-                # if silence is within black shit its ok. Allow dev sec deviance.
-                if aud and video and abs(aud[0] - video[0]) <= dev and abs(aud[1] - video[0]) <= dev:
-                    LOG.debug(to_time(video[0]))
-                    return video[0]
-
-    return -1
 
 
 def get_valid_filename(s):
