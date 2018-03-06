@@ -333,9 +333,16 @@ def process(name, sample, threads, skip_done):
                         all_eps.remove(ep)
 
     HT = get_hashtable()
+
+    def prot(item):
+        try:
+            process_to_db(item)
+        except Exception as e:
+            logging.error(e, exc_info=True)
+
     if all_eps:
         p = Pool(threads)
-        p.map(process_to_db, all_eps, 1)
+        p.map(prot, all_eps, 1)
         p.terminate()
 
 
