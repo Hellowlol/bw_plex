@@ -286,13 +286,13 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False):
     tmp.close()
     if trim is None:
         cmd = [
-            'ffmpeg', '-loglevel', 'panic', '-i', afile, '-ac', '1', '-ar',
+            'ffmpeg', '-i', afile, '-ac', '1', '-ar',
             str(fs), '-acodec', 'pcm_s16le', tmp_name
         ]
 
     else:
         cmd = [
-            'ffmpeg', '-loglevel', 'panic', '-i', afile, '-ac', '1', '-ar',
+            'ffmpeg', '-i', afile, '-ac', '1', '-ar',
             str(fs), '-ss', '0', '-t', str(trim), '-acodec', 'pcm_s16le',
             tmp_name
         ]
