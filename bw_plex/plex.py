@@ -86,11 +86,18 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     ff = -1
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
+
     if theme is None:
-        theme = convert_and_trim(get_theme(media), fs=11025, theme=True)
+        theme = get_theme(media)
+        theme = convert_and_trim(theme, fs=11025, theme=True)
 
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
+
+
+    #if theme not in HT.names:
+    #    analyzer().ingest(theme, vid)
+
 
     # Lets skip the start time for now. This need to be added later to support shows
     # that have show, theme song show.
@@ -181,6 +188,7 @@ def get_theme(media):
         theme = search_for_theme_youtube(name,
                                          rk=rk,
                                          save_path=THEMES)
+        LOG.debug('Downloaded theme for %s', name)
 
         theme = convert_and_trim(theme, fs=11025, theme=True)
         SHOWS[rk] = theme
@@ -188,8 +196,8 @@ def get_theme(media):
 
 
 @cli.command()
-@click.option('-client_name', default=None)
-@click.option('-skip_done', default=False, is_flag=True)
+@click.option('-client_name', '-cn', default=None)
+@click.option('-skip_done', '-sd', default=False, is_flag=True)
 def manual_check_db(client_name, skip_done):
     """Do a manual check of the db. This will start playback on a client and seek the video file where we have found
        theme start/end and ffmpeg_end. You will be asked if its a correct match, press y or set the correct time in
@@ -282,13 +290,11 @@ def manual_check_db(client_name, skip_done):
         click.echo('Done')
 
 
-
-
 @cli.command()
-@click.option('-name', help='Search for a show.', default=None)
-@click.option('-sample', default=0, help='Process N episodes of all shows.', type=int)
-@click.option('-threads', help='Threads to uses', default=1, type=int)
-@click.option('-skip_done', help='Skip media items that exist in the db', default=True, is_flag=True)
+@click.option('-name', '-n', help='Search for a show.', default=None)
+@click.option('-sample', '-s', default=0, help='Process N episodes of all shows.', type=int)
+@click.option('-threads', '-t', help='Threads to uses', default=1, type=int)
+@click.option('-skip_done', '-sd', help='Skip media items that exist in the db', default=True, is_flag=True)
 def process(name, sample, threads, skip_done):
     """Manual process some/all eps.
        You will asked for what you want to process
@@ -304,12 +310,11 @@ def process(name, sample, threads, skip_done):
 
     """
     global HT
-
-    load_themes()
-
     all_eps = []
-    shows = find_all_shows()
+
     if name:
+        load_themes()
+        shows = find_all_shows()
         shows = [s for s in shows if s.title.lower().startswith(name.lower())]
         shows = choose('Select what show to process', shows, 'title')
 
@@ -319,11 +324,14 @@ def process(name, sample, threads, skip_done):
             all_eps += eps
 
     if sample:
-        for show in shows:
-            all_eps += show.episodes()[:sample]
+        def lol(i):
+            x = i.episodes()[:sample]
+            return all_eps.extend(x)
+
+        find_all_shows(lol)
 
     if skip_done:
-        # Now there must be a betty way..
+        # Now there must be a better way..
         with session_scope() as se:
             items = se.query(Preprocessed).all()
             for item in items:
@@ -347,11 +355,19 @@ def process(name, sample, threads, skip_done):
         # if the user is selecting n eps > 1 for the same theme.
         # Lets just download the the themes first so the shit is actually processed.
         gr = set([i.grandparentRatingKey for i in all_eps])
+        LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
-            p.map(get_theme, [PMS.fetchItem(z) for z in gr], 1)
+            sh = p.map(PMS.fetchItem, gr)
+            try:
+                p.map(search_for_theme_youtube, [(s.title, s. ratingKey, THEMES) for s in sh])
+            except KeyboardInterrupt:
+                pass
 
-        p.map(prot, all_eps, 1)
-        p.terminate()
+        try:
+            load_themes()
+            p.map(prot, all_eps)
+        except KeyboardInterrupt:
+            p.terminate()
 
 
 @cli.command()
@@ -370,7 +386,7 @@ def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):
 
 
 @click.command()
-@click.option('--fp', default=None, help='where to create the config file.')
+@click.option('-fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
     """Create a config.
 
@@ -444,7 +460,7 @@ def fix_shitty_theme(name, url, rk, just_theme):
 
 @cli.command()
 @click.option('-show', default=None)
-@click.option('--force', default=False, is_flag=True)
+@click.option('-force', default=False, is_flag=True)
 def find_theme_youtube(show, force):
     """Iterate over all your shows and downloads the first match for
        showname theme song on youtube.
@@ -478,13 +494,13 @@ def find_theme_youtube(show, force):
 
 
 @cli.command()
-@click.option('-n', help='How many thread to use', type=int, default=1)
-@click.option('-directory', help='What directory you want to scan for themes.', default=None)
+@click.option('-threads', '-t', help='How many thread to use', type=int, default=1)
+@click.option('-directory', '-d', help='What directory you want to scan for themes.', default=None)
 def create_hash_table_from_themes(n, directory):
     """ Create a hashtable from the themes.
 
         Args:
-            n (int): How many theads to use.
+            theads (int): How many threads to use.
             directory (None, str): If you don't pass a directory will select the default one
 
         Returns:

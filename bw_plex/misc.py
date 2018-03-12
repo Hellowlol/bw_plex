@@ -33,6 +33,8 @@ def get_pms(url=None, token=None, username=None,
         acc = MyPlexAccount(username, password)
         PMS = acc.resource(servername).connect()
 
+    LOG.debug('Getting server %s', PMS.friendlyName)
+
     return PMS
 
 
@@ -106,6 +108,7 @@ def analyzer():
 
 
 def get_hashtable():
+    LOG.debug('Getting hashtable')
     from bw_plex.audfprint.hash_table import HashTable
 
     if os.path.exists(FP_HASHES):
@@ -139,9 +142,13 @@ def matcher():
 
 
 #@timecall(immediate=True)
-def get_offset_end(vid, hashtable):
+def get_offset_end(vid, hashtable, check_if_missing=False):
     an = analyzer()
     match = matcher()
+
+    # Or should we just check here?? untested.
+    if not vid in hashtable.names and check_if_missing:
+        an.ingest(vid, hashtable)
 
     start_time = -1
     end_time = -1
@@ -194,6 +201,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
     LOG.debug('fin a %s', final_audio)
 
     # So i could really use some help regarding this. Its shit but it kinda works.
+    # Need to get some kinda score system as we need lower db to 30 and dur to 0.2 to catch more stuff.
 
     for video in reversed(final_video):
         for aud in final_audio:
@@ -219,6 +227,9 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
     v = 'blackdetect=d=%s:pix_th=%s' % (duration_video, pix_th)
     a = 'silencedetect=n=-%sdB:d=%s' % (au_db, duration_audio)
 
+    #
+    # ffmpeg -i "W:\Dexter\Season 01\dexter.s01e01.720p.bluray.x264-orpheus.mkv" -t 600 -vf "select='gt(scene,0.4)',showinfo,blackdetect=d=0.5:pix_th=0.10" -af silencedetect=n=-50dB:d=0.5 -f null -
+    #
     cmd = [
         'ffmpeg', '-i', afile, '-t', str(trim), '-vf',
          v, '-af', a, '-f', 'null', '-'
@@ -265,7 +276,6 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
     return calc_offset(final_video, final_audio)
 
 
-
 def get_valid_filename(s):
 
     head = os.path.dirname(s)
@@ -280,7 +290,6 @@ def get_valid_filename(s):
         return clean_tail
 
 
-#@timecall(immediate=True)
 def convert_and_trim(afile, fs=8000, trim=None, theme=False):
     tmp = tempfile.NamedTemporaryFile(mode='r+b',
                                       prefix='offset_',
@@ -378,10 +387,13 @@ def search_tunes(name, rk):
     return fin_res
 
 
-#@timecall(immediate=True)
 def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
-    LOG.debug('Searching youtube for %s', name)
     import youtube_dl
+
+    LOG.debug('Searching youtube for %s', name)
+
+    if isinstance(name, tuple):
+        name, rk, save_path = name
 
     if save_path is None:
         save_path = os.getcwd()
@@ -392,7 +404,10 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     t = u'%s' % fp
 
     ydl_opts = {
-        'verbose': True,
+        'quiet': True,
+        'continuedl': True,
+        'external_downloader': 'ffmpeg',
+        #'verbose': True,
         'outtmpl': t + u'.%(ext)s',
         'default_search': 'ytsearch',
         # So we select "best" here since this does not get throttled by
@@ -418,6 +433,8 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
     ydl.to_screen = nothing
 
+    name = name.replace(':', '')
+
     with ydl:
         try:
             if url:
@@ -428,8 +445,9 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
         except:
             LOG.exception('Failed to download theme song %s' % name)
+    LOG.debug('Done downloading theme for %s', name)
 
-    return fp + '.wav'
+    return t + '.wav'
 
 
 def download_subtitle(episode):
