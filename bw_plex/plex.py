@@ -66,6 +66,31 @@ def find_all_shows(func=None):
     return all_shows
 
 
+def get_theme(media):
+    """Get the current location of the theme or download
+       the damn thing and convert it so it's ready for matching."""
+    LOG.debug('theme media type %s', media.TYPE)
+
+    if media.TYPE == 'show':
+        name = media.title
+        rk = media.ratingKey
+    else:
+        name = media.grandparentTitle
+        rk = media.grandparentRatingKey
+
+    theme = SHOWS.get(rk)
+
+    if theme is None:
+        theme = search_for_theme_youtube(name,
+                                         rk=rk,
+                                         save_path=THEMES)
+        LOG.debug('Downloaded theme for %s', name)
+
+        theme = convert_and_trim(theme, fs=11025, theme=True)
+        SHOWS[rk] = theme
+    return theme
+
+
 def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None):
     """Process a plex media item to the db
 
@@ -94,10 +119,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
 
-
-    #if theme not in HT.names:
-    #    analyzer().ingest(theme, vid)
-
+    # too cover manual process_to_db.
+    if theme not in HT.names:
+        analyzer().ingest(HT, theme)
 
     # Lets skip the start time for now. This need to be added later to support shows
     # that have show, theme song show.
@@ -143,14 +167,6 @@ def cli(debug, username, password, servername, url, token, config):
     global PMS
     global CONFIG
 
-    # click.echo('debug %s' % debug)
-    # click.echo('username %s' % username)
-    # click.echo('password %s' % password)
-    # click.echo('servername %s' % servername)
-    # click.echo('url %s' % url)
-    # click.echo('token %s' % token)
-    # click.echo('config %s' % config)
-
     if debug:
         LOG.setLevel(logging.DEBUG)
     else:
@@ -170,35 +186,10 @@ def cli(debug, username, password, servername, url, token, config):
                       servername=servername)
 
 
-def get_theme(media):
-    """Get the current location of the theme or download
-       the damn thing and convert it so it's ready for matching."""
-    LOG.debug('theme media type %s', media.TYPE)
-
-    if media.TYPE == 'show':
-        name = media.title
-        rk = media.ratingKey
-    else:
-        name = media.grandparentTitle
-        rk = media.grandparentRatingKey
-
-    theme = SHOWS.get(rk)
-
-    if theme is None:
-        theme = search_for_theme_youtube(name,
-                                         rk=rk,
-                                         save_path=THEMES)
-        LOG.debug('Downloaded theme for %s', name)
-
-        theme = convert_and_trim(theme, fs=11025, theme=True)
-        SHOWS[rk] = theme
-    return theme
-
-
 @cli.command()
-@click.option('-client_name', '-cn', default=None)
-@click.option('-skip_done', '-sd', default=False, is_flag=True)
-def manual_check_db(client_name, skip_done):
+@click.option('-cn', '--client_name', default=None)
+@click.option('-sd', '-skip_done', default=False, is_flag=True)
+def check_db(client_name, skip_done):
     """Do a manual check of the db. This will start playback on a client and seek the video file where we have found
        theme start/end and ffmpeg_end. You will be asked if its a correct match, press y or set the correct time in
        mm:ss format.
@@ -276,7 +267,7 @@ def manual_check_db(client_name, skip_done):
                     match = click.prompt('Was ffmpeg_end at %s correct?' % item.ffmpeg_end_str)
 
                     if match:
-                        if match == 'y':
+                        if match.lower() in ['y', 'yes']:
                             item.correct_ffmpeg = item.ffmpeg_end
                         else:
                             item.correct_ffmpeg = to_sec(match)
@@ -291,10 +282,10 @@ def manual_check_db(client_name, skip_done):
 
 
 @cli.command()
-@click.option('-name', '-n', help='Search for a show.', default=None)
-@click.option('-sample', '-s', default=0, help='Process N episodes of all shows.', type=int)
-@click.option('-threads', '-t', help='Threads to uses', default=1, type=int)
-@click.option('-skip_done', '-sd', help='Skip media items that exist in the db', default=True, is_flag=True)
+@click.option('-n', '--name', help='Search for a show.', default=None)
+@click.option('-s', '.-sample', default=0, help='Process N episodes of all shows.', type=int)
+@click.option('-t', '--threads', help='Threads to uses', default=1, type=int)
+@click.option('-sd', '--skip_done', help='Skip media items that exist in the db', default=True, is_flag=True)
 def process(name, sample, threads, skip_done):
     """Manual process some/all eps.
        You will asked for what you want to process
@@ -406,9 +397,10 @@ def create_config(fp=None):
 @cli.command()
 @click.argument('name')
 @click.argument('url')
+@click.option('-t', '--type', default='youtube')
 @click.option('-rk', help='Add rating key', default='auto')
-@click.option('-just_theme', default=False, is_flag=True)
-def fix_shitty_theme(name, url, rk, just_theme):
+@click.option('-jt', '--just_theme', default=False, is_flag=True)
+def fix_shitty_theme(name, url, type, rk, just_theme):
     """Set the correct fingerprint of the show in the hashes.db and
        process the eps of that show in the db against the new theme fingerprint.
 
@@ -459,18 +451,20 @@ def fix_shitty_theme(name, url, rk, just_theme):
 
 
 @cli.command()
-@click.option('-show', default=None)
-@click.option('-force', default=False, is_flag=True)
-def find_theme_youtube(show, force):
+@click.option('-s', '--show', default=None)
+@click.option('-t', '--type', default='youtube')
+@click.option('-f', '--force', default=False, is_flag=True)
+def find_theme(show, type, force):
     """Iterate over all your shows and downloads the first match for
        showname theme song on youtube.
 
-       Since this is best effort (at best.. )they are stored in the temp_theme dir
+       Since this is best effort (at best.. ) they are stored in the temp_theme directory.
        Copy them over to the theme folder and run create_hash_table_from_themes and fix any mismatch with
        fix_shitty_theme.
 
         Args:
             show(str): name of the show
+            type(str): youtube, plex, tvtunes ? # TODO
             force(bool): does nothing
 
         Returns:
@@ -478,7 +472,9 @@ def find_theme_youtube(show, force):
     """
 
     if show is not None:
-        search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
+        if type == 'youtube':
+            search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
+
         return
 
     shows = find_all_shows()
@@ -489,14 +485,19 @@ def find_theme_youtube(show, force):
     #             [(s.title, s.ratingKey, TEMP_THEMES) for s in shows], 1)
 
     for show in shows:
-        search_for_theme_youtube(show.title, rk=show.ratingKey,
-                                 save_path=TEMP_THEMES)
+        if type == 'youtube':
+            search_for_theme_youtube(show.title, rk=show.ratingKey,
+                                     save_path=TEMP_THEMES)
+        elif type == 'plex':
+            pass
+        elif type == 'tvtunes':
+            pass
 
 
 @cli.command()
-@click.option('-threads', '-t', help='How many thread to use', type=int, default=1)
-@click.option('-directory', '-d', help='What directory you want to scan for themes.', default=None)
-def create_hash_table_from_themes(n, directory):
+@click.option('-t', '--threads', help='How many thread to use', type=int, default=1)
+@click.option('-d', '--directory', help='What directory you want to scan for themes.', default=None)
+def add_theme_to_hashtable(threads, directory):
     """ Create a hashtable from the themes.
 
         Args:
@@ -527,7 +528,7 @@ def create_hash_table_from_themes(n, directory):
 
     LOG.debug('Creating hashtable, this might take a while..')
 
-    multiproc_add(a, HT, iter(all_files), report, n)
+    multiproc_add(a, HT, iter(all_files), report, threads)
     if HT and HT.dirty:
         HT.save(FP_HASHES)
 
