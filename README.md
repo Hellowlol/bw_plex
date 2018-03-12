@@ -35,14 +35,16 @@ Options:
   --help                 Show this message and exit.
 
 Commands:
-  create_hash_table_from_themes  Create a hashtable from the themes.
-  find_theme_youtube             Iterate over all your shows and downloads
-                                 the...
-  fix_shitty_theme               Set the correct fingerprint of the show in...
-  match                          Manual match for a file.
-  process                        Manual process some/all eps.
-  set_manual_theme_time          Set a manual start and end time for a theme.
-  watch                          Start watching the server for stuff to do.
+  add_theme_to_hashtable  Create a hashtable from the themes.
+  check_db                Do a manual check of the db.
+  ffmpeg_process          Simple manual test for ffmpeg_process with...
+  find_theme              Iterate over all your shows and downloads the...
+  fix_shitty_theme        Set the correct fingerprint of the show in...
+  match                   Manual match for a file.
+  process                 Manual process some/all eps.
+  set_manual_theme_time   Set a manual start and end time for a theme.
+  watch                   Start watching the server for stuff to do.
+
 ```
 
 The most common will be:
