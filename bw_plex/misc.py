@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 import shutil
+import time
 
 from collections import defaultdict
 
@@ -94,6 +95,10 @@ def to_time(sec):
 
     m, s = divmod(sec, 60)
     return '%02d:%02d' % (m, s)
+
+
+def sec_to_hh_mm_ss(sec):
+    return time.strftime('%H:%M:%S', time.gmtime(sec))
 
 
 def analyzer():
