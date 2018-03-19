@@ -4,7 +4,7 @@ import os
 
 import click
 from profilehooks import timecall
-from bwplex.misc import sec_to_hh_mm_ss
+from bw_plex.misc import sec_to_hh_mm_ss
 
 
 color = {'yellow': (255, 255, 0),
@@ -32,9 +32,28 @@ def make_imgz(afile, start=600, every=1):
     subprocess.call(cmd)
 
 
+def video_frame_by_frame(path, offset=0):
 
-def stream():
-    pass
+    import cv2
+
+    cap = cv2.VideoCapture(path)
+
+    if offset:
+        # Add read from stuff.
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        fn = offset * fps
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fn)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        #pos = cap.get(cv2.CAP_PROP_POS_MSEC)
+        #print(pos / 1000)
+
+        if ret:
+            yield frame
+
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def calc_success(rectangles, img_height, img_width, success=0.9):
@@ -51,15 +70,13 @@ def locate_text(image, debug=False):
     import cv2
     import numpy as np
     # Compat so we can use a frame and a file..
-    if os.path.exists(image) and os.path.isfile(image):
+    if isinstance(image, str) and os.path.exists(image) and os.path.isfile(image):
         image = cv2.imread(image)
 
     if debug:
         cv2.imshow('original image', image)
 
     height, width, depth = image.shape
-    img_height = height
-    img_width = width
     mser = cv2.MSER_create(4, 10, 8000, 0.8, 0.2, 200, 1.01, 0.003, 5)
     # Convert to gray.
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -160,6 +177,28 @@ def locate_text(image, debug=False):
     return rectangles
 
 
+def find_credits_start(path, offset=0, fps=None, check=7):
+    frames = []
+
+    if fps is None:
+        # we can just grab the fps from plex.
+        import cv2
+        cap = cv2.VideoCapture(path)
+        fps = cap.get(cv2.CAP_PROP_POS_MSEC)
+        cap.release()
+
+    for i, frame in enumerate(video_frame_by_frame(path, offset=offset)):
+        recs = locate_text(frame)
+        if recs:
+            frames.append(i)
+
+        if frames <= check:
+            return offset + frames[0] * fps
+
+    return -1
+
+
+
 @click.command()
 @click.argument('path')
 @click.option('-c', type=float, default=0.0)
@@ -175,7 +214,9 @@ def cmd(path, c, debug, profile):
         if profile:
             t = timecall(locate_text(f, debug=debug), immediate=True)
         else:
-            t = locate_text(f, debug=debug)
+            t = find_credits_start(path)
+            print(t)
+            #t = locate_text(f, debug=debug)
 
         if c:
             t = calc_success(t, c)
