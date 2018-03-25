@@ -484,6 +484,27 @@ def to_sec(t):
         return int(t)
 
 
+def has_recap_audio(audio, phrase):
+    """ audio is wave in 16k sample rate."""
+
+    try:
+        from pocketsphinx import AudioFile
+
+        if not phrase:
+            LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
+            return False
+
+        for ph in phrase:
+            AF = AudioFile(audio_file=audio, keyword_search=ph)
+            for p in AF:
+                return True
+
+        return False
+
+    except ImportError:
+        LOG.warning('pocketsphinx is optional install')
+        return False
+
 #@timecall(immediate=True)
 def has_recap(episode, phrase):
     LOG.debug('Checking this this episode has a recap with phrase %s using subtitles', ', '.join(phrase))
