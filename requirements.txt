@@ -13,6 +13,8 @@ configobj
 youtube-dl
 beautifulsoup4
 html5lib
+#opencv-contrib-python
+#pytesseract
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
