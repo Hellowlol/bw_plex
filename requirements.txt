@@ -19,3 +19,4 @@ html5lib
 
 
 # pocketsphinx
+# speech_recognition

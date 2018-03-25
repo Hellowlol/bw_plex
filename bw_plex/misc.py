@@ -484,27 +484,17 @@ def to_sec(t):
         return int(t)
 
 
-def has_recap_audio(audio, phrase):
+def has_recap_audio(audio, phrase, thresh=1, duration=30):
     """ audio is wave in 16k sample rate."""
+    import speech_recognition as sr
 
-    try:
-        from pocketsphinx import AudioFile
+    r = sr.Recognizer()
+    with sr.AudioFile(audio) as source:
+        r.adjust_for_ambient_noise(source)
+        audio = r.record(source, duration=duration)
+        result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
+        return result
 
-        if not phrase:
-            LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
-            return False
-
-        for ph in phrase:
-            AF = AudioFile(audio_file=audio, keyphrase=ph, lm=False, kws_threshold=1e+20)
-            for p in AF:
-                if str(p).lower() == ph.lower():
-                    return True
-
-        return False
-
-    except ImportError:
-        LOG.warning('pocketsphinx is optional install')
-        return False
 
 #@timecall(immediate=True)
 def has_recap(episode, phrase):
