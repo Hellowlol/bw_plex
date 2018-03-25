@@ -16,3 +16,6 @@ html5lib
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
+
+
+# pocketsphinx
