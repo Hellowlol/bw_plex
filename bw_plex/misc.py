@@ -495,9 +495,10 @@ def has_recap_audio(audio, phrase):
             return False
 
         for ph in phrase:
-            AF = AudioFile(audio_file=audio, keyword_search=ph)
+            AF = AudioFile(audio_file=audio, keyphrase=ph, lm=False, kws_threshold=1e+20)
             for p in AF:
-                return True
+                if str(p).lower() == ph.lower():
+                    return True
 
         return False
 
