@@ -229,6 +229,22 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
 
 
 def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_video=0.5, pix_th=0.10, au_db=50):
+    """Find a list of time range for black detect and silence detect.duration_video
+
+       Args:
+            afile(str): the file we should checj
+            trim(int): Trim the file n secs
+            dev(int): The accepted deviation
+            duration_audio(float): Duration of the silence
+            duration_video(float): Duration of the blackdetect
+            pix_th(float): param of blackdetect
+            au_db(int): param audio silence.
+
+
+       Returns:
+            int
+
+    """
     v = 'blackdetect=d=%s:pix_th=%s' % (duration_video, pix_th)
     a = 'silencedetect=n=-%sdB:d=%s' % (au_db, duration_audio)
 
@@ -240,7 +256,7 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
          v, '-af', a, '-f', 'null', '-'
     ]
 
-    LOG.debug('Calling ffind_offset_ffmpeg with command %s', ' '.join(cmd))
+    LOG.debug('Calling find_offset_ffmpeg with command %s', ' '.join(cmd))
 
     proc = subprocess.Popen(
         cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
