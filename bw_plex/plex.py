@@ -283,7 +283,7 @@ def check_db(client_name, skip_done):
 
 @cli.command()
 @click.option('-n', '--name', help='Search for a show.', default=None)
-@click.option('-s', '.-sample', default=0, help='Process N episodes of all shows.', type=int)
+@click.option('-s', '--sample', default=0, help='Process N episodes of all shows.', type=int)
 @click.option('-t', '--threads', help='Threads to uses', default=1, type=int)
 @click.option('-sd', '--skip_done', help='Skip media items that exist in the db', default=True, is_flag=True)
 def process(name, sample, threads, skip_done):
