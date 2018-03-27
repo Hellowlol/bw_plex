@@ -166,7 +166,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--token', '-t', default=None, help='plex-x-token')
 @click.option('--config', '-c', default=None, help='Not in use atm.')
 @click.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
-def cli(debug, username, password, servername, url, token, config):
+def cli(debug, username, password, servername, url, token, config, verify_ssl):
     """ Entry point for the CLI."""
     global PMS
     global CONFIG
