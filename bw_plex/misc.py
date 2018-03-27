@@ -324,6 +324,10 @@ def get_valid_filename(s):
         return clean_tail
 
 
+def download_via_ffmpeg(afile):
+    pass
+
+
 def convert_and_trim(afile, fs=8000, trim=None, theme=False):
     tmp = tempfile.NamedTemporaryFile(mode='r+b',
                                       prefix='offset_',
