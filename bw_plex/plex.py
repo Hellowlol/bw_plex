@@ -91,7 +91,7 @@ def get_theme(media):
     return theme
 
 
-def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None):
+def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None, recap=None):
     """Process a plex media item to the db
 
        Args:
@@ -131,6 +131,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     if ffmpeg_end is None:
         ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
 
+    if recap is None:
+        recap = has_recap(media, CONFIG.get('words'), audio=vid)
+
     if end is not None:
         with session_scope() as se:
             try:
@@ -149,7 +152,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                                  grandparentRatingKey=media.grandparentRatingKey,
                                  prettyname=media._prettyfilename(),
                                  updatedAt=media.updatedAt,
-                                 has_recap=has_recap(media, CONFIG.get('words')))
+                                 has_recap=recap)
                 se.add(p)
                 LOG.debug('Added %s to media.db', name)
 
@@ -162,6 +165,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--url', default=None, help='url to the server you want to monitor')
 @click.option('--token', '-t', default=None, help='plex-x-token')
 @click.option('--config', '-c', default=None, help='Not in use atm.')
+@clic.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
 def cli(debug, username, password, servername, url, token, config):
     """ Entry point for the CLI."""
     global PMS
@@ -177,13 +181,15 @@ def cli(debug, username, password, servername, url, token, config):
 
     url = url or CONFIG.get('url')
     token = token or CONFIG.get('token')
+    verify_ssl = verify_ssl or CONFIG.get('verify_ssl')
 
     if url and token or username and password:
 
         PMS = get_pms(url=url, token=token,
                       username=username,
                       password=password,
-                      servername=servername)
+                      servername=servername,
+                      verify_ssl=verify_ssl)
 
 
 @cli.command()
@@ -386,7 +392,6 @@ def create_config(fp=None):
 
        Returns:
             None
-
     """
     if fp is None:
         fp = INI_FILE
@@ -422,7 +427,6 @@ def fix_shitty_theme(name, url, type, rk, just_theme):
         item = PMS.search(name)
         item = choose('Select correct show', item, lambda x: '%s %s' % (x.title, x.TYPE))
         if item:
-            #if name.lower() == item[0].title.lower():
             rk = item[0].ratingKey
 
     for fp in HT.names:
@@ -653,7 +657,7 @@ def task(item, sessionkey):
 
     start, end = get_offset_end(vid, HT)
     ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
-    if end != -1:
+    if end != -1 or ffmpeg_end != 1:
         # End is -1 if not found. Or a positiv int.
         process_to_db(media, theme=theme, vid=vid, start=start, end=end, ffmpeg_end=ffmpeg_end)
 

@@ -11,6 +11,7 @@ vtor = Validator()
 spec = """
 url = string(default='')
 token = string(default='')
+verify_ssl = boolean(default=False)
 servername = string(default='')
 debug = boolean(default=False)
 

@@ -20,15 +20,19 @@ from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
 
 def get_pms(url=None, token=None, username=None,
-            password=None, servername=None):
+            password=None, servername=None, verify_ssl=None):
     from plexapi.myplex import MyPlexAccount
     from plexapi.server import PlexServer
 
     url = url or CONFIG.get('url')
     token = token or CONFIG.get('token')
+    verify_ssl = verify_ssl or CONFIG.get('verify_ssl', False)
 
     if url and token:
-        PMS = PlexServer(url, token)
+        sess = requests.Session()
+        if not verify_ssl:
+            sess.verify = False
+        PMS = PlexServer(url, token, sess)
 
     elif username and password and servername:
         acc = MyPlexAccount(username, password)
@@ -514,9 +518,12 @@ def to_sec(t):
         return int(t)
 
 
-def has_recap_audio(audio, phrase, thresh=1, duration=30):
+def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
     """ audio is wave in 16k sample rate."""
     import speech_recognition as sr
+
+    if phrase is None:
+        phrase = CONFIG.get('words')
 
     r = sr.Recognizer()
     with sr.AudioFile(audio) as source:
@@ -525,9 +532,11 @@ def has_recap_audio(audio, phrase, thresh=1, duration=30):
         result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
         return result
 
+    return False
+
 
 #@timecall(immediate=True)
-def has_recap(episode, phrase):
+def has_recap(episode, phrase, audio=None):
     LOG.debug('Checking this this episode has a recap with phrase %s using subtitles', ', '.join(phrase))
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
@@ -541,6 +550,9 @@ def has_recap(episode, phrase):
             if re.search(pattern, line.content):
                 LOG.debug('%s matched %s', ', '.join(phrase), line.content)
                 return True
+
+    if audio:
+        return has_recap_audio(audio)
 
     return False
 
