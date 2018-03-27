@@ -13,30 +13,50 @@ url = string(default='')
 token = string(default='')
 servername = string(default='')
 debug = boolean(default=False)
+
+# Myplex username and password
 username = string(default='')
 password = string(default='')
-logformat = string
-words = list(default=list())
+
+logformat = string(default='')
+words = list(default=list('previously on', 'last season', 'last episode'))
+# List of ratingkeys
 ignore_show = list(default=list())
-level = string(default='info')
+
+# Loglevel
+level = string(default='debug')
+# List of usernames
+users = list(default=list('all'))
+# List of client names
+clients = list(default=list('all'))
+
 
 """.splitlines()
 
 
+def migrate(conf):
+    return conf
+
+
 def read_or_make(fp):
-    make_conf = False
-    if not os.path.isfile(fp):
-        bw_plex.LOG.debug('%s does not exist creating default spec on that location' % fp)
-        make_conf = True
+    default = configobj.ConfigObj(None, configspec=spec,
+                                  write_empty_values=True,
+                                  create_empty=True,
+                                  raise_errors=True,
+                                  list_values=True)
 
-    config = configobj.ConfigObj(fp, configspec=spec,
-                                 write_empty_values=True,
-                                 create_empty=True, raise_errors=True,
-                                 list_values=True,)
-    config.validate(vtor, copy=True)
-    if make_conf is False:
-        return config
+    # Overwrite defaults options with what the user has given.
+    if os.path.isfile(fp):
+        config = configobj.ConfigObj(fp, configspec=spec,
+                                     write_empty_values=True,
+                                     create_empty=True, raise_errors=True,
+                                     list_values=True)
+        default.merge(config)
 
-    config.filename = fp
-    config.write()
-    return config
+    default.validate(vtor, copy=True)
+
+    default = migrate(default)
+
+    default.filename = fp
+    default.write()
+    return default
