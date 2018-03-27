@@ -552,7 +552,9 @@ def has_recap(episode, phrase, audio=None):
                 return True
 
     if audio:
-        return has_recap_audio(audio)
+        audio_recap = has_recap_audio(audio)
+        if audio_recap:
+            return True
 
     return False
 
