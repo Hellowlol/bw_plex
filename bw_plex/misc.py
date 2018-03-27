@@ -218,12 +218,18 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
 
     if not match_window and not final_audio and final_video:
         LOG.debug('There are no audio silence at all, taking a stab in the dark.')
-        return list(sorted([i for i in final_video if i[0] < 30 and i[1] > 396], key=lambda k: k[2]))[0][0]
+        try:
+            return list(sorted([i for i in final_video if i[0] >= 30 and i[1] >= 396], key=lambda k: k[2]))[0][0]
+        except IndexError:
+            return -1
 
     if match_window:
-        m = list(sorted(match_window, key=lambda k: (k[1], k[2])))
-        LOG.debug('Matching windows are %s', to_time_range(m))
-        return m[0][0]
+        try:
+            m = list(sorted(match_window, key=lambda k: (k[1], k[2])))
+            LOG.debug('Matching windows are %s', to_time_range(m))
+            return m[0][0]
+        except IndexError:
+            return -1
 
     return -1
 
@@ -271,6 +277,9 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
     while True:
         line = proc.stderr.readline()
         line = line.decode('utf-8').strip()
+        # Try to help out with context switch
+        # Allow context switch
+        time.sleep(0.0001)
 
         if line:
             audio_res = re.findall(audio_reg, line)

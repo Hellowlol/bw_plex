@@ -577,6 +577,9 @@ def client_jump_to(offset=None, sessionkey=None):
     if offset == -1:
         return
 
+    conf_clients = CONFIG.get('clients', [])
+    conf_users = CONFIG.get('users', [])
+
     for media in PMS.sessions():
         # Find the client.. This client does not have the correct address
         # or 'protocolCapabilities' so we have to get the correct one.
@@ -584,7 +587,15 @@ def client_jump_to(offset=None, sessionkey=None):
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
-            LOG.debug('client %s %s' % (client.title, (media.viewOffset / 1000)))
+            LOG.debug('client %s %s', client.title, (media.viewOffset / 1000))
+
+            # Check that this client is allowed.
+            if conf_clients and client.title not in conf_clients:
+                return
+
+            # Check that this user is allowed.
+            if conf_users and user not in conf_users:
+                return
 
             # To stop processing. from func task if we have used to much time..
             # This will not work if/when credits etc are added. Need a better way.
@@ -602,7 +613,7 @@ def client_jump_to(offset=None, sessionkey=None):
             # time.sleep(0.2)
             # client.play()
             JUMP_LIST.remove(sessionkey)
-            time.sleep(1)
+            #time.sleep(1)
 
             return
 
@@ -735,7 +746,7 @@ def watch():
 
     try:
         while True:
-            time.sleep(0.1)
+            time.sleep(0.0001)
     except KeyboardInterrupt:
         click.echo('Aborting')
         ffs.stop()
