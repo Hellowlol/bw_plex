@@ -530,6 +530,7 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
         r.adjust_for_ambient_noise(source)
         audio = r.record(source, duration=duration)
         result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
+        LOG.debug('Found %s in audio', result)
         return result
 
     return False
@@ -537,7 +538,8 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
 
 #@timecall(immediate=True)
 def has_recap(episode, phrase, audio=None):
-    LOG.debug('Checking this this episode has a recap with phrase %s using subtitles', ', '.join(phrase))
+    LOG.debug('Checking if %s has a recap with phrase %s using subtitles',
+              episode._prettyfilename(),', '.join(phrase))
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
         return False
@@ -548,7 +550,7 @@ def has_recap(episode, phrase, audio=None):
     for sub in subs:
         for line in sub:
             if re.search(pattern, line.content):
-                LOG.debug('%s matched %s', ', '.join(phrase), line.content)
+                LOG.debug('%s matched %s in subtitles', ', '.join(phrase), line.content)
                 return True
 
     if audio:
