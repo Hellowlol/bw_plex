@@ -165,7 +165,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--url', default=None, help='url to the server you want to monitor')
 @click.option('--token', '-t', default=None, help='plex-x-token')
 @click.option('--config', '-c', default=None, help='Not in use atm.')
-@clic.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
+@click.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
 def cli(debug, username, password, servername, url, token, config):
     """ Entry point for the CLI."""
     global PMS
