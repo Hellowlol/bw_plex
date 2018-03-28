@@ -501,7 +501,7 @@ def download_subtitle(episode):
         if part.subtitleStreams():
             for sub in part.subtitleStreams():
                 if sub.key and sub.codec == 'srt':
-                    to_dl.append(pms.url('%s?download=1' % sub.key))
+                    to_dl.append(pms.url('%s?download=1' % sub.key, includeToken=True))
 
     for dl_url in to_dl:
         r = requests.get(dl_url)
@@ -541,14 +541,13 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
 
     return False
 
-
-#@timecall(immediate=True)
-def has_recap(episode, phrase, audio=None):
-    LOG.debug('Checking if %s has a recap with phrase %s using subtitles',
-              episode._prettyfilename(),', '.join(phrase))
+def has_recap_subtitle(episode, phrase):
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
         return False
+
+    LOG.debug('Checking if %s has a recap with phrase %s using subtitles',
+              episode._prettyfilename(), ', '.join(phrase))
 
     subs = download_subtitle(episode)
     pattern = re.compile(u'|'.join([re.escape(p) for p in phrase]), re.IGNORECASE)
@@ -558,6 +557,15 @@ def has_recap(episode, phrase, audio=None):
             if re.search(pattern, line.content):
                 LOG.debug('%s matched %s in subtitles', ', '.join(phrase), line.content)
                 return True
+
+    return False
+
+
+def has_recap(episode, phrase, audio=None):
+    subs = has_recap_subtitle(episode, phrase)
+
+    if subs:
+        return True
 
     if audio:
         audio_recap = has_recap_audio(audio)
