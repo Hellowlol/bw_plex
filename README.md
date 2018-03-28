@@ -1,6 +1,6 @@
 # bw_plex
 [![Travis Status](https://travis-ci.org/Hellowlol/bw_plex.svg?branch=master)](https://travis-ci.org/Hellowlol/bw_plex)
-[![Cov](https://codecov.io/gh/hellowlol/nrk_api/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
+[![Cov](https://codecov.io/gh/hellowlol/bw_plex/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
 [![PyPI version](https://badge.fury.io/py/bw_plex.svg)](https://pypi.python.org/pypi/bw_plex)
 [![Code Health](https://landscape.io/github/Hellowlol/bw_plex/master/landscape.svg?style=flat)](https://landscape.io/github/Hellowlol/bw_plex/master)
@@ -16,7 +16,7 @@ You should also install a speedup for the websocket-client package. ```pip insta
 
 
 ## Usage
-bw_plex only works on python 2. :(
+CPU/Memory usage can be rather high, so use a 64 bit python install.
 Note: This tool only works on your local network.
 
 ```
