@@ -563,7 +563,12 @@ def check_file_access(m):
             return file.file
         else:
             LOG.warning('Downloading from pms..')
-            return PMS.url('%s?download=1' % file.key)
+            try:
+                # for plexapi 3.0.6 and above.
+                return PMS.url('%s?download=1' % file.key, includeToken=True)
+            except TypeError:
+                return PMS.url('%s?download=1' % file.key)
+
 
 
 def client_jump_to(offset=None, sessionkey=None):
@@ -653,7 +658,7 @@ def task(item, sessionkey):
                   os.path.basename(theme), FP_HASHES)
 
         analyzer().ingest(HT, theme)
-        HT = HT.save_then_reload(FP_HASHES)
+        #HT = HT.save_then_reload(FP_HASHES)
 
     start, end = get_offset_end(vid, HT)
     ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
@@ -755,7 +760,7 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
-        # if HT and HT.dirty:
+        #if HT and HT.dirty:
         #    HT.save()
 
 
@@ -812,3 +817,6 @@ def set_manual_theme_time(showname, season, episode, type, start, end):
 
 if __name__ == '__main__':
     cli()
+
+    if HT and HT.dirty:
+        HT.save()

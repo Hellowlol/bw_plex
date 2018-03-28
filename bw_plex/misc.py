@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import division
 
 import os
 import re
@@ -82,7 +83,7 @@ def download_theme_plex(media, force=False):
 
     if not os.path.exists(f_path) or force and theme:
         LOG.debug('Downloading %s', f_path)
-        dlt = download(PMS.url(theme), savepath=THEMES, filename=f_name)
+        dlt = download(PMS.url(theme, includeToken=True), savepath=THEMES, filename=f_name)
 
         if dlt:
             SHOWS[rk] = f_path
@@ -107,9 +108,10 @@ def sec_to_hh_mm_ss(sec):
 
 def analyzer():
     from bw_plex.audfprint.audfprint_analyze import Analyzer
+
     a = Analyzer()
     a.n_fft = 512
-    a.n_hop = a.n_fft / 2
+    a.n_hop = a.n_fft // 2
     a.shifts = 4
     a.fail_on_error = False
     a.density = 20

@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 #!/usr/bin/python
+# coding=utf-8
 """
 audfprint.py
 
@@ -10,25 +8,20 @@ Port of the Matlab implementation.
 
 2014-05-25 Dan Ellis dpwe@ee.columbia.edu
 """
-from __future__ import print_function
+from __future__ import division, print_function
 
-# For reporting progress time
-import time
-# For command line interface
-import docopt
-import os
-# For __main__
-import sys
-# For multiprocessing options
 import multiprocessing  # for new/add
-import joblib           # for match
+import os  # For command line interface
+import sys  # For __main__
+import time  # For reporting progress time
 
-# The actual analyzer class/code
-import audfprint_analyze
-# My hash_table implementation
-import hash_table
-# Access to match functions, used in command line interface
-import audfprint_match
+import docopt  # For command line interface
+import joblib  # for match
+
+import audfprint_analyze  # The actual analyzer class/code
+import audfprint_match  # Access to match functions, used in command line interface
+import hash_table  # My hash_table implementation
+
 
 def filename_list_iterator(filelist, wavdir, wavext, listflag):
     """ Iterator to yeild all the filenames, possibly interpreting them
@@ -42,6 +35,7 @@ def filename_list_iterator(filelist, wavdir, wavext, listflag):
                 for filename in f:
                     yield os.path.join(wavdir, filename.rstrip('\n') + wavext)
 
+
 # for saving precomputed fprints
 def ensure_dir(dirname):
     """ ensure that the named directory exists """
@@ -53,6 +47,7 @@ def ensure_dir(dirname):
                 os.makedirs(dirname)
             except:
                 pass
+
 
 # Command line interface
 
@@ -77,44 +72,46 @@ def file_precompute_peaks_or_hashes(analyzer, filename, precompdir,
                         if comp != '.' and comp != '..' and comp != ''])
     root = os.path.splitext(relname)[0]
     if precompext is None:
-      if hashes_not_peaks:
-        precompext = audfprint_analyze.PRECOMPEXT
-      else:
-        precompext = audfprint_analyze.PRECOMPPKEXT
-    opfname = os.path.join(precompdir, root+precompext)
+        if hashes_not_peaks:
+            precompext = audfprint_analyze.PRECOMPEXT
+        else:
+            precompext = audfprint_analyze.PRECOMPPKEXT
+    opfname = os.path.join(precompdir, root + precompext)
     if skip_existing and os.path.isfile(opfname):
-      return ["file " + opfname + " exists (and --skip-existing); skipping"]
+        return ["file " + opfname + " exists (and --skip-existing); skipping"]
     else:
-      # Do the analysis
-      if hashes_not_peaks:
-        type = "hashes"
-        saver = audfprint_analyze.hashes_save
-        output = analyzer.wavfile2hashes(filename)
-      else:
-        type = "peaks"
-        saver = audfprint_analyze.peaks_save
-        output = analyzer.wavfile2peaks(filename)
-      # save the hashes or peaks file
-      if len(output) == 0:
-        message = "Zero length analysis for " + filename + " -- not saving."
-      else:
-        # Make sure the output directory exists
-        ensure_dir(os.path.split(opfname)[0])
-        # Write the file
-        saver(opfname, output)
-        message = ("wrote " + opfname + " ( %d %s, %.3f sec)" \
-                   % (len(output), type, analyzer.soundfiledur))
-      return [message]
+        # Do the analysis
+        if hashes_not_peaks:
+            type = "hashes"
+            saver = audfprint_analyze.hashes_save
+            output = analyzer.wavfile2hashes(filename)
+        else:
+            type = "peaks"
+            saver = audfprint_analyze.peaks_save
+            output = analyzer.wavfile2peaks(filename)
+        # save the hashes or peaks file
+        if len(output) == 0:
+            message = "Zero length analysis for " + filename + " -- not saving."
+        else:
+            # Make sure the output directory exists
+            ensure_dir(os.path.split(opfname)[0])
+            # Write the file
+            saver(opfname, output)
+            message = ("wrote " + opfname + " ( %d %s, %.3f sec)"
+                       % (len(output), type, analyzer.soundfiledur))
+        return [message]
+
 
 def file_precompute(analyzer, filename, precompdir, type='peaks', skip_existing=False, strip_prefix=None):
     """ Perform precompute action for one file, return list
         of message strings """
     print(time.ctime(), "precomputing", type, "for", filename, "...")
-    hashes_not_peaks = (type=='hashes')
+    hashes_not_peaks = (type == 'hashes')
     return file_precompute_peaks_or_hashes(analyzer, filename, precompdir,
                                            hashes_not_peaks=hashes_not_peaks,
                                            skip_existing=skip_existing,
                                            strip_prefix=strip_prefix)
+
 
 def make_ht_from_list(analyzer, filelist, hashbits, depth, maxtime, pipe=None):
     """ Populate a hash table from a list, used as target for
@@ -124,14 +121,14 @@ def make_ht_from_list(analyzer, filelist, hashbits, depth, maxtime, pipe=None):
     ht = hash_table.HashTable(hashbits=hashbits, depth=depth, maxtime=maxtime)
     # Add in the files
     for filename in filelist:
-        fn = os.path.basename(filename)
         hashes = analyzer.wavfile2hashes(filename)
-        ht.store(fn, hashes)
+        ht.store(filename, hashes)
     # Pass back to caller
     if pipe:
         pipe.send(ht)
     else:
         return ht
+
 
 def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report, skip_existing=False, strip_prefix=None):
     """ Breaks out the core part of running the command.
@@ -164,11 +161,15 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         tothashes = 0
         ix = 0
         for filename in filename_iter:
+            report([time.ctime() + " ingesting #" + str(ix) + ": "
+                    + filename + " ..."])
             dur, nhash = analyzer.ingest(hash_tab, filename)
             tothashes += nhash
             ix += 1
 
-        print('Added %s hashses %.1f hashses/sec' % (tothashes, tothashes/float(analyzer.soundfiletotaldur)))
+        report(["Added " + str(tothashes) + " hashes "
+                + "(%.1f" % (tothashes / float(analyzer.soundfiletotaldur))
+                + " hashes/sec)"])
     elif cmd == 'remove':
         # Removing files from hash table.
         for filename in filename_iter:
@@ -178,7 +179,8 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         hash_tab.list(lambda x: report([x]))
 
     else:
-        raise ValueError("unrecognized command: "+cmd)
+        raise ValueError("unrecognized command: " + cmd)
+
 
 def multiproc_add(analyzer, hash_tab, filename_iter, report, ncores):
     """Run multiple threads adding new files to hash table"""
@@ -194,7 +196,6 @@ def multiproc_add(analyzer, hash_tab, filename_iter, report, ncores):
     # unpack all the files into ncores lists
     ix = 0
     for filename in filename_iter:
-        print(filename)
         filelists[ix % ncores].append(filename)
         ix += 1
     # Launch each of the individual processes
@@ -204,7 +205,7 @@ def multiproc_add(analyzer, hash_tab, filename_iter, report, ncores):
                                          args=(analyzer, filelists[ix],
                                                hash_tab.hashbits,
                                                hash_tab.depth,
-                                               (1<<hash_tab.maxtimebits),
+                                               (1 << hash_tab.maxtimebits),
                                                tx[ix]))
         pr[ix].start()
     # gather results when they all finish
@@ -219,13 +220,11 @@ def multiproc_add(analyzer, hash_tab, filename_iter, report, ncores):
         # finish that thread...
         pr[core].join()
 
-    if hash_tab.dirty:
-        hash_tab.save()
-
 
 def matcher_file_match_to_msgs(matcher, analyzer, hash_tab, filename):
     """Cover for matcher.file_match_to_msgs so it can be passed to joblib"""
     return matcher.file_match_to_msgs(analyzer, hash_tab, filename)
+
 
 def do_cmd_multiproc(cmd, analyzer, hash_tab, filename_iter, matcher,
                      outdir, type, report, skip_existing=False,
@@ -234,8 +233,8 @@ def do_cmd_multiproc(cmd, analyzer, hash_tab, filename_iter, matcher,
     if cmd == 'precompute':
         # precompute fingerprints with joblib
         msgslist = joblib.Parallel(n_jobs=ncores)(
-            joblib.delayed(file_precompute)(analyzer, file, outdir, type, skip_existing, strip_prefix=strip_prefix)
-            for file in filename_iter
+                joblib.delayed(file_precompute)(analyzer, file, outdir, type, skip_existing, strip_prefix=strip_prefix)
+                for file in filename_iter
         )
         # Collapse into a single list of messages
         for msgs in msgslist:
@@ -244,11 +243,11 @@ def do_cmd_multiproc(cmd, analyzer, hash_tab, filename_iter, matcher,
     elif cmd == 'match':
         # Running queries in parallel
         msgslist = joblib.Parallel(n_jobs=ncores)(
-            # Would use matcher.file_match_to_msgs(), but you
-            # can't use joblib on an instance method
-            joblib.delayed(matcher_file_match_to_msgs)(matcher, analyzer,
-                                                       hash_tab, filename)
-            for filename in filename_iter
+                # Would use matcher.file_match_to_msgs(), but you
+                # can't use joblib on an instance method
+                joblib.delayed(matcher_file_match_to_msgs)(matcher, analyzer,
+                                                           hash_tab, filename)
+                for filename in filename_iter
         )
         for msgs in msgslist:
             report(msgs)
@@ -260,7 +259,8 @@ def do_cmd_multiproc(cmd, analyzer, hash_tab, filename_iter, matcher,
 
     else:
         # This is not a multiproc command
-        raise ValueError("unrecognized multiproc command: "+cmd)
+        raise ValueError("unrecognized multiproc command: " + cmd)
+
 
 # Command to separate out setting of analyzer parameters
 def setup_analyzer(args):
@@ -276,13 +276,14 @@ def setup_analyzer(args):
     # fixed - 512 pt FFT with 256 pt hop at 11025 Hz
     analyzer.target_sr = int(args['--samplerate'])
     analyzer.n_fft = 512
-    analyzer.n_hop = analyzer.n_fft/2
+    analyzer.n_hop = analyzer.n_fft // 2
     # set default value for shifts depending on mode
     if analyzer.shifts == 0:
         # Default shift is 4 for match, otherwise 1
         analyzer.shifts = 4 if args['match'] else 1
     analyzer.fail_on_error = not args['--continue-on-error']
     return analyzer
+
 
 # Command to separate out setting of matcher parameters
 def setup_matcher(args):
@@ -301,22 +302,25 @@ def setup_matcher(args):
     matcher.time_quantile = float(args['--time-quantile'])
     return matcher
 
+
 # Command to construct the reporter object
 def setup_reporter(args):
     """ Creates a logging function, either to stderr or file"""
     opfile = args['--opfile']
     if opfile and len(opfile):
         f = open(opfile, "w")
+
         def report(msglist):
             """Log messages to a particular output file"""
             for msg in msglist:
-                f.write(msg+"\n")
+                f.write(msg + "\n")
     else:
         def report(msglist):
             """Log messages by printing to stdout"""
             for msg in msglist:
                 print(msg)
     return report
+
 
 # CLI specified via usage message thanks to docopt
 USAGE = """
@@ -370,6 +374,7 @@ Options:
 
 __version__ = 20150406
 
+
 def main(argv):
     """ Main routine for the command-line interface to audfprint """
     # Other globals set from command line
@@ -398,11 +403,10 @@ def main(argv):
     else:
         args["--maxtimebits"] = hash_table._bitsfor(int(args["--maxtime"]))
 
-
     # Setup the analyzer if we're using one (i.e., unless "merge")
     analyzer = setup_analyzer(args) if not (
-        cmd is "merge" or cmd is "newmerge"
-        or cmd is "list" or cmd is "remove") else None
+            cmd is "merge" or cmd is "newmerge"
+            or cmd is "list" or cmd is "remove") else None
 
     precomp_type = 'hashes'
 
@@ -418,9 +422,9 @@ def main(argv):
             ensure_dir(os.path.split(dbasename)[0])
             # Create a new hash table
             hash_tab = hash_table.HashTable(
-                hashbits=int(args['--hashbits']),
-                depth=int(args['--bucketsize']),
-                maxtime=(1 << int(args['--maxtimebits'])))
+                    hashbits=int(args['--hashbits']),
+                    depth=int(args['--bucketsize']),
+                    maxtime=(1 << int(args['--maxtimebits'])))
             # Set its samplerate param
             if analyzer:
                 hash_tab.params['samplerate'] = analyzer.target_sr
@@ -431,7 +435,7 @@ def main(argv):
                 report([time.ctime() + " Reading hash table " + dbasename])
             hash_tab = hash_table.HashTable(dbasename)
             if analyzer and 'samplerate' in hash_tab.params \
-                   and hash_tab.params['samplerate'] != analyzer.target_sr:
+                    and hash_tab.params['samplerate'] != analyzer.target_sr:
                 # analyzer.target_sr = hash_tab.params['samplerate']
                 print("db samplerate overridden to ", analyzer.target_sr)
     else:
@@ -445,8 +449,7 @@ def main(argv):
     matcher = setup_matcher(args) if cmd == 'match' else None
 
     filename_iter = filename_list_iterator(
-        args['<file>'], args['--wavdir'], args['--wavext'], args['--list'])
-    filename_iter
+            args['<file>'], args['--wavdir'], args['--wavext'], args['--list'])
 
     #######################
     # Run the main commmand
@@ -474,7 +477,7 @@ def main(argv):
         print("Processed "
               + "%d files (%.1f s total dur) in %.1f s sec = %.3f x RT" \
               % (analyzer.soundfilecount, analyzer.soundfiletotaldur,
-                 elapsedtime, (elapsedtime/analyzer.soundfiletotaldur)))
+                 elapsedtime, (elapsedtime / analyzer.soundfiletotaldur)))
 
     # Save the hash table file if it has been modified
     if hash_tab and hash_tab.dirty:
