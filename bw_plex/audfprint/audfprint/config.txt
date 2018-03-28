@@ -1,0 +1,16 @@
+# config.txt
+# Default settings of audfprint for MIREX 2014 Audio Fingerprinting
+# 2014-10-25 Dan Ellis dpwe@ee.columbia.edu
+
+[dpwe_builder]
+density: 70
+fanout: 8
+bucketsize: 500
+ncores: 8
+
+[dpwe_matcher]
+density: 70
+fanout: 8
+search_depth: 2000
+min_count: 5
+ncores: 8
