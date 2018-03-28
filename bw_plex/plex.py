@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#!python2
 # -*- coding: utf-8 -*-
 
 import logging
@@ -69,7 +68,7 @@ def find_all_shows(func=None):
 def get_theme(media):
     """Get the current location of the theme or download
        the damn thing and convert it so it's ready for matching."""
-    LOG.debug('theme media type %s', media.TYPE)
+    #LOG.debug('theme media type %s', media.TYPE)
 
     if media.TYPE == 'show':
         name = media.title
@@ -760,8 +759,7 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
-        #if HT and HT.dirty:
-        #    HT.save()
+
 
 
 @cli.command()
@@ -816,7 +814,12 @@ def set_manual_theme_time(showname, season, episode, type, start, end):
 
 
 if __name__ == '__main__':
-    cli()
+    try:
+        cli()
+    except:
+        raise
+    finally:
+        # Make sure we save if we need it.
+        if HT and HT.dirty:
+            HT.save()
 
-    if HT and HT.dirty:
-        HT.save()

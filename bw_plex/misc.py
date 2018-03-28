@@ -122,15 +122,55 @@ def get_hashtable():
     LOG.debug('Getting hashtable')
     from bw_plex.audfprint.hash_table import HashTable
 
+    # Patch HashTable.
+    try:
+        import cPickle as pickle
+    except ImportError:
+        import pickle
+    import gzip
+
+    def load(self, name=None):
+        if name is None:
+            self.__filename = name
+
+        self.load_pkl(name)
+        return self
+
+    def save(self, name=None, params=None, file_object=None):
+        LOG.debug('Saving HashTable')
+        # Merge in any provided params
+        if params:
+            for key in params:
+                self.params[key] = params[key]
+
+        if file_object:
+            f = file_object
+            self.__filename = f.name
+        else:
+
+            if name is None:
+                f = self.__filename
+            else:
+                self.__filename = f = name
+
+            f = gzip.open(f, 'wb')
+
+        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        self.dirty = False
+        return self
+
+    HashTable.save = save
+    HashTable.load = load
+
     if os.path.exists(FP_HASHES):
         LOG.info('Loading existing files in db')
         HT = HashTable(FP_HASHES)
-        #for n in HT.names:
-        #    LOG.debug('%s', n)
+        HT.__filename = FP_HASHES
 
     else:
         LOG.info('Creating new hashtable db')
         HT = HashTable()
+        HT.__filename = FP_HASHES
         HT.save(FP_HASHES)
         HT.load(FP_HASHES)
 
@@ -540,6 +580,7 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
         return result
 
     return False
+
 
 def has_recap_subtitle(episode, phrase):
     if not phrase:
