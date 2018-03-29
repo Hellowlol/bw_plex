@@ -421,7 +421,6 @@ def fix_shitty_theme(name, url, type, rk, just_theme):
     """
     global HT
     HT = get_hashtable()
-    fp = search_for_theme_youtube(name, url=url, save_path=THEMES)
 
     # Assist for the lazy bastards..
     if rk == 'auto':
@@ -430,19 +429,21 @@ def fix_shitty_theme(name, url, type, rk, just_theme):
         if item:
             rk = item[0].ratingKey
 
+    theme_path = search_for_theme_youtube(name, rk=rk, url=url, save_path=THEMES)
+
     for fp in HT.names:
-        if os.path.basename(fp).lower() == name.lower():
+        if os.path.basename(fp).lower() == name.lower() and os.path.exists(fp):
             LOG.debug('Removing %s from the hashtable', fp)
             HT.remove(fp)
 
-    analyzer().ingest(HT, fp)
-    HT.save(FP_HASHES)
+    analyzer().ingest(HT, theme_path)
+    # HT.save(FP_HASHES)
     to_pp = []
 
     if just_theme:
         return
 
-    if rk:  # TODO a
+    if rk:
         with session_scope() as se:
             item = se.query(Preprocessed).filter_by(grandparentRatingKey=rk)
 
@@ -623,6 +624,7 @@ def client_jump_to(offset=None, sessionkey=None):
     """
     global JUMP_LIST
     LOG.debug('Called jump with %s %s %s', offset, to_time(offset), sessionkey)
+
     if offset == -1:
         return
 
@@ -821,7 +823,7 @@ def match(f):
     global HT
     HT = get_hashtable()
     x = get_offset_end(f, HT)
-    print(x)
+    click.echo(x)
 
 
 @cli.command()
