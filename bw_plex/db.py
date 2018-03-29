@@ -46,6 +46,12 @@ class Preprocessed(Base):
     ffmpeg_end_str = Column('ffmpeg_end_str', String, nullable=True)
     correct_ffmpeg = Column('correct_ffmpeg', Integer, nullable=True)  # This for manual override.
 
+    def _to_tuple(self, keys=None):
+        if keys is None:
+            keys = [i for i in self.__dict__.keys() if not i.startswith('_')]
+
+        return tuple(getattr(self, i) for i in keys)
+
 
 # Create db.
 Base.metadata.create_all(eng)

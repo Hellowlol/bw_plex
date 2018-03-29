@@ -3,7 +3,9 @@
 
 import logging
 import os
+import tempfile
 import time
+import webbrowser
 
 try:
     from multiprocessing.pool import ThreadPool as Pool
@@ -536,10 +538,49 @@ def add_theme_to_hashtable(threads, directory):
         HT.save(FP_HASHES)
 
 
-@click.command()
-def test_basic():
+@cli.command()
+@click.option('-f', '--format', type=click.Choice(['', 'html', 'json', 'yaml', 'dbf', 'csv']))
+@click.option('-fp', '--save_path', default=os.getcwd())
+@click.option('-wf', '--write_file', default=False, is_flag=True)
+@click.option('-sh', '--show_html', default=True, is_flag=True)
+def export_db(format, save_path, write_file, show_html):
     """Test command for myself."""
-    pass
+    import tablib
+
+    f = Preprocessed
+
+    keys = [k for k in Preprocessed.__dict__.keys() if not k.startswith('_')]
+    data = []
+
+    with session_scope() as se:
+        db_items = se.query(Preprocessed).all()
+
+        for item in db_items:
+            data.append(item._to_tuple(keys=keys))
+
+    td = tablib.Dataset(*data, headers=keys)
+    t = td.export(format)
+
+    if write_file:
+
+        fullpath = os.path.join(save_path, '%s.%s' % (Preprocessed.__name__, format))
+        with open(fullpath, 'wb') as f:
+            f.write(t.encode('utf-8'))
+        click.echo('Wrote file to %s' % fullpath)
+
+    else:
+        if format == 'html' and show_html:
+            tf = tempfile.NamedTemporaryFile(suffix='.%s' % format)
+            with tf as f:
+                f.write(t.encode('utf-8'))
+                webbrowser.open(tf.name)
+                try:
+                    while True:
+                        time.sleep(10)
+                except KeyboardInterrupt:
+                    pass
+        else:
+            click.echo(t)
 
 
 def check_file_access(m):
