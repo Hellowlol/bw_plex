@@ -11,7 +11,7 @@ binge watching for plex
 
 ## Install
 You should install this from github as this project isnt stable.
-```pip install -e git+https://github.com/Hellowlol/bw_plex.git```
+```pip install -e git+https://github.com/Hellowlol/bw_plex.git#egg=Package```
 You should also install a speedup for the websocket-client package. ```pip install wsaccel```
 
 
