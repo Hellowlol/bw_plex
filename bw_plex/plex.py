@@ -738,6 +738,37 @@ def check(data):
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG.get('mode', 'skip_only_theme')
 
+        # This has to be removed if/when credits are added.
+        if progress >= 600:
+            return
+
+        def best_time(item):
+            """Find the best time in the db."""
+            if item.correct_theme_end and item.correct_theme_end != 1:
+                sec = item.correct_theme_end
+
+            elif item.correct_ffmpeg and item.correct_ffmpeg != 1:
+                sec = item.correct_ffmpeg
+
+            elif item.theme_end and item.theme_end != -1:
+                sec = item.theme_end
+
+            elif item.ffmpeg_end and item.ffmpeg_end != -1:
+                sec = item.ffmpeg_end
+
+            else:
+                sec = -1
+
+            return sec
+
+        def jump(item, sessionkey, sec=None):
+            if sec is None:
+                sec = best_time(item)
+
+            if sessionkey not in JUMP_LIST:
+                JUMP_LIST.append(sessionkey)
+                POOL.apply_async(client_jump_to, args=(sec, sessionkey))
+
         with session_scope() as se:
             try:
                 item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
@@ -746,25 +777,34 @@ def check(data):
                     LOG.debug('Found %s theme start %s, theme end %s, progress %s', item.prettyname,
                               item.theme_start_str, item.theme_end_str, to_time(progress))
 
-                    if mode == 'skip_only_theme' and item.theme_end and item.theme_start:
-                        if progress > item.theme_start and progress < item.theme_end:
-                            LOG.debug('%s is in the correct time range', item.prettyname)
-                            if sessionkey not in JUMP_LIST:
-                                JUMP_LIST.append(sessionkey)
-                                POOL.apply_async(client_jump_to, args=(item.theme_end, sessionkey))
+                    bt = best_time(item)
 
-                        else:
-                            if item.theme_start - progress < 0:
-                                n = item.theme_start - progress
-                                if n > 0:
-                                    part = 'jumping in %s' % to_time(n)
-                                else:
-                                    part = 'should have jumped %s ago' % to_time(n)
-                                LOG.debug('Skipping %s as it not in the correct time range jumping in %s',
-                                          item.prettyname, part)
+                    if mode == 'skip_if_recap' and item.theme_end and item.theme_start:
+                        return jump(item, sessionkey, bt)
 
-                    if mode == 'check_recap':
-                        pass  # TODO
+                    if mode == 'skip_only_theme':
+                        if item.correct_theme_end and item.correct_theme_start:
+                            if progress > item.correct_theme_start and progress < item.correct_theme_end:
+                                LOG.debug('%s is in the correct time range correct_theme_end', item.prettyname)
+                                return jump(item, sessionkey, item.correct_theme_end)
+
+                        elif item.theme_end and item.theme_start:
+                            if progress > item.theme_start and progress < item.theme_end:
+                                LOG.debug('%s is in the correct time range theme_end', item.prettyname)
+                                return jump(item, sessionkey, item.theme_end)
+
+                        #if progress > item.theme_start and progress < item.theme_end:
+                        #    LOG.debug('%s is in the correct time range', item.prettyname)
+                        #    return jump(item, sessionkey, item.correct_theme_end or item.theme_end)
+                        #else:
+                        #    if item.theme_start - progress < 0:
+                        #        n = item.theme_start - progress
+                        #        if n > 0:
+                        #            part = 'jumping in %s' % to_time(n)
+                        #        else:
+                        #            part = 'should have jumped %s ago' % to_time(n)
+                        #        LOG.debug('Skipping %s as it not in the correct time range jumping in %s',
+                        #                  item.prettyname, part)
 
             except NoResultFound:
                 if ratingkey not in IN_PROG:

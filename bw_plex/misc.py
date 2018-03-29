@@ -571,13 +571,17 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
     if phrase is None:
         phrase = CONFIG.get('words')
 
-    r = sr.Recognizer()
-    with sr.AudioFile(audio) as source:
-        r.adjust_for_ambient_noise(source)
-        audio = r.record(source, duration=duration)
-        result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
-        LOG.debug('Found %s in audio', result)
-        return result
+    try:
+        r = sr.Recognizer()
+        with sr.AudioFile(audio) as source:
+            r.adjust_for_ambient_noise(source)
+            audio = r.record(source, duration=duration)
+            result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
+            LOG.debug('Found %s in audio', result)
+            return result
+
+    except sr.UnknownValueError:
+        pass
 
     return False
 
