@@ -2,11 +2,7 @@ import os
 import configobj
 from validate import Validator
 
-import bw_plex
-
-
 vtor = Validator()
-
 
 spec = """
 url = string(default='')

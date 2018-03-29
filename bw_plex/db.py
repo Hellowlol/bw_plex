@@ -1,8 +1,6 @@
 import os
 from contextlib import contextmanager
 
-from profilehooks import timecall
-
 from sqlalchemy import create_engine, Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
