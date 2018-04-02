@@ -6,13 +6,20 @@ before_install:
     - sudo add-apt-repository -y ppa:mc3man/trusty-media
     - sudo apt-get -y update
     - sudo apt-get -y install pandoc
-    - sudo apt-get -y install swig
+    #- sudo apt-get -y install swig
     #- sudo apt-get -y dist-upgrade
     - sudo apt-get -y install ffmpeg
     - pip install --upgrade pip
     - pip install codecov
     - pip install pypandoc
     - pip install pytest pytest-cov
+
+addons:
+  apt:
+    packages:
+    - swig
+    - libpulse-dev
+
 # command to install dependencies
 install: "pip install -e ."
 script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/bw_plex/ --cov-report term-missing
