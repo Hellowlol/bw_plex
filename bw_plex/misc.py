@@ -198,18 +198,18 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
     match = matcher()
 
     # Or should we just check here?? untested.
-    if not vid in hashtable.names and check_if_missing:
+    if vid not in hashtable.names and check_if_missing:
         an.ingest(vid, hashtable)
 
     start_time = -1
     end_time = -1
 
     t_hop = an.n_hop / float(an.target_sr)
-    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1) # The number does not matter...
+    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1)  # The number does not matter...
 
     for (tophitid, nhashaligned, aligntime,
          nhashraw, rank, min_time, max_time) in rslts:
-            #print(tophitid, nhashaligned, aligntime, nhashraw, rank, min_time, max_time)
+            #  print(tophitid, nhashaligned, aligntime, nhashraw, rank, min_time, max_time)
             end_time = max_time * t_hop
             start_time = min_time * t_hop
             LOG.debug('Theme song started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),

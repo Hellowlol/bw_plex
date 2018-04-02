@@ -17,23 +17,10 @@ except ImportError:
     README = open('README.md', 'r').read()
 
 
-REQ = ['librosa',
-       'plexapi',
-       'joblib',
-       'numpy',
-       'docopt',
-       'click',
-       'scipy',
-       'matplotlib',
-       'psutil',
-       'profilehooks',
-       'sqlalchemy',
-       'configobj',
-       'youtube-dl',
-       'beautifulsoup4',
-       'html5lib',
-       'srt'
-]
+REQ = []
+for line in f:
+    if line and not line.startswith('#'):
+        REQ.append(line)
 
 
 setup(
@@ -73,6 +60,7 @@ setup(
 
         # Specify the Python versions you support here.
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
     ],
 
     # What does your project relate to?
@@ -93,10 +81,10 @@ setup(
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-    extras_require={
-        'dev': ['pypandoc']
+    #extras_require={
+    #    'dev': ['pypandoc']
         #'test': ['pytest', 'codecov', 'pytest-cov'],
-    },
+    #},
 
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow

@@ -406,7 +406,7 @@ def create_config(fp=None):
 @click.option('-t', '--type', default='youtube')
 @click.option('-rk', help='Add rating key', default='auto')
 @click.option('-jt', '--just_theme', default=False, is_flag=True)
-def fix_shitty_theme(name, url, type, rk, just_theme):
+def manually_correct_theme(name, url, type, rk, just_theme):
     """Set the correct fingerprint of the show in the hashes.db and
        process the eps of that show in the db against the new theme fingerprint.
 
