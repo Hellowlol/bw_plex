@@ -17,6 +17,7 @@ except ImportError:
     README = open('README.md', 'r').read()
 
 
+f = open('requirements.txt', 'r').readlines()
 REQ = []
 for line in f:
     if line and not line.startswith('#'):
