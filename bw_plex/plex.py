@@ -308,6 +308,7 @@ def process(name, sample, threads, skip_done):
 
     """
     global HT
+    global SHOWS
     all_eps = []
 
     if name:
@@ -352,7 +353,7 @@ def process(name, sample, threads, skip_done):
         # process_to_db craps out because off a race condition in get_theme(media)
         # if the user is selecting n eps > 1 for the same theme.
         # Lets just download the the themes first so the shit is actually processed.
-        gr = set([i.grandparentRatingKey for i in all_eps])
+        gr = set([i.grandparentRatingKey for i in all_eps]) - SHOWS.keys()
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
