@@ -159,19 +159,18 @@ def get_hashtable():
         self.dirty = False
         return self
 
-    def has_theme(self, show_rating):
+    def has_theme(self, media):
         """Cheaper way to lookup stuff."""
-        r = []
-        for n in self.names:
-            try:
-                if show_rating == int(os.path.basename(n).split('__')[1]):
-                    r.append(n)
-            except IndexError:
-                pass
-        if r:
-            return True
+        return bool(self.get_theme(media))
 
-        return False
+    def get_theme(self, media):
+        if media.TYPE == 'show':
+            rk = media.ratingKey
+        else:
+            rk = media.grandparentRatingKey
+
+        d = self.get_themes()
+        return d.get(rk, [])
 
     def get_themes(self):
         d = defaultdict(list)
@@ -188,6 +187,7 @@ def get_hashtable():
     HashTable.load = load
     HashTable.has_theme = has_theme
     HashTable.get_themes = get_themes
+    HashTable.get_theme = get_theme
 
     if os.path.exists(FP_HASHES):
         LOG.info('Loading existing files in db')

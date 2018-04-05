@@ -109,20 +109,17 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     """
     global HT
 
+    if not HT.has_theme(media):
+        theme = get_theme(media)
+        theme = convert_and_trim(theme, fs=11025, theme=True)
+        analyzer().ingest(HT, theme)
+
     ff = -1
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
 
-    if theme is None:
-        theme = get_theme(media)
-        theme = convert_and_trim(theme, fs=11025, theme=True)
-
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
-
-    # too cover manual process_to_db.
-    if theme not in HT.names:
-        analyzer().ingest(HT, theme)
 
     # Lets skip the start time for now. This need to be added later to support shows
     # that have show, theme song show.
@@ -353,7 +350,7 @@ def process(name, sample, threads, skip_done):
         # process_to_db craps out because off a race condition in get_theme(media)
         # if the user is selecting n eps > 1 for the same theme.
         # Lets just download the the themes first so the shit is actually processed.
-        gr = set([i.grandparentRatingKey for i in all_eps]) - SHOWS.keys()
+        gr = set([i.grandparentRatingKey for i in all_eps]) - HT.get_themes().keys()
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
@@ -686,8 +683,9 @@ def task(item, sessionkey):
     if media.TYPE not in ('episode', 'show'):
         return
 
-    theme = get_theme(media)
-    LOG.debug('task theme %s', theme)
+    if not HT.get_theme(media):
+    #theme = get_theme(media)
+    #LOG.debug('task theme %s', theme)
 
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
     vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
