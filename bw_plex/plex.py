@@ -422,17 +422,23 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
     # Assist for the lazy bastards..
     if rk == 'auto':
-        item = PMS.search(name)
-        item = choose('Select correct show', item, lambda x: '%s %s' % (x.title, x.TYPE))
-        if item:
-            rk = item[0].ratingKey
+        items = PMS.search(name)
+        items = [i for i in items if i and i.TYPE == 'show']
+        items = choose('Select correct show', items, lambda x: '%s %s' % (x.title, x.TYPE))
+        if items:
+            rk = items[0].ratingKey
 
     theme_path = search_for_theme_youtube(name, rk=rk, url=url, save_path=THEMES)
 
-    for fp in HT.names:
-        if os.path.basename(fp).lower() == name.lower() and os.path.exists(fp):
-            LOG.debug('Removing %s from the hashtable', fp)
-            HT.remove(fp)
+    themes = HT.get_themes(rk)
+    for th in themes:
+        LOG.debug('Removing %s from the hashtable', fp)
+        HT.remove(th)
+
+    #for fp in HT.names:
+    #    if os.path.basename(fp).lower() == name.lower() and os.path.exists(fp):
+    #        LOG.debug('Removing %s from the hashtable', fp)
+    #        HT.remove(fp)
 
     analyzer().ingest(HT, theme_path)
     # HT.save(FP_HASHES)
