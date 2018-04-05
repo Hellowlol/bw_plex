@@ -305,7 +305,7 @@ def process(name, sample, threads, skip_done):
 
     """
     global HT
-    global SHOWS
+    #global SHOWS
     all_eps = []
 
     if name:
@@ -615,7 +615,6 @@ def check_file_access(m):
                 return PMS.url('%s?download=1' % file.key)
 
 
-
 def client_jump_to(offset=None, sessionkey=None):
     """Seek the client to the offset.
 
@@ -689,29 +688,28 @@ def task(item, sessionkey):
     if media.TYPE not in ('episode', 'show'):
         return
 
-    if not HT.get_theme(media):
-    #theme = get_theme(media)
-    #LOG.debug('task theme %s', theme)
+    #if not HT.get_theme(media):
 
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
     vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
 
     # Check if this shows theme exist in the hash table.
     # We should prop just check if x in HT.names
-    try:
-        HT.name_to_id(theme)
-    except ValueError:
-        LOG.debug('No fingerprint for theme %s does exists in the %s',
-                  os.path.basename(theme), FP_HASHES)
+    #try:
+    #    HT.name_to_id(theme)
+    #except ValueError:
+    #    LOG.debug('No fingerprint for theme %s does exists in the %s',
+    #              os.path.basename(theme), FP_HASHES)
 
-        analyzer().ingest(HT, theme)
+    #    analyzer().ingest(HT, theme)
         #HT = HT.save_then_reload(FP_HASHES)
 
-    start, end = get_offset_end(vid, HT)
-    ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
-    if end != -1 or ffmpeg_end != 1:
-        # End is -1 if not found. Or a positiv int.
-        process_to_db(media, theme=theme, vid=vid, start=start, end=end, ffmpeg_end=ffmpeg_end)
+    #start, end = get_offset_end(vid, HT)
+    #ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
+    #if end != -1 or ffmpeg_end != 1:
+    #    # End is -1 if not found. Or a positiv int.
+    #    process_to_db(media, theme=theme, vid=vid, start=start, end=end, ffmpeg_end=ffmpeg_end)
+    process_to_db(media, vid=vid)
 
     try:
         os.remove(vid)
