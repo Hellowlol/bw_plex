@@ -159,8 +159,35 @@ def get_hashtable():
         self.dirty = False
         return self
 
+    def has_theme(self, show_rating):
+        """Cheaper way to lookup stuff."""
+        r = []
+        for n in self.names:
+            try:
+                if show_rating == int(os.path.basename(n).split('__')[1]):
+                    r.append(n)
+            except IndexError:
+                pass
+        if r:
+            return True
+
+        return False
+
+    def get_themes(self):
+        d = defaultdict(list)
+        for n in self.names:
+            try:
+                rk = os.path.basename(n).split('__')[1]
+                d[rk].append(n)
+            except IndexError:
+                pass
+
+        return d
+
     HashTable.save = save
     HashTable.load = load
+    HashTable.has_theme = has_theme
+    HashTable.get_themes = get_themes
 
     if os.path.exists(FP_HASHES):
         LOG.info('Loading existing files in db')
