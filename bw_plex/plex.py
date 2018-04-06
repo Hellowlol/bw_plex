@@ -67,31 +67,6 @@ def find_all_shows(func=None):
     return all_shows
 
 
-def get_theme(media):
-    """Get the current location of the theme or download
-       the damn thing and convert it so it's ready for matching."""
-    #LOG.debug('theme media type %s', media.TYPE)
-
-    if media.TYPE == 'show':
-        name = media.title
-        rk = media.ratingKey
-    else:
-        name = media.grandparentTitle
-        rk = media.grandparentRatingKey
-
-    theme = SHOWS.get(rk)
-
-    if theme is None:
-        theme = search_for_theme_youtube(name,
-                                         rk=rk,
-                                         save_path=THEMES)
-        LOG.debug('Downloaded theme for %s', name)
-
-        theme = convert_and_trim(theme, fs=11025, theme=True)
-        SHOWS[rk] = theme
-    return theme
-
-
 def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None, recap=None):
     """Process a plex media item to the db
 
@@ -109,10 +84,10 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     """
     global HT
 
-    if not HT.has_theme(media):
-        theme = get_theme(media)
-        theme = convert_and_trim(theme, fs=11025, theme=True)
-        analyzer().ingest(HT, theme)
+    # This will download the theme add add it to the hashtable
+    # if its missing
+    if theme is None:
+        HT.has_theme(media)
 
     ff = -1
     name = media._prettyfilename()
@@ -305,11 +280,11 @@ def process(name, sample, threads, skip_done):
 
     """
     global HT
-    #global SHOWS
     all_eps = []
 
     if name:
-        load_themes()
+        #load_themes()
+
         shows = find_all_shows()
         shows = [s for s in shows if s.title.lower().startswith(name.lower())]
         shows = choose('Select what show to process', shows, 'title')
@@ -344,23 +319,26 @@ def process(name, sample, threads, skip_done):
         except Exception as e:
             logging.error(e, exc_info=True)
 
+    #def add_theme(k):
+    #    theme = search_for_theme_youtube(*k)
+    #    analyzer().ingest(HT, theme)
+    #    return
+
     if all_eps:
         p = Pool(threads)
 
-        # process_to_db craps out because off a race condition in get_theme(media)
-        # if the user is selecting n eps > 1 for the same theme.
-        # Lets just download the the themes first so the shit is actually processed.
+        # Download all the themes first, skip the ones that we already have..
         gr = set([i.grandparentRatingKey for i in all_eps]) - HT.get_themes().keys()
+        LOG.debug('gr %s', gr)
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
             try:
-                p.map(search_for_theme_youtube, [(s.title, s. ratingKey, THEMES) for s in sh])
+                p.map(HT.has_theme, sh)
             except KeyboardInterrupt:
                 pass
 
         try:
-            load_themes()
             p.map(prot, all_eps)
         except KeyboardInterrupt:
             p.terminate()
@@ -430,15 +408,10 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
     theme_path = search_for_theme_youtube(name, rk=rk, url=url, save_path=THEMES)
 
-    themes = HT.get_themes(rk)
+    themes = HT.get_theme(items[0])
     for th in themes:
         LOG.debug('Removing %s from the hashtable', fp)
         HT.remove(th)
-
-    #for fp in HT.names:
-    #    if os.path.basename(fp).lower() == name.lower() and os.path.exists(fp):
-    #        LOG.debug('Removing %s from the hashtable', fp)
-    #        HT.remove(fp)
 
     analyzer().ingest(HT, theme_path)
     # HT.save(FP_HASHES)
@@ -457,7 +430,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
                 se.delete(i)
 
         for media in to_pp:
-            process_to_db(media)
+            process_to_db(media)#, theme=theme_path)
 
 
 @cli.command()

@@ -117,93 +117,6 @@ def analyzer():
     a.density = 20
     return a
 
-
-def get_hashtable():
-    LOG.debug('Getting hashtable')
-    from bw_plex.audfprint.hash_table import HashTable
-
-    # Patch HashTable.
-    try:
-        import cPickle as pickle
-    except ImportError:
-        import pickle
-    import gzip
-
-    def load(self, name=None):
-        if name is None:
-            self.__filename = name
-
-        self.load_pkl(name)
-        return self
-
-    def save(self, name=None, params=None, file_object=None):
-        LOG.debug('Saving HashTable')
-        # Merge in any provided params
-        if params:
-            for key in params:
-                self.params[key] = params[key]
-
-        if file_object:
-            f = file_object
-            self.__filename = f.name
-        else:
-
-            if name is None:
-                f = self.__filename
-            else:
-                self.__filename = f = name
-
-            f = gzip.open(f, 'wb')
-
-        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-        self.dirty = False
-        return self
-
-    def has_theme(self, media):
-        """Cheaper way to lookup stuff."""
-        return bool(self.get_theme(media))
-
-    def get_theme(self, media):
-        if media.TYPE == 'show':
-            rk = media.ratingKey
-        else:
-            rk = media.grandparentRatingKey
-
-        d = self.get_themes()
-        return d.get(rk, [])
-
-    def get_themes(self):
-        d = defaultdict(list)
-        for n in self.names:
-            try:
-                rk = os.path.basename(n).split('__')[1]
-                d[rk].append(n)
-            except IndexError:
-                pass
-
-        return d
-
-    HashTable.save = save
-    HashTable.load = load
-    HashTable.has_theme = has_theme
-    HashTable.get_themes = get_themes
-    HashTable.get_theme = get_theme
-
-    if os.path.exists(FP_HASHES):
-        LOG.info('Loading existing files in db')
-        HT = HashTable(FP_HASHES)
-        HT.__filename = FP_HASHES
-
-    else:
-        LOG.info('Creating new hashtable db')
-        HT = HashTable()
-        HT.__filename = FP_HASHES
-        HT.save(FP_HASHES)
-        HT.load(FP_HASHES)
-
-    return HT
-
-
 def matcher():
     from bw_plex.audfprint.audfprint_match import Matcher
     m = Matcher()
@@ -225,8 +138,8 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
     match = matcher()
 
     # Or should we just check here?? untested.
-    if vid not in hashtable.names and check_if_missing:
-        an.ingest(vid, hashtable)
+    #if vid not in hashtable.names and check_if_missing:
+    #    an.ingest(vid, hashtable)
 
     start_time = -1
     end_time = -1
@@ -393,10 +306,6 @@ def get_valid_filename(s):
         return clean_tail
 
 
-def download_via_ffmpeg(afile):
-    pass
-
-
 def convert_and_trim(afile, fs=8000, trim=None, theme=False):
     tmp = tempfile.NamedTemporaryFile(mode='r+b',
                                       prefix='offset_',
@@ -497,7 +406,7 @@ def search_tunes(name, rk):
 def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     import youtube_dl
 
-    LOG.debug('Searching youtube for %s', name)
+    LOG.debug('Searching youtube for name %s rk %s save_path %s url %s ' % (name, rk, save_path, url))
 
     if isinstance(name, tuple):
         name, rk, save_path = name
@@ -505,7 +414,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     if save_path is None:
         save_path = os.getcwd()
 
-    fp = os.path.join(save_path, '%s__%s__' % (name, rk))
+    fp = os.path.join(save_path, '%s__%s__%s' % (name, rk, int(time.time())))
     fp = get_valid_filename(fp)
     # Youtuble dl requires the template to be unicode.
     t = u'%s' % fp
@@ -557,6 +466,223 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     return t + '.wav'
 
 
+def download_theme(media, ht, theme_source=None):
+    if media.TYPE == 'show':
+        name = media.title
+        rk = media.ratingKey
+        #theme = media.theme
+    else:
+        name = media.grandparentTitle
+        rk = media.grandparentRatingKey
+        #theme = media.grandparentTheme
+        #if theme is None:
+        #    theme = media.show().theme
+
+    if theme_source is None:
+        theme_source = CONFIG.get('theme_source', 'youtube')
+
+    if theme_source == 'youtube':
+        theme = search_for_theme_youtube(name, rk, THEMES)
+
+    theme = convert_and_trim(theme, fs=11025, theme=True)
+
+    analyzer().ingest(ht, theme)
+
+    return theme
+
+def get_hashtable():
+    LOG.debug('Getting hashtable')
+    from bw_plex.audfprint.hash_table import HashTable
+
+    # Patch HashTable.
+    try:
+        import cPickle as pickle
+    except ImportError:
+        import pickle
+    import gzip
+
+    def load(self, name=None):
+        if name is None:
+            self.__filename = name
+
+        self.load_pkl(name)
+        return self
+
+    def save(self, name=None, params=None, file_object=None):
+        LOG.debug('Saving HashTable')
+        # Merge in any provided params
+        if params:
+            for key in params:
+                self.params[key] = params[key]
+
+        if file_object:
+            f = file_object
+            self.__filename = f.name
+        else:
+
+            if name is None:
+                f = self.__filename
+            else:
+                self.__filename = f = name
+
+            f = gzip.open(f, 'wb')
+
+        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        self.dirty = False
+        return self
+
+    def has_theme(self, media, add_if_missing=True):
+        """Cheaper way to lookup stuff."""
+        th = bool(self.get_theme(media))
+
+        if add_if_missing is False:
+            return th
+        else:
+            th = download_theme(media, self)
+            if th:
+                return True
+            else:
+                return False
+
+    def get_theme(self, media):
+        if media.TYPE == 'show':
+            rk = media.ratingKey
+        else:
+            rk = media.grandparentRatingKey
+
+        d = self.get_themes()
+
+        return d.get(rk, [])
+
+    def get_themes(self):
+        d = defaultdict(list)
+        for n in self.names:
+            try:
+                rk = os.path.basename(n).split('__')[1]
+                d[rk].append(n)
+            except IndexError:
+                pass
+
+        return d
+
+    HashTable.save = save
+    HashTable.load = load
+    HashTable.has_theme = has_theme
+    HashTable.get_themes = get_themes
+    HashTable.get_theme = get_theme
+
+    if os.path.exists(FP_HASHES):
+        LOG.info('Loading existing files in db')
+        HT = HashTable(FP_HASHES)
+        HT.__filename = FP_HASHES
+
+    else:
+        LOG.info('Creating new hashtable db')
+        HT = HashTable()
+        HT.__filename = FP_HASHES
+        HT.save(FP_HASHES)
+        HT.load(FP_HASHES)
+
+    return HT
+
+
+
+
+'''
+def get_hashtable():
+    LOG.debug('Getting hashtable')
+    from bw_plex.audfprint.hash_table import HashTable
+
+    # Patch HashTable.
+    try:
+        import cPickle as pickle
+    except ImportError:
+        import pickle
+    import gzip
+
+    def load(self, name=None):
+        if name is None:
+            self.__filename = name
+
+        self.load_pkl(name)
+        return self
+
+    def save(self, name=None, params=None, file_object=None):
+        LOG.debug('Saving HashTable')
+        # Merge in any provided params
+        if params:
+            for key in params:
+                self.params[key] = params[key]
+
+        if file_object:
+            f = file_object
+            self.__filename = f.name
+        else:
+
+            if name is None:
+                f = self.__filename
+            else:
+                self.__filename = f = name
+
+            f = gzip.open(f, 'wb')
+
+        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        self.dirty = False
+        return self
+
+    def has_theme(self, media):
+        """Cheaper way to lookup stuff."""
+        return bool(self.get_theme(media))
+
+    def get_theme(self, media, add_if_missing=True):
+        if media.TYPE == 'show':
+            rk = media.ratingKey
+        else:
+            rk = media.grandparentRatingKey
+
+        d = self.get_themes()
+
+        if not d.get(rk) and add_if_missing:
+            download_theme(media, self)
+            return self.get_themes().get(rk, [])
+
+        return d.get(rk, [])
+
+    def get_themes(self):
+        d = defaultdict(list)
+        for n in self.names:
+            try:
+                rk = os.path.basename(n).split('__')[1]
+                d[rk].append(n)
+            except IndexError:
+                pass
+
+        return d
+
+    HashTable.save = save
+    HashTable.load = load
+    HashTable.has_theme = has_theme
+    HashTable.get_themes = get_themes
+    HashTable.get_theme = get_theme
+
+    if os.path.exists(FP_HASHES):
+        HT = HashTable(FP_HASHES)
+        HT.__filename = FP_HASHES
+        LOG.info('Loading existing files in db')
+        for n in HT.names:
+            LOG.debug(n)
+
+    else:
+        LOG.info('Creating new hashtable db')
+        HT = HashTable()
+        HT.__filename = FP_HASHES
+        HT.save(FP_HASHES)
+        HT.load(FP_HASHES)
+
+    return HT
+'''
+
+
 def download_subtitle(episode):
     import srt
     episode.reload()
@@ -605,7 +731,7 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
             audio = r.record(source, duration=duration)
             result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
             LOG.debug('Found %s in audio', result)
-            return result
+            return result.strip()
 
     except sr.UnknownValueError:
         pass
