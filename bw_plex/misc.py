@@ -491,6 +491,15 @@ def download_theme(media, ht, theme_source=None):
         # Crap, how should we grab pms.
         theme = PMS.url(_theme, includeToken=True)
 
+    elif theme_source == 'all':
+        theme = []
+        st = search_tunes(name, rk)
+        st_res = list(itertools.chain.from_iterable(st.values()))
+        theme.extend(st_res)
+        # Fix plex
+        #theme.append(PMS.url(_theme, includeToken=True))
+        theme.append(search_for_theme_youtube(name, rk, THEMES))
+
     if not isinstance(theme, list):
         theme = [theme]
 
