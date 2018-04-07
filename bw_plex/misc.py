@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import shutil
 import time
+import itertools
 
 from collections import defaultdict
 
@@ -77,7 +78,7 @@ def download_theme_plex(media, force=False):
         if theme is None:
             theme = media.show().theme
 
-    name = '%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk)  # make a proper cleaning in misc.
+    name = '%s__%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk, int(time.time()))  # make a proper cleaning in misc.
     f_name = '%s.mp3' % name
     f_path = os.path.join(THEMES, f_name)
 
@@ -136,11 +137,6 @@ def matcher():
 def get_offset_end(vid, hashtable, check_if_missing=False):
     an = analyzer()
     match = matcher()
-
-    # Or should we just check here?? untested.
-    #if vid not in hashtable.names and check_if_missing:
-    #    an.ingest(vid, hashtable)
-
     start_time = -1
     end_time = -1
 
@@ -243,10 +239,8 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
     #
     # ffmpeg -i "W:\Dexter\Season 01\dexter.s01e01.720p.bluray.x264-orpheus.mkv" -t 600 -vf "select='gt(scene,0.4)',showinfo,blackdetect=d=0.5:pix_th=0.10" -af silencedetect=n=-50dB:d=0.5 -f null -
     #
-    cmd = [
-        'ffmpeg', '-i', afile, '-t', str(trim), '-vf',
-         v, '-af', a, '-f', 'null', '-'
-    ]
+    cmd = ['ffmpeg', '-i', afile, '-t', str(trim), '-vf',
+           v, '-af', a, '-f', 'null', '-']
 
     LOG.debug('Calling find_offset_ffmpeg with command %s', ' '.join(cmd))
 
@@ -306,7 +300,7 @@ def get_valid_filename(s):
         return clean_tail
 
 
-def convert_and_trim(afile, fs=8000, trim=None, theme=False):
+def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
     tmp = tempfile.NamedTemporaryFile(mode='r+b',
                                       prefix='offset_',
                                       suffix='.wav')
@@ -334,6 +328,11 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False):
     if not psox.returncode == 0:
         LOG.exception(e)
         raise Exception("FFMpeg failed")
+
+    # Check if we passed a url.
+    if '://' in afile and filename:
+        filename = filename + '.wav'
+        afile = os.path.join(THEMES, filename)
 
     if theme:
         shutil.move(tmp_name, afile)
@@ -366,11 +365,20 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
 
     return outfile
 
-
 def search_tunes(name, rk):
-    # Pretty much everything is solen from https://github.com/robwebset/script.tvtunes/blob/master/resources/lib/themeFetcher.py
+    # Pretty much everything is stolen from
+    # https://github.com/robwebset/script.tvtunes/blob/master/resources/lib/themeFetcher.py
     # Thanks!
+
+    titles = ['theme', 'opening', 'main title']
     baseurl = 'http://www.televisiontunes.com'
+
+    def real_url(url):
+        res = requests.get(url)
+        sub_soup = BeautifulSoup(res.text, 'html5lib')
+        link = sub_soup.find('a', id='download_song')
+        return baseurl + link['href']
+
     res = requests.get('http://www.televisiontunes.com/search.php', params={'q': name})
     result = defaultdict(list)
     if res:
@@ -379,28 +387,18 @@ def search_tunes(name, rk):
         search_results = soup.select('div.jp-title > ul > li > a')
         if search_results:
             for sr in search_results:
-                # Since this can be may shows lets atleast try to get the correct one.
-                sname = sr.text.strip()
-                if sname == name:
-                    result['%s__%s' % (name, rk)].append(baseurl + sr['href'])
+                txt = sr.text.strip().split(' - ')
+                if len(txt) == 2:
+                    sname = txt[0].strip()
+                    title = txt[1].strip()
+                else:
+                    sname = txt[0].strip()
+                    title = ''
+                if sname.lower() == name.lower():
+                    if title and any([i for i in titles if i and i.lower() in title.lower()]):
+                        result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
 
-    fin_res = {}
-
-    if result:
-        # Find the real download url.
-        for k, v in result.items():
-            final_urls = []
-            for item in v:
-                res2 = requests.get(item)
-                if res2:
-                    sub_soup = BeautifulSoup(res2.text, 'html5lib')
-                    link = sub_soup.find('a', id='download_song')
-                    final_urls.append(baseurl + link['href'])
-
-        # this is buggy fix me plx
-        fin_res[k] = final_urls
-
-    return fin_res
+    return result
 
 
 def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
@@ -438,8 +436,8 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
         'logger': LOG,
     }
     # https://github.com/rg3/youtube-dl/issues/6923
-    #ydl_opts['external_downloader'] = 'aria2c'
-    #ydl_opts['external_downloader_args'] = []#['-x', '8', '-s', '8', '-k', '256k']
+    # ydl_opts['external_downloader'] = 'aria2c'
+    # ydl_opts['external_downloader_args'] = []#['-x', '8', '-s', '8', '-k', '256k']
 
 
     ydl = youtube_dl.YoutubeDL(ydl_opts)
@@ -467,28 +465,44 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
 
 def download_theme(media, ht, theme_source=None):
+    global PMS
     if media.TYPE == 'show':
         name = media.title
         rk = media.ratingKey
-        #theme = media.theme
+        _theme = media.theme
     else:
         name = media.grandparentTitle
         rk = media.grandparentRatingKey
-        #theme = media.grandparentTheme
-        #if theme is None:
-        #    theme = media.show().theme
+        _theme = media.grandparentTheme
+        if _theme is None:
+            _theme = media.show().theme
 
     if theme_source is None:
-        theme_source = CONFIG.get('theme_source', 'youtube')
+        theme_source = CONFIG.get('theme_source', 'plex')
 
     if theme_source == 'youtube':
         theme = search_for_theme_youtube(name, rk, THEMES)
 
-    theme = convert_and_trim(theme, fs=11025, theme=True)
+    elif theme_source == 'tvtunes':
+        theme = search_tunes(name, rk)
+        theme = list(itertools.chain.from_iterable(theme.values()))
 
-    analyzer().ingest(ht, theme)
+    elif theme_source == 'plex': # TODO fix me
+        # Crap, how should we grab pms.
+        theme = PMS.url(_theme, includeToken=True)
 
-    return theme
+    if not isinstance(theme, list):
+        theme = [theme]
+
+    final = []
+    for th in theme:
+        # Filename is just added so we can pass a url to convert_and_trim
+        th = convert_and_trim(th, fs=11025, theme=True, filename='%s__%s__%s' % (name, rk, int(time.time())))
+        analyzer().ingest(ht, th)
+        final.append(th)
+
+    return final
+
 
 def get_hashtable():
     LOG.debug('Getting hashtable')
@@ -535,34 +549,34 @@ def get_hashtable():
         """Cheaper way to lookup stuff."""
         th = bool(self.get_theme(media))
 
-        if add_if_missing is False:
-            return th
-        else:
+        if th is False and add_if_missing is True:
             th = download_theme(media, self)
             if th:
                 return True
-            else:
-                return False
+
+        return False
 
     def get_theme(self, media):
         if media.TYPE == 'show':
+            name = media.title
             rk = media.ratingKey
         else:
             rk = media.grandparentRatingKey
+            name = media.grandparentTitle
 
-        d = self.get_themes()
+        d = self.get_themes().get(rk, [])
+        LOG.debug('Checking if %s has %s themes', name, len(d))
 
-        return d.get(rk, [])
+        return d
 
     def get_themes(self):
         d = defaultdict(list)
         for n in self.names:
             try:
                 rk = os.path.basename(n).split('__')[1]
-                d[rk].append(n)
+                d[int(rk)].append(n)
             except IndexError:
                 pass
-
         return d
 
     HashTable.save = save
@@ -584,103 +598,6 @@ def get_hashtable():
         HT.load(FP_HASHES)
 
     return HT
-
-
-
-
-'''
-def get_hashtable():
-    LOG.debug('Getting hashtable')
-    from bw_plex.audfprint.hash_table import HashTable
-
-    # Patch HashTable.
-    try:
-        import cPickle as pickle
-    except ImportError:
-        import pickle
-    import gzip
-
-    def load(self, name=None):
-        if name is None:
-            self.__filename = name
-
-        self.load_pkl(name)
-        return self
-
-    def save(self, name=None, params=None, file_object=None):
-        LOG.debug('Saving HashTable')
-        # Merge in any provided params
-        if params:
-            for key in params:
-                self.params[key] = params[key]
-
-        if file_object:
-            f = file_object
-            self.__filename = f.name
-        else:
-
-            if name is None:
-                f = self.__filename
-            else:
-                self.__filename = f = name
-
-            f = gzip.open(f, 'wb')
-
-        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-        self.dirty = False
-        return self
-
-    def has_theme(self, media):
-        """Cheaper way to lookup stuff."""
-        return bool(self.get_theme(media))
-
-    def get_theme(self, media, add_if_missing=True):
-        if media.TYPE == 'show':
-            rk = media.ratingKey
-        else:
-            rk = media.grandparentRatingKey
-
-        d = self.get_themes()
-
-        if not d.get(rk) and add_if_missing:
-            download_theme(media, self)
-            return self.get_themes().get(rk, [])
-
-        return d.get(rk, [])
-
-    def get_themes(self):
-        d = defaultdict(list)
-        for n in self.names:
-            try:
-                rk = os.path.basename(n).split('__')[1]
-                d[rk].append(n)
-            except IndexError:
-                pass
-
-        return d
-
-    HashTable.save = save
-    HashTable.load = load
-    HashTable.has_theme = has_theme
-    HashTable.get_themes = get_themes
-    HashTable.get_theme = get_theme
-
-    if os.path.exists(FP_HASHES):
-        HT = HashTable(FP_HASHES)
-        HT.__filename = FP_HASHES
-        LOG.info('Loading existing files in db')
-        for n in HT.names:
-            LOG.debug(n)
-
-    else:
-        LOG.info('Creating new hashtable db')
-        HT = HashTable()
-        HT.__filename = FP_HASHES
-        HT.save(FP_HASHES)
-        HT.load(FP_HASHES)
-
-    return HT
-'''
 
 
 def download_subtitle(episode):

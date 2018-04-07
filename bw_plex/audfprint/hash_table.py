@@ -97,6 +97,10 @@ class HashTable(object):
         """ Store a list of hashes in the hash table
             associated with a particular name (or integer ID) and time.
         """
+        #import logging
+        #logging.basicConfig(level=logging.DEBUG)
+        #LOG = logging.getLogger()
+        #LOG.debug('Store shit')
         id_ = self.name_to_id(name, add_if_missing=True)
         # Now insert the hashes
         hashmask = (1 << self.hashbits) - 1

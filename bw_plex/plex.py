@@ -84,8 +84,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     """
     global HT
 
-    # This will download the theme add add it to the hashtable
-    # if its missing
+    # This will download the theme and add it to
+    # the hashtable if its missing
     if theme is None:
         HT.has_theme(media)
 
@@ -96,38 +96,38 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     if vid is None:
         vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
 
-    # Lets skip the start time for now. This need to be added later to support shows
-    # that have show, theme song show.
+    # Find the start and the end of the theme in the video file.
     if end is None:
         start, end = get_offset_end(vid, HT)
 
+    # Guess when the intro ended using blackframes and audio silence.
     if ffmpeg_end is None:
         ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
 
+    # Check for recap.
     if recap is None:
-        recap = has_recap(media, CONFIG.get('words'), audio=vid)
+        recap = has_recap(media, CONFIG.get('words', []), audio=vid)
 
-    if end is not None:
-        with session_scope() as se:
-            try:
-                se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
-            except NoResultFound:
-                p = Preprocessed(show_name=media.grandparentTitle,
-                                 ep_title=media.title,
-                                 theme_end=end,
-                                 theme_start=start,
-                                 theme_start_str=to_time(start),
-                                 theme_end_str=to_time(end),
-                                 ffmpeg_end=ffmpeg_end,
-                                 ffmpeg_end_str=to_time(ff),
-                                 duration=media.duration,
-                                 ratingKey=media.ratingKey,
-                                 grandparentRatingKey=media.grandparentRatingKey,
-                                 prettyname=media._prettyfilename(),
-                                 updatedAt=media.updatedAt,
-                                 has_recap=recap)
-                se.add(p)
-                LOG.debug('Added %s to media.db', name)
+    with session_scope() as se:
+        try:
+            se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
+        except NoResultFound:
+            p = Preprocessed(show_name=media.grandparentTitle,
+                             ep_title=media.title,
+                             theme_end=end,
+                             theme_start=start,
+                             theme_start_str=to_time(start),
+                             theme_end_str=to_time(end),
+                             ffmpeg_end=ffmpeg_end,
+                             ffmpeg_end_str=to_time(ff),
+                             duration=media.duration,
+                             ratingKey=media.ratingKey,
+                             grandparentRatingKey=media.grandparentRatingKey,
+                             prettyname=media._prettyfilename(),
+                             updatedAt=media.updatedAt,
+                             has_recap=recap)
+            se.add(p)
+            LOG.debug('Added %s to media.db', name)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
