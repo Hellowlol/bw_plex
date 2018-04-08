@@ -27,6 +27,7 @@ users = list(default=list())
 # List of client names, empty list allows all
 clients = list(default=list())
 mode = string(default='skip_only_theme')
+theme_source = string(default='youtube')
 """.splitlines()
 
 
