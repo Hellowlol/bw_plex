@@ -23,7 +23,7 @@ from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_of
                           get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube, download_theme)
 
 
-POOL = Pool(20)
+POOL = Pool(10)
 PMS = None
 IN_PROG = []
 JUMP_LIST = []
@@ -594,14 +594,16 @@ def client_jump_to(offset=None, sessionkey=None):
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
-            LOG.debug('client %s %s', client.title, (media.viewOffset / 1000))
+            # LOG.debug('client %s %s', client.title, (media.viewOffset / 1000))
 
             # Check that this client is allowed.
             if conf_clients and client.title not in conf_clients:
+                LOG.debug('Client %s is not whitelisted', client.title)
                 return
 
             # Check that this user is allowed.
             if conf_users and user not in conf_users:
+                LOG.debug('User %s is not whitelisted', user)
                 return
 
             # To stop processing. from func task if we have used to much time..
@@ -613,6 +615,7 @@ def client_jump_to(offset=None, sessionkey=None):
             # This does not work on plex web since the fucker returns
             # the local url..
             client = PMS.client(client.title).connect()
+            client.proxyThroughServer()
             client.seekTo(int(offset * 1000))
             LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
 
