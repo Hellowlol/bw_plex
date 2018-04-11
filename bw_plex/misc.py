@@ -216,7 +216,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
     return -1
 
 
-def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_video=0.5, pix_th=0.10, au_db=50):
+def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.3, duration_video=0.5, pix_th=0.10, au_db=50):
     """Find a list of time range for black detect and silence detect.duration_video
 
        Args:
@@ -236,9 +236,6 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.5, duration_vide
     v = 'blackdetect=d=%s:pix_th=%s' % (duration_video, pix_th)
     a = 'silencedetect=n=-%sdB:d=%s' % (au_db, duration_audio)
 
-    #
-    # ffmpeg -i "W:\Dexter\Season 01\dexter.s01e01.720p.bluray.x264-orpheus.mkv" -t 600 -vf "select='gt(scene,0.4)',showinfo,blackdetect=d=0.5:pix_th=0.10" -af silencedetect=n=-50dB:d=0.5 -f null -
-    #
     cmd = ['ffmpeg', '-i', afile, '-t', str(trim), '-vf',
            v, '-af', a, '-f', 'null', '-']
 
@@ -365,10 +362,22 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
 
     return outfile
 
-def search_tunes(name, rk):
+def search_tunes(name, rk, url=None):
+    """Search televisontunes for a show theme song.
+
+       Args:
+            name (str): eg dexter
+            rk (str): ratingkey, this used to find the correct tunes for the shows later.
+            url (None, str): Default None, for manual override.
+
+       Returns:
+            dict
+
+    """
     # Pretty much everything is stolen from
     # https://github.com/robwebset/script.tvtunes/blob/master/resources/lib/themeFetcher.py
     # Thanks!
+    LOG.debug('Searching search_tunes for %s using rk %s', name, rk)
 
     titles = ['theme', 'opening', 'main title']
     baseurl = 'http://www.televisiontunes.com'
@@ -379,24 +388,31 @@ def search_tunes(name, rk):
         link = sub_soup.find('a', id='download_song')
         return baseurl + link['href']
 
-    res = requests.get('http://www.televisiontunes.com/search.php', params={'q': name})
     result = defaultdict(list)
-    if res:
-        soup = BeautifulSoup(res.text, 'html5lib')
 
-        search_results = soup.select('div.jp-title > ul > li > a')
-        if search_results:
-            for sr in search_results:
-                txt = sr.text.strip().split(' - ')
-                if len(txt) == 2:
-                    sname = txt[0].strip()
-                    title = txt[1].strip()
-                else:
-                    sname = txt[0].strip()
-                    title = ''
-                if sname.lower() == name.lower():
-                    if title and any([i for i in titles if i and i.lower() in title.lower()]):
+    if url is None:
+        res = requests.get('http://www.televisiontunes.com/search.php', params={'q': name})
+        if res:
+            soup = BeautifulSoup(res.text, 'html5lib')
+
+            search_results = soup.select('div.jp-title > ul > li > a')
+            if search_results:
+                for sr in search_results:
+                    txt = sr.text.strip().split(' - ')
+                    if len(txt) == 2:
+                        sname = txt[0].strip()
+                        title = txt[1].strip()
+                    else:
+                        sname = txt[0].strip()
+                        title = ''
+                    if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
                         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
+    else:
+        result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(url))
+
+    if result:
+        for k, v in result.items():
+            LOG.debug('search tunes found %s %s %s', k, len(v), ', '.join(v))
 
     return result
 
@@ -464,7 +480,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     return t + '.wav'
 
 
-def download_theme(media, ht, theme_source=None):
+def download_theme(media, ht, theme_source=None, url=None):
     global PMS
     if media.TYPE == 'show':
         name = media.title
@@ -481,10 +497,10 @@ def download_theme(media, ht, theme_source=None):
         theme_source = CONFIG.get('theme_source', 'plex')
 
     if theme_source == 'youtube':
-        theme = search_for_theme_youtube(name, rk, THEMES)
+        theme = search_for_theme_youtube(name, rk, THEMES, url=url)
 
     elif theme_source == 'tvtunes':
-        theme = search_tunes(name, rk)
+        theme = search_tunes(name, rk, url=url)
         theme = list(itertools.chain.from_iterable(theme.values()))
 
     elif theme_source == 'plex': # TODO fix me
@@ -493,12 +509,12 @@ def download_theme(media, ht, theme_source=None):
 
     elif theme_source == 'all':
         theme = []
-        st = search_tunes(name, rk)
+        st = search_tunes(name, rk, url=url)
         st_res = list(itertools.chain.from_iterable(st.values()))
         theme.extend(st_res)
         # Fix plex
         #theme.append(PMS.url(_theme, includeToken=True))
-        theme.append(search_for_theme_youtube(name, rk, THEMES))
+        theme.append(search_for_theme_youtube(name, rk, THEMES, url=url))
 
     if not isinstance(theme, list):
         theme = [theme]

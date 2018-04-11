@@ -20,7 +20,7 @@ from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 from bw_plex.config import read_or_make
 from bw_plex.db import session_scope, Preprocessed
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube, download_theme)
 
 
 POOL = Pool(20)
@@ -322,7 +322,6 @@ def process(name, sample, threads, skip_done):
 
         # Download all the themes first, skip the ones that we already have..
         gr = set([i.grandparentRatingKey for i in all_eps]) - set(HT.get_themes().keys())
-        LOG.debug('gr %s', gr)
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
@@ -372,7 +371,7 @@ def create_config(fp=None):
 @cli.command()
 @click.argument('name')
 @click.argument('url')
-@click.option('-t', '--type', default='youtube')
+@click.option('-t', '--type', default=None)
 @click.option('-rk', help='Add rating key', default='auto')
 @click.option('-jt', '--just_theme', default=False, is_flag=True)
 def manually_correct_theme(name, url, type, rk, just_theme):
@@ -399,22 +398,28 @@ def manually_correct_theme(name, url, type, rk, just_theme):
         if items:
             rk = items[0].ratingKey
 
-    theme_path = search_for_theme_youtube(name, rk=rk, url=url, save_path=THEMES)
-
+    # I dont think think themes be removed anymore as one show can now have several themes
+    # also it dont remove the files in THEMES, this is intended!.
     themes = HT.get_theme(items[0])
     for th in themes:
         LOG.debug('Removing %s from the hashtable', th)
         HT.remove(th)
 
-    analyzer().ingest(HT, theme_path)
-    # HT.save(FP_HASHES)
-    to_pp = []
+    # Download the themes depending on the manual option or config file.
+    theme_path = download_theme(items[0], HT, theme_source=type, url=url)
 
+    # Uses multiproc add?
+    for p in theme_path:
+        analyzer().ingest(HT, p)
+
+    to_pp = []
+    # THis should be removed, if you just want to download the theme. use find theme.
     if just_theme:
         return
 
     if rk:
         with session_scope() as se:
+            # Find all episodes of this show.
             item = se.query(Preprocessed).filter_by(grandparentRatingKey=rk)
 
             for i in item:
@@ -446,7 +451,7 @@ def find_theme(show, type, force):
         Returns:
             None
     """
-
+     # FIX ME
     if show is not None:
         if type == 'youtube':
             search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
