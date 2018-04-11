@@ -481,7 +481,6 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
 
 def download_theme(media, ht, theme_source=None, url=None):
-    global PMS
     if media.TYPE == 'show':
         name = media.title
         rk = media.ratingKey
@@ -492,6 +491,8 @@ def download_theme(media, ht, theme_source=None, url=None):
         _theme = media.grandparentTheme
         if _theme is None:
             _theme = media.show().theme
+
+    pms = media._server
 
     if theme_source is None:
         theme_source = CONFIG.get('theme_source', 'plex')
@@ -505,7 +506,8 @@ def download_theme(media, ht, theme_source=None, url=None):
 
     elif theme_source == 'plex': # TODO fix me
         # Crap, how should we grab pms.
-        theme = PMS.url(_theme, includeToken=True)
+        theme = pms.url(_theme, includeToken=True)
+        LOG.debug('Downloading theme via plex %s' % theme)
 
     elif theme_source == 'all':
         theme = []
@@ -513,7 +515,7 @@ def download_theme(media, ht, theme_source=None, url=None):
         st_res = list(itertools.chain.from_iterable(st.values()))
         theme.extend(st_res)
         # Fix plex
-        #theme.append(PMS.url(_theme, includeToken=True))
+        theme.append(pms.url(_theme, includeToken=True))
         theme.append(search_for_theme_youtube(name, rk, THEMES, url=url))
 
     if not isinstance(theme, list):
@@ -576,8 +578,9 @@ def get_hashtable():
 
         if th is False and add_if_missing is True:
             th = download_theme(media, self)
-            if th:
-                return True
+        
+        if th:
+            return True
 
         return False
 
@@ -590,7 +593,7 @@ def get_hashtable():
             name = media.grandparentTitle
 
         d = self.get_themes().get(rk, [])
-        LOG.debug('Checking if %s has %s themes', name, len(d))
+        LOG.debug('%s has %s themes', name, len(d))
 
         return d
 

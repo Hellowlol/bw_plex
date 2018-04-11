@@ -31,21 +31,6 @@ SHOWS = {}
 HT = None
 
 
-def load_themes():
-    LOG.debug('Loading themes')
-    items = os.listdir(THEMES)
-
-    for i in items:
-        fp = os.path.join(THEMES, i)
-        LOG.debug(fp)
-        if fp:
-            try:
-                show_rating = i.split('__')[1].split('.')[0]
-                SHOWS[int(show_rating)] = fp
-            except IndexError:
-                pass
-
-
 def find_all_shows(func=None):
     """ Helper of get all the shows on a server.
 
@@ -87,7 +72,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     # This will download the theme and add it to
     # the hashtable if its missing
     if theme is None:
-        HT.has_theme(media)
+        if HT.has_theme(media, add_if_missing=False) is False:
+            LOG.debug('downloading theme from process_to_db')
+            theme = download_theme(media, HT)
 
     ff = -1
     name = media._prettyfilename()
@@ -119,7 +106,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                              theme_start_str=to_time(start),
                              theme_end_str=to_time(end),
                              ffmpeg_end=ffmpeg_end,
-                             ffmpeg_end_str=to_time(ff),
+                             ffmpeg_end_str=to_time(ffmpeg_end),
                              duration=media.duration,
                              ratingKey=media.ratingKey,
                              grandparentRatingKey=media.grandparentRatingKey,
@@ -408,10 +395,6 @@ def manually_correct_theme(name, url, type, rk, just_theme):
     # Download the themes depending on the manual option or config file.
     theme_path = download_theme(items[0], HT, theme_source=type, url=url)
 
-    # Uses multiproc add?
-    for p in theme_path:
-        analyzer().ingest(HT, p)
-
     to_pp = []
     # THis should be removed, if you just want to download the theme. use find theme.
     if just_theme:
@@ -428,8 +411,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
                 se.delete(i)
 
         for media in to_pp:
-            process_to_db(media)#, theme=theme_path)
-
+            process_to_db(media)
 
 @cli.command()
 @click.option('-s', '--show', default=None)
@@ -803,7 +785,6 @@ def match(f):
 @cli.command()
 def watch():
     """Start watching the server for stuff to do."""
-    load_themes()
     global HT
     HT = get_hashtable()
     click.echo('Watching for media on %s' % PMS.friendlyName)
