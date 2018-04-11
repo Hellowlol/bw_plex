@@ -283,8 +283,6 @@ def process(name, sample, threads, skip_done):
     all_eps = []
 
     if name:
-        #load_themes()
-
         shows = find_all_shows()
         shows = [s for s in shows if s.title.lower().startswith(name.lower())]
         shows = choose('Select what show to process', shows, 'title')
@@ -319,16 +317,11 @@ def process(name, sample, threads, skip_done):
         except Exception as e:
             logging.error(e, exc_info=True)
 
-    #def add_theme(k):
-    #    theme = search_for_theme_youtube(*k)
-    #    analyzer().ingest(HT, theme)
-    #    return
-
     if all_eps:
         p = Pool(threads)
 
         # Download all the themes first, skip the ones that we already have..
-        gr = set([i.grandparentRatingKey for i in all_eps]) - HT.get_themes().keys()
+        gr = set([i.grandparentRatingKey for i in all_eps]) - set(HT.get_themes().keys())
         LOG.debug('gr %s', gr)
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
@@ -410,7 +403,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
     themes = HT.get_theme(items[0])
     for th in themes:
-        LOG.debug('Removing %s from the hashtable', fp)
+        LOG.debug('Removing %s from the hashtable', th)
         HT.remove(th)
 
     analyzer().ingest(HT, theme_path)
