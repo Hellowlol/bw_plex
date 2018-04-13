@@ -514,7 +514,6 @@ def download_theme(media, ht, theme_source=None, url=None):
         st = search_tunes(name, rk, url=url)
         st_res = list(itertools.chain.from_iterable(st.values()))
         theme.extend(st_res)
-        # Fix plex
         theme.append(pms.url(_theme, includeToken=True))
         theme.append(search_for_theme_youtube(name, rk, THEMES, url=url))
 
@@ -578,7 +577,7 @@ def get_hashtable():
 
         if th is False and add_if_missing is True:
             th = download_theme(media, self)
-        
+
         if th:
             return True
 
