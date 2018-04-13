@@ -523,7 +523,6 @@ def export_db(format, save_path, write_file, show_html):
         t = td
 
     if write_file:
-
         fullpath = os.path.join(save_path, '%s.%s' % (Preprocessed.__name__, format))
         with open(fullpath, 'wb') as f:
             f.write(t.encode('utf-8'))
@@ -757,19 +756,6 @@ def check(data):
                                 LOG.debug('%s is in the correct time range theme_end', item.prettyname)
                                 return jump(item, sessionkey, item.theme_end)
 
-                        #if progress > item.theme_start and progress < item.theme_end:
-                        #    LOG.debug('%s is in the correct time range', item.prettyname)
-                        #    return jump(item, sessionkey, item.correct_theme_end or item.theme_end)
-                        #else:
-                        #    if item.theme_start - progress < 0:
-                        #        n = item.theme_start - progress
-                        #        if n > 0:
-                        #            part = 'jumping in %s' % to_time(n)
-                        #        else:
-                        #            part = 'should have jumped %s ago' % to_time(n)
-                        #        LOG.debug('Skipping %s as it not in the correct time range jumping in %s',
-                        #                  item.prettyname, part)
-
             except NoResultFound:
                 if ratingkey not in IN_PROG:
                     IN_PROG.append(ratingkey)
@@ -803,7 +789,6 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
-
 
 
 @cli.command()
@@ -866,4 +851,3 @@ if __name__ == '__main__':
         # Make sure we save if we need it.
         if HT and HT.dirty:
             HT.save()
-
