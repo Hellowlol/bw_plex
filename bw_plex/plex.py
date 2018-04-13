@@ -497,7 +497,7 @@ def add_theme_to_hashtable(threads, directory):
 
 
 @cli.command()
-@click.option('-f', '--format', type=click.Choice(['', 'html', 'json', 'yaml', 'dbf', 'csv']))
+@click.option('-f', '--format', type=click.Choice(['txt', 'html', 'json', 'yaml', 'dbf', 'csv']), default='txt')
 @click.option('-fp', '--save_path', default=os.getcwd())
 @click.option('-wf', '--write_file', default=False, is_flag=True)
 @click.option('-sh', '--show_html', default=True, is_flag=True)
@@ -517,7 +517,10 @@ def export_db(format, save_path, write_file, show_html):
             data.append(item._to_tuple(keys=keys))
 
     td = tablib.Dataset(*data, headers=keys)
-    t = td.export(format)
+    if format != 'txt':
+        t = td.export(format)
+    else:
+        t = td
 
     if write_file:
 
