@@ -149,7 +149,8 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
             #  print(tophitid, nhashaligned, aligntime, nhashraw, rank, min_time, max_time)
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.debug('Theme song started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
+            LOG.debug(tophitid, rank, aligntime, min_time, max_time)
+            LOG.info('Theme song started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
                                                                              end_time, to_time(end_time)))
             return start_time, end_time
 
@@ -422,7 +423,8 @@ def search_tunes(name, rk, url=None):
                         title = ''
                     if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
                         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
-    else:
+
+    if url and 'televisiontunes' in url:
         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(url))
 
     if result:
@@ -442,6 +444,9 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
     if save_path is None:
         save_path = os.getcwd()
+
+    if url and 'youtube' not in url:
+        return []
 
     fp = os.path.join(save_path, '%s__%s__%s' % (name, rk, int(time.time())))
     fp = get_valid_filename(fp)
@@ -519,8 +524,7 @@ def download_theme(media, ht, theme_source=None, url=None):
         theme = search_tunes(name, rk, url=url)
         theme = list(itertools.chain.from_iterable(theme.values()))
 
-    elif theme_source == 'plex': # TODO fix me
-        # Crap, how should we grab pms.
+    elif theme_source == 'plex':
         theme = pms.url(_theme, includeToken=True)
         LOG.debug('Downloading theme via plex %s' % theme)
 
@@ -617,8 +621,8 @@ def get_hashtable():
             try:
                 rk = os.path.basename(n).split('__')[1]
                 d[int(rk)].append(n)
-            except IndexError:
-                pass
+            except (IndexError, TypeError):
+                LOG.exception('Some crap happend with', n)
         return d
 
     HashTable.save = save
