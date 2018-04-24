@@ -9,6 +9,7 @@ import tempfile
 import shutil
 import time
 import itertools
+import unicodedata
 
 from collections import defaultdict
 
@@ -284,12 +285,26 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.3, duration_vide
 
 
 def get_valid_filename(s):
+    
+    def remove_accents(input_str):
+        try:
+            input_str = unicodedata.normalize('NFKD', input_str.decode('utf-8'))
+        except (UnicodeError, UnicodeDecodeError, AttributeError):
+            try: 
+                input_str = unicodedata.normalize('NFKD', input_str)
+            except: 
+                pass
+
+        return u''.join([c for c in input_str if not unicodedata.combining(c)])
+        
 
     head = os.path.dirname(s)
     tail = os.path.basename(s)
 
-    clean_tail = str(tail).strip()
-    clean_tail = re.sub(r'(?u)[^-_\w.() ]', '', clean_tail)
+    clean_tail = re.sub(r'(?u)[^-_\w.() ]', '', tail)
+    clean_tail = remove_accents(clean_tail)
+    # remove double space
+    clean_tail = ' '.join(clean_tail.strip().split())
 
     if head:
         return os.path.join(head, u'%s' % clean_tail)
