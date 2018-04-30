@@ -126,7 +126,7 @@ def matcher():
     m.search_depth = 2000
     m.verbose = True
     m.exact_count = True
-    match.max_returns = 100
+    m.max_returns = 100
     # Remember https://github.com/dpwe/audfprint/issues/8
     # m.time_quantile = 0.02
     # This need to be high as we might get to many hashes before
