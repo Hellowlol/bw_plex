@@ -126,6 +126,8 @@ def matcher():
     m.search_depth = 2000
     m.verbose = True
     m.exact_count = True
+    match.max_returns = 100
+    # Remember https://github.com/dpwe/audfprint/issues/8
     # m.time_quantile = 0.02
     # This need to be high as we might get to many hashes before
     # we have found the end.
@@ -140,7 +142,6 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
     match = matcher()
     start_time = -1
     end_time = -1
-    match.max_returns = 100
 
     t_hop = an.n_hop / float(an.target_sr)
     rslts, dur, nhash = match.match_file(an, hashtable, vid, 1) # The number does not matter...
