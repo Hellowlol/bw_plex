@@ -126,11 +126,11 @@ def matcher():
     m.search_depth = 2000
     m.verbose = True
     m.exact_count = True
-    #m.time_quantile = 0.02
+    # m.time_quantile = 0.02
     # This need to be high as we might get to many hashes before
     # we have found the end.
     m.max_alignments_per_id = 10000
-    #m.sort_by_time = True
+    # m.sort_by_time = True
     return m
 
 
@@ -142,17 +142,21 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
     end_time = -1
 
     t_hop = an.n_hop / float(an.target_sr)
-    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1)  # The number does not matter...
+    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1) # The number does not matter...
 
     for (tophitid, nhashaligned, aligntime,
          nhashraw, rank, min_time, max_time) in rslts:
-            #  print(tophitid, nhashaligned, aligntime, nhashraw, rank, min_time, max_time)
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.debug(tophitid, rank, aligntime, min_time, max_time)
-            LOG.info('Theme song started at %s (%s) in ended at %s (%s)' % (start_time, to_time(start_time),
-                                                                             end_time, to_time(end_time)))
-            return start_time, end_time
+            LOG.info('Match %s rank %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank, hashtable.names[tophitid], start_time, to_time(start_time),
+                                                                               end_time, to_time(end_time)))
+
+    if rslts:
+        best = rslts[0]
+        end_time = best[6] * t_hop
+        start_time = best[5] * t_hop
+        LOG.debug('Best match was %s', hashtable.names[best[0]])
+        return start_time, end_time
 
     LOG.debug('no result just returning -1')
 
@@ -286,18 +290,17 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.3, duration_vide
 
 
 def get_valid_filename(s):
-    
+
     def remove_accents(input_str):
         try:
             input_str = unicodedata.normalize('NFKD', input_str.decode('utf-8'))
         except (UnicodeError, UnicodeDecodeError, AttributeError):
-            try: 
+            try:
                 input_str = unicodedata.normalize('NFKD', input_str)
-            except: 
+            except:
                 pass
 
         return u''.join([c for c in input_str if not unicodedata.combining(c)])
-        
 
     head = os.path.dirname(s)
     tail = os.path.basename(s)
