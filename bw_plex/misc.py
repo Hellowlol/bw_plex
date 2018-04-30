@@ -151,7 +151,7 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
             LOG.info('Match %s rank %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank, hashtable.names[tophitid], start_time, to_time(start_time),
                                                                                end_time, to_time(end_time)))
 
-    if rslts:
+    if len(rslts):
         best = rslts[0]
         end_time = best[6] * t_hop
         start_time = best[5] * t_hop
@@ -424,6 +424,10 @@ def search_tunes(name, rk, url=None):
                     else:
                         sname = txt[0].strip()
                         title = ''
+
+                    # Many of the themes is just listed with the theme names, atm we are rather strict by checking
+                    # if a valid word is in the title, this is omitted many times, but we could check the read url and see if it was listed in 
+                    # the id #ffx in baseurl + sr['href']
                     if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
                         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
 
