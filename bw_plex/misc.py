@@ -140,6 +140,7 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
     match = matcher()
     start_time = -1
     end_time = -1
+    match.max_returns = 100
 
     t_hop = an.n_hop / float(an.target_sr)
     rslts, dur, nhash = match.match_file(an, hashtable, vid, 1) # The number does not matter...
@@ -148,8 +149,8 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
          nhashraw, rank, min_time, max_time) in rslts:
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.info('Match %s rank %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank, hashtable.names[tophitid], start_time, to_time(start_time),
-                                                                               end_time, to_time(end_time)))
+            LOG.info('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank, 
+                aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
 
     if len(rslts):
         best = rslts[0]
@@ -533,7 +534,7 @@ def download_theme(media, ht, theme_source=None, url=None):
 
     elif theme_source == 'plex':
         theme = pms.url(_theme, includeToken=True)
-        LOG.debug('Downloading theme via plex %s' % theme)
+        LOG.debug('Downloading theme via plex %s', theme)
 
     elif theme_source == 'all':
         theme = []
@@ -548,6 +549,7 @@ def download_theme(media, ht, theme_source=None, url=None):
 
     final = []
     for th in theme:
+        LOG.debug('Download theme using source %s', th)
         # Filename is just added so we can pass a url to convert_and_trim
         th = convert_and_trim(th, fs=11025, theme=True, filename='%s__%s__%s' % (name, rk, int(time.time())))
         analyzer().ingest(ht, th)

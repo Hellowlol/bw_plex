@@ -675,14 +675,14 @@ def task(item, sessionkey):
     except IOError:
         LOG.excetion('Failed to delete %s', vid)
 
-    nxt = find_next(media)
-    if nxt:
-        process_to_db(nxt)
-
     try:
         IN_PROG.remove(item)
     except ValueError:
         LOG.debug('Failed to remove %s from IN_PROG', item)
+
+    nxt = find_next(media)
+    if nxt:
+        process_to_db(nxt)
 
 
 def check(data):
