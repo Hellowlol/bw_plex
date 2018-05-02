@@ -413,6 +413,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
         for media in to_pp:
             process_to_db(media)
 
+
 @cli.command()
 @click.option('-s', '--show', default=None)
 @click.option('-t', '--type', default='youtube')

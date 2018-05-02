@@ -7,6 +7,7 @@ exclude_lines =
     pragma: no cover
 
     raise NotImplementedError
+    except ImportError
 
     # Don't complain if non-runnable code isn't run:
     if 0:

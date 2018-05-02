@@ -13,11 +13,8 @@ import unicodedata
 
 from collections import defaultdict
 
-from profilehooks import timecall
 import requests
 from bs4 import BeautifulSoup
-
-from plexapi.utils import download
 
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
@@ -59,43 +56,6 @@ def find_next(media):
     LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
 
 
-def download_theme_plex(media, force=False):
-    """Download a theme using PMS. And add it to shows cache.
-
-       force (bool): Download even if the theme exists.
-
-       Return:
-            The filepath of the theme.
-
-    """
-    if media.TYPE == 'show':
-        name = media.title
-        rk = media.ratingKey
-        theme = media.theme
-    else:
-        name = media.grandparentTitle
-        rk = media.grandparentRatingKey
-        theme = media.grandparentTheme
-        if theme is None:
-            theme = media.show().theme
-
-    name = '%s__%s__%s' % (re.sub('[\'\"\\\/;,-]+', '', name), rk, int(time.time()))  # make a proper cleaning in misc.
-    f_name = '%s.mp3' % name
-    f_path = os.path.join(THEMES, f_name)
-
-    if not os.path.exists(f_path) or force and theme:
-        LOG.debug('Downloading %s', f_path)
-        dlt = download(PMS.url(theme, includeToken=True), savepath=THEMES, filename=f_name)
-
-        if dlt:
-            SHOWS[rk] = f_path
-            return f_path
-    else:
-        LOG.debug('Skipping %s as it already exists', f_name)
-
-    return f_path
-
-
 def to_time(sec):
     if sec == -1:
         return '00:00'
@@ -119,6 +79,7 @@ def analyzer():
     a.density = 20
     return a
 
+
 def matcher():
     from bw_plex.audfprint.audfprint_match import Matcher
     m = Matcher()
@@ -136,7 +97,6 @@ def matcher():
     return m
 
 
-#@timecall(immediate=True)
 def get_offset_end(vid, hashtable, check_if_missing=False):
     an = analyzer()
     match = matcher()
@@ -144,14 +104,14 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
     end_time = -1
 
     t_hop = an.n_hop / float(an.target_sr)
-    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1) # The number does not matter...
+    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1)  # The number does not matter...
 
     for (tophitid, nhashaligned, aligntime,
          nhashraw, rank, min_time, max_time) in rslts:
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.info('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank, 
-                aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
+            LOG.info('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank,
+                     aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
 
     if len(rslts):
         best = rslts[0]
@@ -201,7 +161,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
     for video in reversed(final_video):
         for aud in final_audio:
             # Sometime times there are black shit the first 15 sec. lets skip that to remove false positives
-            if video[1] > cutoff:  # end time of black shit..
+            if video[1] >= cutoff:  # end time of black shit..
                 # if silence is within black shit its ok. Allow dev sec deviance.
                 if aud and video and abs(aud[0] - video[0]) <= dev and abs(aud[1] - video[0]) <= dev:
                     match_window.append(video)
@@ -361,7 +321,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
         return tmp_name
 
 
-def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
+def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):  # pragma: no cover
     if outfile is None:
         tmp = tempfile.NamedTemporaryFile(mode='r+b', prefix='offset_',
                                           suffix='.mp3')
@@ -382,6 +342,7 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):
         raise Exception("FFMpeg failed")
 
     return outfile
+
 
 def search_tunes(name, rk, url=None):
     """Search televisontunes for a show theme song.
@@ -413,6 +374,7 @@ def search_tunes(name, rk, url=None):
 
     if url is None:
         res = requests.get('http://www.televisiontunes.com/search.php', params={'q': name})
+        LOG.debug(res.url)
         if res:
             soup = BeautifulSoup(res.text, 'html5lib')
 
@@ -428,7 +390,7 @@ def search_tunes(name, rk, url=None):
                         title = ''
 
                     # Many of the themes is just listed with the theme names, atm we are rather strict by checking
-                    # if a valid word is in the title, this is omitted many times, but we could check the read url and see if it was listed in 
+                    # if a valid word is in the title, this is omitted many times, but we could check the read url and see if it was listed in
                     # the id #ffx in baseurl + sr['href']
                     if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
                         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
@@ -763,12 +725,12 @@ def choose(msg, items, attr):
     while True:
         try:
             inp = click.prompt('%s' % msg)
-            if any(s in inp for s in (':', '::', '-')):
+            if any(s in inp for s in (':', '::')):
                 idx = slice(*map(lambda x: int(x.strip()) if x.strip() else None, inp.split(':')))
                 result = items[idx]
                 break
             elif ',' in inp:
-                ips = [int(i.strip()) for i in inp.split()]
+                ips = [int(i.strip()) for i in inp.split(',')]
                 result = [items[z] for z in ips]
                 break
 

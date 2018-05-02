@@ -9,6 +9,7 @@ import sys
 import click
 import numpy as np
 
+from bw_plex import LOG
 from bw_plex.misc import sec_to_hh_mm_ss
 
 
@@ -57,13 +58,14 @@ def extract_text(img, lang='eng', encoding='utf-8'):
     return pytesseract.image_to_string(img, lang=lang).encode(encoding, 'ignore')
 
 
-def video_frame_by_frame(path, offset=0, frame_range=None, step=1, reverse=False):
+def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
     """ Returns a video files frame by frame.by
 
         Args:
             path (str): path to the video file
             offset (int): Should we start from offset inside vid
             frame_range (list, None): List of frames numbers we should grab.
+            step(int): check every n, note this is ignored if frame_range is False
 
         Returns:
             numpy.ndarray
@@ -76,18 +78,22 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1, reverse=False
 
     if frame_range:
         fps = cap.get(cv2.CAP_PROP_FPS)
+
         duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
         duration = int(duration)
         end = duration
         start = offset
 
-        frame_range = ((i * fps) for i in range(start, end, step))
+        # Just yield very step frame and currect time.
+        frame_range = (i * fps for i in range(start, end, step))
         for fr in frame_range:
-            #print('framenumber is at', sec_to_hh_mm_ss(fr / fps))
-            # FR is the framenumber
-            ret, frame = cap.read(fr)
+            # Set the correct frame number to read.
+            cap.set(cv2.CAP_PROP_POS_FRAMES, fr)
+            ret, frame = cap.read()
             if ret:
-                yield frame
+                yield frame, cap.get(cv2.CAP_PROP_POS_MSEC)
+            else:
+                yield None, cap.get(cv2.CAP_PROP_POS_MSEC)
 
     else:
         if offset:
@@ -99,13 +105,15 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1, reverse=False
 
         while cap.isOpened():
             ret, frame = cap.read()
-            #pos = cap.get(cv2.CAP_PROP_POS_MSEC)
-            #print(pos / 1000)
+            pos = cap.get(cv2.CAP_PROP_POS_MSEC)
 
             if ret:
-                yield frame
+                yield frame, pos
+            else:
+                break
 
     cap.release()
+    cv2.destroyAllWindows()
 
 
 def calc_success(rectangles, img_height, img_width, success=0.9):
@@ -129,6 +137,7 @@ def locate_text(image, debug=False):
     """
     # Mostly ripped from https://github.com/hurdlea/Movie-Credits-Detect
     # Thanks!
+    import cv2
 
     # Compat so we can use a frame and img file..
     if isinstance(image, basestring) and os.path.isfile(image):
@@ -240,45 +249,60 @@ def locate_text(image, debug=False):
     return rectangles
 
 
-def find_credits(path, offset=0, fps=None, duration=None, check=7, frame_range=True):
-    """Find the start of the credits and end in a videofile.
+def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame_range=True):
+    """Find the start/end of the credits and end in a videofile.
+       This only check frames so if there is any silence in the video this is simply skipped as
+       opencv only handles videofiles.
+
+       use frame_range to so we only check frames every 1 sec.
+
+       # TODO just ffmepg to check for silence so we calculate the correct time? :(
 
        Args:
             path (str): path to the videofile
             offset(int): If given we should start from this one.
             fps(float?): fps of the video file
             duration(None, int): Duration of the vfile in seconds.
-            check(int): something.
+            check(int): Stop after n frames with text, set a insane high number to check all.
+                        end is not correct without this!
+            step(int): only use every n frame
+            frame_range(bool). default true, precalc the frames and only check thous frames.
 
        Returns:
             1, 2
 
 
     """
+    import cv2
     frames = []
     start = -1
     end = -1
+    LOG.debug('Trying to find the credits for %s', path)
 
     if fps is None:
         # we can just grab the fps from plex.
-        import cv2
         cap = cv2.VideoCapture(path)
-        fps = cap.get(cv2.CAP_PROP_POS_MSEC)
+        fps = cap.get(cv2.CAP_PROP_FPS)
         cap.release()
 
-    for i, frame in enumerate(video_frame_by_frame(path, offset=offset, frame_range=frame_range)):
+    for i, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
+                                                               step=step, frame_range=frame_range)):
+        LOG.debug('progress %s', millisec / 1000)
         if frame is not None:
-            #print(frame)
             recs = locate_text(frame, debug=False)
 
             if recs:
-                frames.append(i)
+                frames.append(millisec)
 
             if len(frames) >= check:
-                start = offset + frames[0] * fps
-                return start, end  # Fix end.
+                break
 
-    return -1, -1
+    if frames:
+        LOG.debug(frames)
+        start = min(frames) / 1000
+        end = max(frames) / 1000
+
+    return start, end
 
 
 @click.command()
@@ -295,6 +319,7 @@ def cmd(path, c, debug, profile, offset):
         files = glob.glob(path)
 
     d = {}
+    print(files)
 
     for f in files:
         if f.endswith(image_type):
