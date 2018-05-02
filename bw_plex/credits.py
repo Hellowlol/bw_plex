@@ -129,6 +129,7 @@ def locate_text(image, debug=False):
     """
     # Mostly ripped from https://github.com/hurdlea/Movie-Credits-Detect
     # Thanks!
+    import cv2
 
     # Compat so we can use a frame and img file..
     if isinstance(image, basestring) and os.path.isfile(image):
