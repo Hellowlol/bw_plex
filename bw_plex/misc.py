@@ -150,8 +150,9 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
          nhashraw, rank, min_time, max_time) in rslts:
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.info('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank, 
-                aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
+            LOG.info('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s) duration %s (%s)' % (tophitid, rank, 
+                aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time,
+                to_time(end_time), end_time - start_time, to_time(end_time - start_time)))
 
     if len(rslts):
         best = rslts[0]
