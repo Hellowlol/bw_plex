@@ -293,7 +293,7 @@ def process(name, sample, threads, skip_done):
             for item in items:
                 for ep in all_eps:
                     if ep.ratingKey == item.ratingKey:
-                        click.secho('Removing as %s already is processed' % item.prettyname, fg='red')
+                        click.secho("Removing %s at it's already is processed" % item.prettyname, fg='red')
                         all_eps.remove(ep)
 
     HT = get_hashtable()
@@ -312,6 +312,7 @@ def process(name, sample, threads, skip_done):
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
+            # FIX me. this does not work after multi themes
             try:
                 p.map(HT.has_theme, sh)
             except KeyboardInterrupt:
@@ -393,7 +394,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
         HT.remove(th)
 
     # Download the themes depending on the manual option or config file.
-    theme_path = download_theme(items[0], HT, theme_source=type, url=url)
+    download_theme(items[0], HT, theme_source=type, url=url)
 
     to_pp = []
     # THis should be removed, if you just want to download the theme. use find theme.
@@ -412,6 +413,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
         for media in to_pp:
             process_to_db(media)
+
 
 @cli.command()
 @click.option('-s', '--show', default=None)
@@ -504,8 +506,6 @@ def add_theme_to_hashtable(threads, directory):
 def export_db(format, save_path, write_file, show_html):
     """Test command for myself."""
     import tablib
-
-    f = Preprocessed
 
     keys = [k for k in Preprocessed.__dict__.keys() if not k.startswith('_')]
     data = []
@@ -646,27 +646,9 @@ def task(item, sessionkey):
     if media.TYPE not in ('episode', 'show'):
         return
 
-    #if not HT.get_theme(media):
-
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
     vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
 
-    # Check if this shows theme exist in the hash table.
-    # We should prop just check if x in HT.names
-    #try:
-    #    HT.name_to_id(theme)
-    #except ValueError:
-    #    LOG.debug('No fingerprint for theme %s does exists in the %s',
-    #              os.path.basename(theme), FP_HASHES)
-
-    #    analyzer().ingest(HT, theme)
-        #HT = HT.save_then_reload(FP_HASHES)
-
-    #start, end = get_offset_end(vid, HT)
-    #ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
-    #if end != -1 or ffmpeg_end != 1:
-    #    # End is -1 if not found. Or a positiv int.
-    #    process_to_db(media, theme=theme, vid=vid, start=start, end=end, ffmpeg_end=ffmpeg_end)
     process_to_db(media, vid=vid)
 
     try:
@@ -784,7 +766,7 @@ def watch():
 
     try:
         while True:
-            time.sleep(0.0001)
+            time.sleep(0.2)
     except KeyboardInterrupt:
         click.echo('Aborting')
         ffs.stop()
