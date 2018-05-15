@@ -164,6 +164,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
             if video[1] >= cutoff:  # end time of black shit..
                 # if silence is within black shit its ok. Allow dev sec deviance.
                 if aud and video and abs(aud[0] - video[0]) <= dev and abs(aud[1] - video[0]) <= dev:
+                    # todo remove dupes from here...
                     match_window.append(video)
 
     if not match_window and not final_audio and final_video:
@@ -175,8 +176,11 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
 
     if match_window:
         try:
+            # Sort on end time and duration.
+            # TODO remove close matches and attempt to get the second best?
             m = list(sorted(match_window, key=lambda k: (k[1], k[2])))
             LOG.debug('Matching windows are %s', to_time_range(m))
+            LOG.debug('RAW %r', match_window)
             return m[0][0]
         except IndexError:
             return -1

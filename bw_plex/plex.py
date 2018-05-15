@@ -335,8 +335,10 @@ def process(name, sample, threads, skip_done):
 def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):
     """Simple manual test for ffmpeg_process with knobs to turn."""
 
-    click.echo(find_offset_ffmpeg(name, trim=trim, dev=dev, duration_audio=da,
-                                  duration_video=dv, pix_th=pix_th, au_db=au_db))
+    n = find_offset_ffmpeg(name, trim=trim, dev=dev, duration_audio=da,
+                           duration_video=dv, pix_th=pix_th, au_db=au_db)
+    click.echo(n)
+    return n
 
 
 @click.command()
@@ -353,7 +355,7 @@ def create_config(fp=None):
     if fp is None:
         fp = INI_FILE
 
-    read_or_make(fp)
+    return read_or_make(fp).file
 
 
 @cli.command()
