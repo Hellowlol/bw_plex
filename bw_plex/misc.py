@@ -183,7 +183,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
             m = list(sorted(match_window, key=lambda k: (k[1], k[2])))
             LOG.debug('Matching windows are %s', to_time_range(m))
             # So this might be wrong on some shows as as they fade to black and have audio silence
-            # before the theme song.
+            # before the theme song and or recap.
             return m[0][0]
         except IndexError:
             return -1
