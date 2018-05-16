@@ -1,4 +1,5 @@
 import os
+import json
 
 from conftest import plex
 import click
@@ -6,14 +7,6 @@ import click
 
 def test_cli():
     pass
-
-
-
-def test_add_theme_to_hashtable(cli_runner):
-    pass
-    #cli_runner(plex.add_theme_to_hashtable, ['-t 2'])
-
-
 
 
 def test_create_config(monkeypatch, cli_runner, tmpdir):
@@ -24,13 +17,49 @@ def test_create_config(monkeypatch, cli_runner, tmpdir):
     assert os.path.exists(fullpath)
 
 
+def test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker):
+    def fetchItem(i):
+        return episode
+    m = mocker.Mock()
+    m.fetchItem = fetchItem
 
-def test_process_to_db():
-    pass
+    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
+    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
+    monkeypatch.setattr(plex, 'HT', HT)
+    monkeypatch.setattr(plex, 'PMS', m)
+    monkeypatch.setattr(plex, 'find_next', lambda k: None)
+
+    plex.task(1337, 1)
+
+    #plex.process_to_db(episode, vid=str(intro_file), start=10, end=20, ffmpeg_end=99, recap=False)
+
+    with plex.session_scope() as se:
+        assert se.query(plex.Preprocessed).filter_by(ratingKey=episode.ratingKey).one()
+
+        # lets check that we can export db shit too.
+
+        res = cli_runner.invoke(plex.export_db, ['-f', 'json', '-fp', str(tmpdir), '-wf'])
+        print(res.output)
+
+        fp = os.path.join(str(tmpdir), 'Preprocessed.json')
+        assert os.path.exists(fp)
+
+        with open(fp, 'r') as f:
+            assert json.load(f)
+
+
+
 
 
 def test_process():
     pass
+
+
+def test_add_theme_to_hashtable(cli_runner, monkeypatch, HT):
+    # We just want to check that this doesnt blow up..
+    monkeypatch.setattr(plex, 'get_hashtable', HT)
+
+    cli_runner.invoke(plex.add_theme_to_hashtable, [2, None])
 
 
 def test_ffmpeg_process(cli_runner, intro_file):

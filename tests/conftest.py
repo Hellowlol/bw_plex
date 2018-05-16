@@ -2,7 +2,10 @@ import os
 import shutil
 import sys
 import tempfile
+from datetime import datetime as DT
 
+from plexapi.video import Episode, Show
+from plexapi.compat import makedirs
 import pytest
 
 fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bw_plex')
@@ -10,10 +13,10 @@ fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bw_plex')
 # I dont like it..
 sys.path.insert(1, fp)
 
-# This is reimported by the tests.
-# Do not delete.
 
 import bw_plex
+
+old_def = bw_plex.DEFAULT_FOLDER
 # Change default folder so we dont mess up the users normal things..
 # This needs to deleted after all the tests are done.
 bw_plex.DEFAULT_FOLDER = os.path.join(tempfile.gettempdir(), 'bw_plex_test_root')
@@ -22,8 +25,11 @@ bw_plex.DEFAULT_FOLDER = os.path.join(tempfile.gettempdir(), 'bw_plex_test_root'
 if os.path.exists(bw_plex.DEFAULT_FOLDER):
     shutil.rmtree(bw_plex.DEFAULT_FOLDER)
 
-if not os.path.exists(bw_plex.DEFAULT_FOLDER):
-    os.makedirs(bw_plex.DEFAULT_FOLDER)
+# Copy the stuff over to the new folder.
+shutil.copytree(old_def, bw_plex.DEFAULT_FOLDER)
+
+#if not os.path.exists(bw_plex.DEFAULT_FOLDER):
+#    os.makedirs(bw_plex.DEFAULT_FOLDER)
 
 bw_plex.THEMES = os.path.join(bw_plex.DEFAULT_FOLDER, 'themes')
 bw_plex.TEMP_THEMES = os.path.join(bw_plex.DEFAULT_FOLDER, 'temp_themes')
@@ -31,7 +37,9 @@ bw_plex.FP_HASHES = os.path.join(bw_plex.DEFAULT_FOLDER, 'hashes.pklz')
 bw_plex.LOG_FILE = os.path.join(bw_plex.DEFAULT_FOLDER, 'log.txt')
 bw_plex.INI_FILE = os.path.join(bw_plex.DEFAULT_FOLDER, 'config.ini')
 
-from plexapi.video import Episode, Show
+
+
+
 import bw_plex.plex as plex
 import bw_plex.misc as misc
 import bw_plex.credits as credits
@@ -73,7 +81,7 @@ def media(mocker):
 @pytest.fixture()
 def episode(mocker):
 
-    ep = mocker.Mock(spec=Episode)
+    ep = mocker.MagicMock(spec=Episode)
     ep.TYPE = 'episode'
     ep.name = ''
     ep.title = ''
@@ -83,5 +91,17 @@ def episode(mocker):
     ep.title = 'Dexter'
     ep.index = 1
     ep.parentIndex = 1
+    ep.grandparentRatingKey = 1337
+    ep.grandparentTheme = ''
+    ep.duration = 60 * 60 * 1000  # 1h in ms
+    ep.updatedAt = DT(1970, 1, 1)
+
+    def _prettyfilename():
+        return 'Dexter.s01.e01'
+
+    def iterParts():
+        yield os.path.join(TEST_DATA, 'dexter_s03e01_intro.mkv')
+
+    ep._prettyfilename = _prettyfilename
 
     return ep

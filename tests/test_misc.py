@@ -27,7 +27,6 @@ def test_find_offset_ffmpeg(intro_file):
 def test_download_theme_and_get_offset_end(media, HT, intro_file):
     files = misc.download_theme(media, HT, theme_source='youtube', url='https://www.youtube.com/watch?v=BIqBQWB7IUM')
     assert len(files)
-    assert len(HT.get_theme(media)) == 1
     assert HT.has_theme(media)
 
     new_files = misc.download_theme(media, HT, theme_source='tvtunes')
@@ -52,7 +51,8 @@ def test_has_recap_subtitle(episode, monkeypatch, mocker):
     assert misc.has_recap_subtitle(episode, ['dog'])
 
 
-def test_has_recap_audio(intro_file):
+# Disabled as this is tested in test_cli.py::test_process_to_db
+def _test_has_recap_audio(intro_file):
     audio = misc.convert_and_trim(intro_file)
     assert misc.has_recap_audio(audio, phrase=['previously on'])
 
