@@ -155,7 +155,7 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl):
 @cli.command()
 @click.option('-cn', '--client_name', default=None)
 @click.option('-sd', '-skip_done', default=False, is_flag=True)
-def check_db(client_name, skip_done):
+def check_db(client_name, skip_done):  # pragma: no cover
     """Do a manual check of the db. This will start playback on a client and seek the video file where we have found
        theme start/end and ffmpeg_end. You will be asked if its a correct match, press y or set the correct time in
        mm:ss format.
@@ -195,7 +195,7 @@ def check_db(client_name, skip_done):
                 if (not skip_done and item.correct_theme_start) or not item.correct_theme_start:
 
                     click.echo('Found theme_start at %s %s theme_end %s %s' % (item.theme_start, item.theme_start_str,
-                        item.theme_end, item.theme_end_str))
+                               item.theme_end, item.theme_end_str))
 
                     client.playMedia(PMS.fetchItem(item.ratingKey))
                     time.sleep(1)
@@ -506,7 +506,7 @@ def add_theme_to_hashtable(threads, directory):
 @click.option('-wf', '--write_file', default=False, is_flag=True)
 @click.option('-sh', '--show_html', default=True, is_flag=True)
 def export_db(format, save_path, write_file, show_html):
-    """Test command for myself."""
+    """Export the db to some other format."""
     import tablib
 
     keys = [k for k in Preprocessed.__dict__.keys() if not k.startswith('_')]
@@ -672,6 +672,8 @@ def task(item, sessionkey):
 def check(data):
     global JUMP_LIST
 
+    print(data)
+
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
 
@@ -782,7 +784,7 @@ def watch():
 @click.argument('type', default='theme')
 @click.argument('start')
 @click.argument('end')
-def set_manual_theme_time(showname, season, episode, type, start, end):
+def set_manual_theme_time(showname, season, episode, type, start, end):  # pragma: no cover
     """Set a manual start and end time for a theme.
 
        Args:
