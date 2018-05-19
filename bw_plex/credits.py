@@ -273,6 +273,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 
 
     """
+    LOG.debug('%r %r %r %r %r %r', path, offset, fps, duration, check, step, frame_range)
     import cv2
     frames = []
     start = -1
@@ -302,6 +303,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
         start = min(frames) / 1000
         end = max(frames) / 1000
 
+    LOG.debug('credits_start %s, credits_end %s', start, end)
     return start, end
 
 
@@ -347,4 +349,5 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
 
 
 if __name__ == '__main__':
-    cmd()
+    #cmd()
+    find_credits('http://10.0.0.22:32400/library/parts/5881/1232477443/file.mkv?download=1&X-Plex-Token=TOKEN')

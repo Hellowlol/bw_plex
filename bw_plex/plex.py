@@ -18,6 +18,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
 from bw_plex.config import read_or_make
+from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Preprocessed
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                           get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube, download_theme)
@@ -77,6 +78,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             theme = download_theme(media, HT)
 
     ff = -1
+    credits_start = -1
+    credits_end = -1
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
 
@@ -95,6 +98,11 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     if recap is None:
         recap = has_recap(media, CONFIG.get('words', []), audio=vid)
 
+    if CONFIG.get('check_credits') is True:
+        dur = media.duration / 1000 - 600
+        credits_start, credits_end = find_credits(check_file_access(media),
+                                                  offset=dur)
+
     with session_scope() as se:
         try:
             se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
@@ -107,6 +115,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                              theme_end_str=to_time(end),
                              ffmpeg_end=ffmpeg_end,
                              ffmpeg_end_str=to_time(ffmpeg_end),
+                             credits_start=credits_start,
+                             credits_start_str=to_time(credits_start),
                              duration=media.duration,
                              ratingKey=media.ratingKey,
                              grandparentRatingKey=media.grandparentRatingKey,
@@ -585,6 +595,7 @@ def client_jump_to(offset=None, sessionkey=None):
     """
     global JUMP_LIST
     LOG.debug('Called jump with %s %s %s', offset, to_time(offset), sessionkey)
+    LOG.debug('%s', JUMP_LIST)
 
     if offset == -1:
         return
@@ -627,7 +638,7 @@ def client_jump_to(offset=None, sessionkey=None):
             # Some clients needs some time..
             # time.sleep(0.2)
             # client.play()
-            JUMP_LIST.remove(sessionkey)
+            # JUMP_LIST.remove(sessionkey)
             # time.sleep(1)
 
             return
