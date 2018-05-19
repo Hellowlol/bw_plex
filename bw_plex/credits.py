@@ -116,7 +116,7 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
     cv2.destroyAllWindows()
 
 
-def calc_success(rectangles, img_height, img_width, success=0.9):
+def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no cover
     """Helper to check the n percentage of the image is covered in text."""
     t = sum([i[2] * i[3] for i in rectangles if i])
     p = 100 * float(t) / float(img_height * img_width)
@@ -311,7 +311,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 @click.option('-d', '--debug', is_flag=True, default=False)
 @click.option('-p', '--profile', is_flag=True, default=False)
 @click.option('-o', '--offset', default=0, type=int)
-def cmd(path, c, debug, profile, offset):
+def cmd(path, c, debug, profile, offset):  # pragma: no cover
 
     if os.path.isfile(path):
         files = [path]

@@ -82,8 +82,6 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
 
     plex.task(1337, 1)
 
-    #plex.process_to_db(episode, vid=str(intro_file), start=10, end=20, ffmpeg_end=99, recap=False)
-
     with plex.session_scope() as se:
         assert se.query(plex.Preprocessed).filter_by(ratingKey=episode.ratingKey).one()
 
@@ -99,11 +97,35 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
             assert json.load(f)
 
 
+def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker):
+    # Let the mock begin..
+    #monkeypatch(plex, 'find_all_shows', lambda k: list(show))
+    def j(a=None):
+        return [media]
+    def t(a=None):
+        return [episode]
+    mocker.patch.object(plex, 'find_all_shows', side_effect=[[media], [episode]])
+    mocker.patch('click.prompt', side_effect=['0', '0'])
 
+    def fetchItem(i):
+        return episode
 
+    m = mocker.Mock()
+    m.fetchItem = fetchItem
 
-def test_process():
-    pass
+    def zomg(*args, **kwargs):
+        pass
+
+    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
+    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
+    monkeypatch.setattr(plex, 'HT', HT)
+    monkeypatch.setattr(plex, 'PMS', m)
+    monkeypatch.setattr(plex, 'find_next', lambda k: None)
+
+    res = cli_runner.invoke(plex.process, ['-n', 'dexter', '-s', '1', '-t', '2', '-sd'])
+    print(res.output)
+    print('ass')
+
 
 
 def test_add_theme_to_hashtable(cli_runner, monkeypatch, HT):

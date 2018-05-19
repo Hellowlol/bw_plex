@@ -421,7 +421,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 @click.option('-s', '--show', default=None)
 @click.option('-t', '--type', default='youtube')
 @click.option('-f', '--force', default=False, is_flag=True)
-def find_theme(show, type, force):
+def find_theme(show, type, force):  # pragma: no cover
     """Iterate over all your shows and downloads the first match for
        showname theme song on youtube.
 
@@ -437,7 +437,8 @@ def find_theme(show, type, force):
         Returns:
             None
     """
-     # FIX ME
+    # Fuck it, just remove the entire func.
+    # FIX ME
     if show is not None:
         if type == 'youtube':
             search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
@@ -627,7 +628,7 @@ def client_jump_to(offset=None, sessionkey=None):
             # time.sleep(0.2)
             # client.play()
             JUMP_LIST.remove(sessionkey)
-            #time.sleep(1)
+            # time.sleep(1)
 
             return
 
@@ -671,8 +672,6 @@ def task(item, sessionkey):
 
 def check(data):
     global JUMP_LIST
-
-    print(data)
 
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
@@ -752,8 +751,8 @@ def check(data):
 @cli.command()
 @click.argument('-f', type=click.Path(exists=True))
 def match(f):
-    """Manual match for a file. This is usefull for testing the a finds the correct end time."""
-    # assert f in H.names
+    """Manual match for a file. This is useful for testing we finds the correct start and
+       end time."""
     global HT
     HT = get_hashtable()
     x = get_offset_end(f, HT)

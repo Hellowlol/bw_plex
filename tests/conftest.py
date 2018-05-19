@@ -65,17 +65,7 @@ def HT():
     return misc.get_hashtable()
 
 
-@pytest.fixture()
-def media(mocker):
-    media = mocker.Mock(spec=Show)
-    media.TYPE = 'show'
-    media.name = 'dexter'
-    media.ratingKey = 1337
-    media.theme = ''
-    media._server = ''
-    media.title = 'dexter'
 
-    return media
 
 
 @pytest.fixture()
@@ -105,3 +95,21 @@ def episode(mocker):
     ep._prettyfilename = _prettyfilename
 
     return ep
+
+
+@pytest.fixture()
+def media(mocker, episode):
+    media = mocker.Mock(spec=Show)
+    media.TYPE = 'show'
+    media.name = 'dexter'
+    media.ratingKey = 1337
+    media.theme = ''
+    media._server = ''
+    media.title = 'dexter'
+
+    def _episodes():
+        return [episode]
+
+    media.episodes = _episodes
+
+    return media
