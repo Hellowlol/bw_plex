@@ -145,3 +145,32 @@ def test_ffmpeg_process(cli_runner, intro_file):
 
 def test_manually_correct_theme():
     pass
+
+
+def test_timeline(intro_file, HT, monkeypatch, mocker, episode):
+
+    def fetchItem(i):
+        return episode
+    m = mocker.Mock()
+    m.fetchItem = fetchItem
+
+    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
+    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
+    monkeypatch.setattr(plex, 'HT', HT)
+    monkeypatch.setattr(plex, 'PMS', m)
+    monkeypatch.setattr(plex, 'find_next', lambda k: None)
+
+    data = {"type": "timeline",
+            "size": 1,
+            "TimelineEntry": [{"identifier": "com.plexapp.plugins.library",
+                               "sectionID": 2,
+                               "itemID": 1337,
+                               "type": 4,
+                               "title": "Dexter S01 E01",
+                               "state": 0,
+                               "queueSize": 8,
+                               "updatedAt": 1526744644}]
+    }
+
+    plex.timeline(data)
+    assert len(HT.get_theme(1337))
