@@ -52,7 +52,7 @@ def users_pms(pms, user):
     try:
         usr = acc.user(user)
     except NotFound:
-        # We fail to find the correct user if the passed user is the owner.. 
+        # We fail to find the correct user if the passed user is the owner..
         # We we simply return the owner pms as we already have that.
         # TODO this might be a issue, see if we cant handle this another way using plexapi.
         LOG.debug('returning org pms')
@@ -492,6 +492,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
         except:
             LOG.exception('Failed to download theme song %s' % name)
+
     LOG.debug('Done downloading theme for %s', name)
 
     return t + '.wav'
