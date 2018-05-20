@@ -25,7 +25,7 @@ from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_of
                           users_pms)
 
 
-POOL = Pool(10)
+POOL = Pool(CONFIG.get('thread_pool_number', 10))
 PMS = None
 IN_PROG = []
 JUMP_LIST = []
@@ -85,7 +85,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     LOG.debug('Started to process %s', name)
 
     if vid is None:
-        vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
+        vid = convert_and_trim(check_file_access(media), fs=11025, trim=CONFIG.get('check_for_theme_sec', 600))
 
     # Find the start and the end of the theme in the video file.
     if end is None:
@@ -100,7 +100,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
         recap = has_recap(media, CONFIG.get('words', []), audio=vid)
 
     if CONFIG.get('check_credits') is True and credits_start is None and credits_end is None:
-        dur = media.duration / 1000 - 600  # We just want to check the last 10 minutes.
+        dur = media.duration / 1000 - CONFIG.get('check_credits_sec', 120)
         credits_start, credits_end = find_credits(check_file_access(media),
                                                   offset=dur)
     else:
@@ -685,7 +685,7 @@ def task(item, sessionkey):
         return
 
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
-    vid = convert_and_trim(check_file_access(media), fs=11025, trim=600)
+    vid = convert_and_trim(check_file_access(media), fs=11025, trim=CONFIG.get('check_for_theme_sec', 600))
 
     process_to_db(media, vid=vid)
 
