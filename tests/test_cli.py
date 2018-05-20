@@ -31,7 +31,7 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
     monkeypatch.setattr(plex, 'HT', HT)
     monkeypatch.setattr(plex, 'PMS', m)
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
-    monkeypatch.setattr(plex, 'client_jump_to', zomg)
+    monkeypatch.setattr(plex, 'client_action', zomg)
 
     data = {"PlaySessionStateNotification": [{"guid": "",
                                               "key": "/library/metadata/1337",
