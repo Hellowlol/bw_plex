@@ -452,51 +452,6 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
 
 @cli.command()
-@click.option('-s', '--show', default=None)
-@click.option('-t', '--type', default='youtube')
-@click.option('-f', '--force', default=False, is_flag=True)
-def find_theme(show, type, force):  # pragma: no cover
-    """Iterate over all your shows and downloads the first match for
-       showname theme song on youtube.
-
-       Since this is best effort (at best.. ) they are stored in the temp_theme directory.
-       Copy them over to the theme folder and run create_hash_table_from_themes and fix any mismatch with
-       fix_shitty_theme.
-
-        Args:
-            show(str): name of the show
-            type(str): youtube, plex, tvtunes ? # TODO
-            force(bool): does nothing
-
-        Returns:
-            None
-    """
-    # Fuck it, just remove the entire func.
-    # FIX ME
-    if show is not None:
-        if type == 'youtube':
-            search_for_theme_youtube(show, rk=1, save_path=TEMP_THEMES)
-
-        return
-
-    shows = find_all_shows()
-    LOG.debug('Downloading all themes from youtube. This might take a while..')
-
-    #if n: # untested
-    #    POOL.map(search_for_theme_youtube,
-    #             [(s.title, s.ratingKey, TEMP_THEMES) for s in shows], 1)
-
-    for show in shows:
-        if type == 'youtube':
-            search_for_theme_youtube(show.title, rk=show.ratingKey,
-                                     save_path=TEMP_THEMES)
-        elif type == 'plex':
-            pass
-        elif type == 'tvtunes':
-            pass
-
-
-@cli.command()
 @click.option('-t', '--threads', help='How many thread to use', type=int, default=1)
 @click.option('-d', '--directory', help='What directory you want to scan for themes.', default=None)
 def add_theme_to_hashtable(threads, directory):

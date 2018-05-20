@@ -9,10 +9,18 @@
 
 binge watching for plex
 
+## Features
+- download theme songs
+- identify outro start and end scanning the video for credits text
+- identify intro start and end using themes song or blackframes and audio silence
+- identify if the video has a recap using subtile and audio
+- process on playback start
+- process on recently added
+- control the client to skip intro/outro
+
 ## Install
 You should install this from github as this project isnt stable.
 ```pip install -e git+https://github.com/Hellowlol/bw_plex.git#egg=bw_plex```
-You should also install a speedup for the websocket-client package. ```pip install wsaccel```
 
 
 ## Usage
@@ -38,9 +46,8 @@ Options:
 Commands:
   add_theme_to_hashtable  Create a hashtable from the themes.
   check_db                Do a manual check of the db.
-  export_db               Test command for myself.
+  export_db               Export the db to some other format.
   ffmpeg_process          Simple manual test for ffmpeg_process with...
-  find_theme              Iterate over all your shows and downloads the...
   manually_correct_theme  Set the correct fingerprint of the show in...
   match                   Manual match for a file.
   process                 Manual process some/all eps.
@@ -53,15 +60,14 @@ The most common will be:
 
 ## How it works:
 
-Bw_plex listens for playing events using websocket. We download the first 10 minutes of that episode and the theme music from YouTube.
+Bw_plex listens for playing events using websocket. We download the first 10 minutes of that episode and/or the theme music from YouTube/tvtunes/Plex
 
 We then create a audio print from the theme song that we match against the audio of the 10 minutes of the episode. (There’s a backup method that uses audio silence in combination with black frames too).
 
 We then check if this episode has a recap using subtitles and audio where we look for clues like last season, previously on (add you own words in the config)
 
+Download the last part of the episode an and indentify the start and and of the outro
+
 Depending on your settings we will then allow playback until the theme start or just jump straight to intro end if we also should skip recaps.
 
 Since this is a rather slow process we also start processing the next episode so next time you watch the same show we instantly seek the client to the end of the theme.
-
-
-
