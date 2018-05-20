@@ -82,7 +82,7 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
         duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
         duration = int(duration)
         end = duration
-        start = offset
+        start = int(offset)
 
         # Just yield very step frame and currect time.
         frame_range = (i * fps for i in range(start, end, step))
@@ -273,7 +273,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 
 
     """
-    LOG.debug('%r %r %r %r %r %r %r', path, offset, fps, duration, check, step, frame_range)
+    # LOG.debug('%r %r %r %r %r %r %r', path, offset, fps, duration, check, step, frame_range)
     import cv2
     frames = []
     start = -1
@@ -288,7 +288,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 
     for i, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
                                                                step=step, frame_range=frame_range)):
-        LOG.debug('progress %s', millisec / 1000)
+        # LOG.debug('progress %s', millisec / 1000)
         if frame is not None:
             recs = locate_text(frame, debug=False)
 

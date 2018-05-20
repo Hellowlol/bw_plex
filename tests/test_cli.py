@@ -86,9 +86,8 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
         assert se.query(plex.Preprocessed).filter_by(ratingKey=episode.ratingKey).one()
 
         # lets check that we can export db shit too.
-
         res = cli_runner.invoke(plex.export_db, ['-f', 'json', '-fp', str(tmpdir), '-wf'])
-        print(res.output)
+        # print(res.output)
 
         fp = os.path.join(str(tmpdir), 'Preprocessed.json')
         assert os.path.exists(fp)
@@ -99,11 +98,6 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
 
 def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker):
     # Let the mock begin..
-    #monkeypatch(plex, 'find_all_shows', lambda k: list(show))
-    def j(a=None):
-        return [media]
-    def t(a=None):
-        return [episode]
     mocker.patch.object(plex, 'find_all_shows', side_effect=[[media], [episode]])
     mocker.patch('click.prompt', side_effect=['0', '0'])
 
@@ -123,15 +117,12 @@ def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
 
     res = cli_runner.invoke(plex.process, ['-n', 'dexter', '-s', '1', '-t', '2', '-sd'])
-    print(res.output)
-    print('ass')
-
+    #print(res.output)
 
 
 def test_add_theme_to_hashtable(cli_runner, monkeypatch, HT):
     # We just want to check that this doesnt blow up..
     monkeypatch.setattr(plex, 'get_hashtable', HT)
-
     cli_runner.invoke(plex.add_theme_to_hashtable, [2, None])
 
 
@@ -145,3 +136,35 @@ def test_ffmpeg_process(cli_runner, intro_file):
 
 def test_manually_correct_theme():
     pass
+
+
+def test_timeline(intro_file, HT, monkeypatch, mocker, episode):
+
+    def fetchItem(i):
+        return episode
+    m = mocker.Mock()
+    m.fetchItem = fetchItem
+
+    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
+    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
+    monkeypatch.setattr(plex, 'HT', HT)
+    monkeypatch.setattr(plex, 'PMS', m)
+    monkeypatch.setattr(plex, 'find_next', lambda k: None)
+
+    data = {"type": "timeline",
+            "size": 1,
+            "TimelineEntry": [{"identifier": "com.plexapp.plugins.library",
+                               "sectionID": 2,
+                               "itemID": 1337,
+                               "type": 4,
+                               "title": "Dexter S01 E01",
+                               "state": 0,
+                               "mediaState": "created",
+                               "queueSize": 8,
+                               "updatedAt": 1526744644}]
+    }
+
+    plex.timeline(data)
+    plex.POOL.close()
+    plex.POOL.join()
+    assert len(HT.get_theme(episode))

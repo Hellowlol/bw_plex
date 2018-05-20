@@ -4,8 +4,10 @@ import sys
 import tempfile
 from datetime import datetime as DT
 
+
 from plexapi.video import Episode, Show
 from plexapi.compat import makedirs
+from sqlalchemy.orm.exc import NoResultFound
 import pytest
 
 fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bw_plex')
@@ -37,13 +39,10 @@ bw_plex.FP_HASHES = os.path.join(bw_plex.DEFAULT_FOLDER, 'hashes.pklz')
 bw_plex.LOG_FILE = os.path.join(bw_plex.DEFAULT_FOLDER, 'log.txt')
 bw_plex.INI_FILE = os.path.join(bw_plex.DEFAULT_FOLDER, 'config.ini')
 
-
-
-
 import bw_plex.plex as plex
 import bw_plex.misc as misc
 import bw_plex.credits as credits
-
+from bw_plex.db import session_scope, Preprocessed
 
 TEST_DATA = os.path.join(os.path.dirname(__file__), 'test_data')
 
@@ -65,7 +64,15 @@ def HT():
     return misc.get_hashtable()
 
 
-
+@pytest.fixture()
+def in_db(ratingkey):
+    rk = int(ratingkey)
+    with session_scope() as se:
+        try:
+            item = se.query(Preprocessed).filter_by(ratingKey=rk).one()
+            return item
+        except NoResultFound:
+            return
 
 
 @pytest.fixture()

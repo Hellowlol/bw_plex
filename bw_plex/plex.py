@@ -722,6 +722,27 @@ def task(item, sessionkey):
         process_to_db(nxt)
 
 
+def timeline(data):
+    """Process recently added episodes."""
+    # Ideas/code is stolen from tautulli! Thanks Jonney!
+    timeline = data.get('TimelineEntry')[0]
+    state = timeline.get('state')
+    ratingkey = timeline.get('itemID')
+    title = timeline.get('title')
+    # section_id = timeline.get('sectionID')
+    metadata_type = timeline.get('type')
+    identifier = timeline.get('identifier')
+    metadata_state = timeline.get('mediaState')
+    LOG.debug('TIMELINE %s', title)
+
+    if (metadata_type == 4 and state == 0 and
+        metadata_state == 'created' and
+        identifier == 'com.plexapp.plugins.library'):
+        LOG.debug('%s was added to %s', title, PMS.friendlyName)
+        ep = PMS.fetchItem(int(ratingkey))
+        POOL.apply_async(process_to_db, args=(ep,))
+
+
 def check(data):
     global JUMP_LIST
 
@@ -810,6 +831,9 @@ def check(data):
                     IN_PROG.append(ratingkey)
                     LOG.debug('Failed to find %s in the db', ratingkey)
                     POOL.apply_async(task, args=(ratingkey, sessionkey))
+
+    elif data.get('type') == 'timeline':
+        timeline(data)
 
 
 @cli.command()
