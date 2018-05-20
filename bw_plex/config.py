@@ -29,7 +29,11 @@ clients = list(default=list())
 mode = string(default='skip_only_theme')
 # possible values are youtube, plex, tvtunes or all
 theme_source = string(default='youtube')
+
 check_credits = boolean(default=False)
+# If credit_check_action is changed to stop, the client will stop playback and mark that item as watched.
+check_credits_action = string(default='')
+check_credits_start_next_ep = boolean(default=True)
 """.splitlines()
 
 

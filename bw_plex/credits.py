@@ -273,7 +273,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 
 
     """
-    LOG.debug('%r %r %r %r %r %r', path, offset, fps, duration, check, step, frame_range)
+    LOG.debug('%r %r %r %r %r %r %r', path, offset, fps, duration, check, step, frame_range)
     import cv2
     frames = []
     start = -1

@@ -16,13 +16,14 @@ from collections import defaultdict
 import requests
 from bs4 import BeautifulSoup
 
+from plexapi.myplex import MyPlexAccount
+from plexapi.server import PlexServer
+
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
 
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None, verify_ssl=None):
-    from plexapi.myplex import MyPlexAccount
-    from plexapi.server import PlexServer
 
     url = url or CONFIG.get('url')
     token = token or CONFIG.get('token')
@@ -43,6 +44,24 @@ def get_pms(url=None, token=None, username=None,
     return PMS
 
 
+def users_pms(pms, user):
+    """Login on your server using the users access credentials."""
+    from plexapi.exceptions import NotFound
+    LOG.debug('Logging in on PMS as %s', user)
+    acc = pms._server.myPlexAccount()
+    try:
+        usr = acc.user(user)
+    except NotFound:
+        # We fail to find the correct user if the passed user is the owner.. 
+        # We we simply return the owner pms as we already have that.
+        # TODO this might be a issue, see if we cant handle this another way using plexapi.
+        LOG.debug('returning org pms')
+        return pms
+    token = usr.get_token(pms.machineIdentifier)
+    users_pms = PlexServer(pms._baseurl, token)
+    return users_pms
+
+
 def find_next(media):
     """Find what ever you have that is next ep."""
     LOG.debug('Check if we can find the next media item.')
@@ -53,7 +72,7 @@ def find_next(media):
             LOG.debug('Found %s', ep._prettyfilename())
             return ep
 
-    LOG.debug('Failed to find the next media item of %s'.media.grandparentTitle)
+    LOG.debug('Failed to find the next media item of %s', media.grandparentTitle)
 
 
 def to_time(sec):

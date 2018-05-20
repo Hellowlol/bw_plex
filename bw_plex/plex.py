@@ -21,7 +21,8 @@ from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Preprocessed
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube, download_theme)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube, download_theme,
+                          users_pms)
 
 
 POOL = Pool(10)
@@ -53,7 +54,7 @@ def find_all_shows(func=None):
     return all_shows
 
 
-def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None, recap=None):
+def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None, recap=None, credits_start=None, credits_end=None):
     """Process a plex media item to the db
 
        Args:
@@ -63,6 +64,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             start (None, int): of theme.
             end (None, int): of theme.
             ffmpeg_end (None, int): What does ffmpeg think is the start of the ep.
+            recap(None, bool): If this how has a recap or not
+            credits_start(None, int): The offset (in sec) the credits text starts
+            credits_end(None, int): The offset (in sec) the credits text ends
 
        Returns:
             None
@@ -77,9 +81,6 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             LOG.debug('downloading theme from process_to_db')
             theme = download_theme(media, HT)
 
-    ff = -1
-    credits_start = -1
-    credits_end = -1
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
 
@@ -98,10 +99,14 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     if recap is None:
         recap = has_recap(media, CONFIG.get('words', []), audio=vid)
 
-    if CONFIG.get('check_credits') is True:
-        dur = media.duration / 1000 - 600
+    if CONFIG.get('check_credits') is True and credits_start is None and credits_end is None:
+        dur = media.duration / 1000 - 600  # We just want to check the last 10 minutes.
         credits_start, credits_end = find_credits(check_file_access(media),
                                                   offset=dur)
+    else:
+        # We dont want to find the credits.
+        credits_start = -1
+        credits_end = -1
 
     with session_scope() as se:
         try:
@@ -117,6 +122,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                              ffmpeg_end_str=to_time(ffmpeg_end),
                              credits_start=credits_start,
                              credits_start_str=to_time(credits_start),
+                             credits_end=credits_end,
+                             credits_end_str=to_time(credits_end),
                              duration=media.duration,
                              ratingKey=media.ratingKey,
                              grandparentRatingKey=media.grandparentRatingKey,
@@ -583,7 +590,7 @@ def check_file_access(m):
                 return PMS.url('%s?download=1' % file.key)
 
 
-def client_jump_to(offset=None, sessionkey=None):
+def client_action(offset=None, sessionkey=None, action='jump'):
     """Seek the client to the offset.
 
        Args:
@@ -594,7 +601,7 @@ def client_jump_to(offset=None, sessionkey=None):
             None
     """
     global JUMP_LIST
-    LOG.debug('Called jump with %s %s %s', offset, to_time(offset), sessionkey)
+    LOG.debug('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
     LOG.debug('%s', JUMP_LIST)
 
     if offset == -1:
@@ -632,8 +639,25 @@ def client_jump_to(offset=None, sessionkey=None):
             # the local url..
             client = PMS.client(client.title).connect()
             client.proxyThroughServer()
-            client.seekTo(int(offset * 1000))
-            LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
+            if action != 'stop':
+                client.seekTo(int(offset * 1000))
+                LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
+            else:
+                LOG.debug('STOP SHIT')
+
+                client.stop()
+                # We might need to login on pms as the user..
+                # urs_pms = users_pms(PMS, user)
+                # new_media = urs_pms.fetchItem(int(media.ratingkey))
+                # new_media.markWatched()
+                # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
+
+                # Check if we just start the next ep instantly.
+                if CONFIG.get('check_credits_start_next_ep') is True:
+                    nxt = find_next(media)
+                    if nxt:
+                        LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
+                        client.playMedia(nxt)
 
             # Some clients needs some time..
             # time.sleep(0.2)
@@ -698,8 +722,10 @@ def check(data):
         mode = CONFIG.get('mode', 'skip_only_theme')
 
         # This has to be removed if/when credits are added.
-        if progress >= 600:
-            return
+        # Check if its possible to get the duration of the video some way if not we might need to
+        # get it via PMS.fetchItem(int(ratingkey))
+        #if progress >= 600:
+        #    return
 
         def best_time(item):
             """Find the best time in the db."""
@@ -720,13 +746,18 @@ def check(data):
 
             return sec
 
-        def jump(item, sessionkey, sec=None):
+        def jump(item, sessionkey, sec=None, action=None):
+            #LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
             if sec is None:
                 sec = best_time(item)
 
+            if action:
+                POOL.apply_async(client_action, args=(sec, sessionkey, action))
+                return
+
             if sessionkey not in JUMP_LIST:
                 JUMP_LIST.append(sessionkey)
-                POOL.apply_async(client_jump_to, args=(sec, sessionkey))
+                POOL.apply_async(client_action, args=(sec, sessionkey, action))
 
         with session_scope() as se:
             try:
@@ -737,6 +768,11 @@ def check(data):
                               item.theme_start_str, item.theme_end_str, to_time(progress))
 
                     bt = best_time(item)
+
+                    if CONFIG.get('check_credits') is True and CONFIG.get('check_credits_action') == 'stop':
+                        if item.credits_start and item.credits_start != 1 and progress >= item.credits_start:
+                            LOG.debug('CREDITS IN CORRECT RANGE!')
+                            jump(item, sessionkey, item.credits_start, action='stop')
 
                     if mode == 'skip_if_recap' and item.theme_end and item.theme_start:
                         return jump(item, sessionkey, bt)
