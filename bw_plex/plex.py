@@ -102,7 +102,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     if CONFIG.get('check_credits') is True and credits_start is None and credits_end is None:
         dur = media.duration / 1000 - CONFIG.get('check_credits_sec', 120)
         credits_start, credits_end = find_credits(check_file_access(media),
-                                                  offset=dur)
+                                                  offset=dur,
+                                                  check=-1)
     else:
         # We dont want to find the credits.
         credits_start = -1

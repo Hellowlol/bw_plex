@@ -295,7 +295,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
             if recs:
                 frames.append(millisec)
 
-            if len(frames) >= check:
+            if check != -1 and len(frames) >= check:
                 break
 
     if frames:
