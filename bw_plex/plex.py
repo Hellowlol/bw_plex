@@ -723,17 +723,8 @@ def task(item, sessionkey):
 
 
 def timeline(data):
-    """
-    {"type":"timeline","size":1,
-     "TimelineEntry":[{"identifier":"com.plexapp.plugins.library",
-                       "sectionID":2,
-                       "itemID":40532,
-                       "type":4,
-                       "title":"Call the Midwife S06 E04",
-                       "state":5,
-                       "queueSize":8,
-                       "updatedAt":1526744644}]}
-    """
+    """Process recently added episodes."""
+    # Ideas/code is stolen from tautulli! Thanks Jonney!
     timeline = data.get('TimelineEntry')[0]
     state = timeline.get('state')
     ratingkey = timeline.get('itemID')
@@ -742,8 +733,7 @@ def timeline(data):
     metadata_type = timeline.get('type')
     identifier = timeline.get('identifier')
     metadata_state = timeline.get('mediaState')
-
-    # Ideas/code is stolen from tautulli! Thanks Jonney!
+    LOG.debug('TIMELINE %s', title)
 
     if (metadata_type == 4 and state == 0 and
         metadata_state == 'created' and
