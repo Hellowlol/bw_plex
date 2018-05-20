@@ -737,10 +737,17 @@ def timeline(data):
 
     if (metadata_type == 4 and state == 0 and
         metadata_state == 'created' and
-        identifier == 'com.plexapp.plugins.library'):
+        identifier == 'com.plexapp.plugins.library' and CONFIG.get('process_recently_added')):
         LOG.debug('%s was added to %s', title, PMS.friendlyName)
         ep = PMS.fetchItem(int(ratingkey))
         POOL.apply_async(process_to_db, args=(ep,))
+
+    elif (metadata_type == 4 and state == 9 and
+          metadata_state == 'deleted' and CONFIG.get('process_deleted')):
+        with session_scope() as se:
+            item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
+            item.delete()
+            LOG.debug('%s was deleted from %s and from media.db', title, PMS.friendlyName)
 
 
 def check(data):
