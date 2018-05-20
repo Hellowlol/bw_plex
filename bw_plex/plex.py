@@ -722,6 +722,37 @@ def task(item, sessionkey):
         process_to_db(nxt)
 
 
+def timeline(data):
+    """
+    {"type":"timeline","size":1,
+     "TimelineEntry":[{"identifier":"com.plexapp.plugins.library",
+                       "sectionID":2,
+                       "itemID":40532,
+                       "type":4,
+                       "title":"Call the Midwife S06 E04",
+                       "state":5,
+                       "queueSize":8,
+                       "updatedAt":1526744644}]}
+    """
+    timeline = data.get('TimelineEntry')[0]
+    state = timeline.get('state')
+    ratingkey = timeline.get('itemID')
+    title = timeline.get('title')
+    # section_id = timeline.get('sectionID')
+    metadata_type = timeline.get('type')
+    identifier = timeline.get('identifier')
+    metadata_state = timeline.get('mediaState')
+
+    # Ideas/code is stolen from tautulli! Thanks Jonney!
+
+    if (metadata_type == 4 and state == 0 and
+        metadata_state == 'created' and
+        identifier == 'com.plexapp.plugins.library'):
+        LOG.debug('%s was added to %s', title, PMS.friendlyName)
+        ep = PMS.fetchItem(int(ratingkey))
+        POOL.apply_async(process_to_db, args=(ep,))
+
+
 def check(data):
     global JUMP_LIST
 
@@ -810,6 +841,9 @@ def check(data):
                     IN_PROG.append(ratingkey)
                     LOG.debug('Failed to find %s in the db', ratingkey)
                     POOL.apply_async(task, args=(ratingkey, sessionkey))
+
+    elif data.get('type') == 'timeline':
+        timeline(data)
 
 
 @cli.command()
