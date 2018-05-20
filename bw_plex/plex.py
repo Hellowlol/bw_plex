@@ -615,8 +615,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                 client.seekTo(int(offset * 1000))
                 LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
             else:
-                LOG.debug('STOP SHIT')
-
                 client.stop()
                 # We might need to login on pms as the user..
                 # urs_pms = users_pms(PMS, user)
