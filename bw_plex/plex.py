@@ -679,6 +679,7 @@ def task(item, sessionkey):
 
 def timeline(data):
     """Process recently added episodes."""
+    global IN_PROG
     # Ideas/code is stolen from tautulli! Thanks Jonney!
     timeline = data.get('TimelineEntry')[0]
     state = timeline.get('state')
@@ -688,7 +689,13 @@ def timeline(data):
     metadata_type = timeline.get('type')
     identifier = timeline.get('identifier')
     metadata_state = timeline.get('mediaState')
-    LOG.debug('TIMELINE %s', title)
+
+    if ratingkey not in IN_PROG:
+        IN_PROG.append(ratingkey)
+    else:
+        return
+
+    LOG.debug('Got timeline event for %s', title)
 
     if (metadata_type == 4 and state == 0 and
         metadata_state == 'created' and
