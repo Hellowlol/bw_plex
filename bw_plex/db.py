@@ -39,7 +39,7 @@ class Preprocessed(Base):
     credits_start = Column('credits_start', Integer, nullable=True)
     credits_start_str = Column('credits_start_str', String, nullable=True)
     correct_credits_start = Column('correct_credits_start', Integer, nullable=True)
-    correct_credits_end = Column('correct_credits_start', Integer, nullable=True)
+    correct_credits_end = Column('correct_credits_end', Integer, nullable=True)
     credits_end = Column('credits_end', Integer, nullable=True)
     credits_end_str = Column('credits_end_str', String, nullable=True)
     ffmpeg_end = Column('ffmpeg_end', Integer, nullable=True)
