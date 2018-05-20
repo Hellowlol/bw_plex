@@ -256,9 +256,25 @@ def check_db(client_name, skip_done):  # pragma: no cover
                         else:
                             item.correct_ffmpeg = to_sec(match)
 
+            # This needs to be tested manually.
+            if item.credits_start and item.credits_start != 1:
+                if (not skip_done and item.correct_credits_start) or not item.correct_credits_start:
+                    click.echo('Found credits start as sec %s time %s' % (item.credits_start, item.credits_start_str))
+                    client.playMedia(PMS.fetchItem(int(item.ratingKey)))
+                    time.sleep(1)
+                    client.seekTo(item.credits_start - 10)
+
+                    match = click.prompt('Did the credits start at %s correct?' % item.credits_start_str)
+
+                    if match:
+                        if match.lower() in ['y', 'yes']:
+                            item.correct_credits_start = item.credits_start
+                        else:
+                            item.correct_credits_start = to_sec(match)
+
             click.clear()
 
-            # Commit thit shit after each loop.
+            # Commit this shit after each loop.
             if se.dirty:
                 se.commit()
 
