@@ -54,7 +54,8 @@ def find_all_shows(func=None):
     return all_shows
 
 
-def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None, recap=None, credits_start=None, credits_end=None):
+def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None,
+                  recap=None, credits_start=None, credits_end=None):
     """Process a plex media item to the db
 
        Args:
@@ -204,34 +205,35 @@ def check_db(client_name, skip_done):  # pragma: no cover
             click.echo('*%s*' % ('-' * 80))
             click.echo('')
 
+            media = PMS.fetchItem(item.ratingkey)
+
             if item.theme_start == -1 or item.theme_end == -1:
                 click.echo('Exists in the db but the start of the theme was not found.'
-                           ' Check the audio file and run it again.')
+                           ' Check the audio file and run it again. Use cmd manually_correct_theme')
 
             if item.theme_end != -1:
 
                 if (not skip_done and item.correct_theme_start) or not item.correct_theme_start:
 
-                    click.echo('Found theme_start at %s %s theme_end %s %s' % (item.theme_start, item.theme_start_str,
-                               item.theme_end, item.theme_end_str))
+                    click.echo('Found theme_start at %s %s theme_end %s %s' % (item.theme_start,
+                                item.theme_start_str, item.theme_end, item.theme_end_str))
 
-                    client.playMedia(PMS.fetchItem(item.ratingKey))
+                    client.playMedia(media, offset=item.theme_start * 1000)
                     time.sleep(1)
 
-                    client.seekTo(item.theme_start * 1000)
-                    start_match = click.prompt('Was theme_start at %s correct?' % item.theme_start_str)
+                    start_match = click.prompt('Was theme_start at %s correct? [y or MM:SS]' % item.theme_start_str)
                     if start_match:
-                        if start_match == 'y':
+                        if start_match in ['y', 'yes']:
                             item.correct_theme_start = item.theme_start
                         else:
                             item.correct_theme_start = to_sec(start_match)
 
                 if (not skip_done and item.correct_theme_end) or not item.correct_theme_end:
 
-                    client.seekTo(item.theme_end * 1000)
-                    end_match = click.prompt('Was theme_end at %s correct?' % item.theme_end_str)
+                    client.playMedia(media, offset=item.theme_end * 1000)
+                    end_match = click.prompt('Was theme_end at %s correct? [y or MM:SS]' % item.theme_end_str)
                     if end_match:
-                        if end_match == 'y':
+                        if end_match in ['y', 'yes']:
                             item.correct_theme_end = item.theme_end
                         else:
                             item.correct_theme_end = to_sec(end_match)
@@ -244,11 +246,10 @@ def check_db(client_name, skip_done):  # pragma: no cover
                     else:
                         j = item.ffmpeg_end
 
-                    client.playMedia(PMS.fetchItem(item.ratingKey))
+                    client.playMedia(media, offset=j * 1000)
                     time.sleep(1)
-                    client.seekTo(j * 1000)
 
-                    match = click.prompt('Was ffmpeg_end at %s correct?' % item.ffmpeg_end_str)
+                    match = click.prompt('Was ffmpeg_end at %s correct? [y or MM:SS]' % item.ffmpeg_end_str)
 
                     if match:
                         if match.lower() in ['y', 'yes']:
@@ -260,11 +261,10 @@ def check_db(client_name, skip_done):  # pragma: no cover
             if item.credits_start and item.credits_start != 1:
                 if (not skip_done and item.correct_credits_start) or not item.correct_credits_start:
                     click.echo('Found credits start as sec %s time %s' % (item.credits_start, item.credits_start_str))
-                    client.playMedia(PMS.fetchItem(int(item.ratingKey)))
+                    client.playMedia(media, offset=item.credits_start - 10)
                     time.sleep(1)
-                    client.seekTo(item.credits_start - 10)
 
-                    match = click.prompt('Did the credits start at %s correct?' % item.credits_start_str)
+                    match = click.prompt('Did the credits start at %s correct? [y or MM:SS]' % item.credits_start_str)
 
                     if match:
                         if match.lower() in ['y', 'yes']:
@@ -375,21 +375,25 @@ def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):
     return n
 
 
-@click.command()
+@cli.command()
 @click.option('-fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
     """Create a config.
 
        Args:
-            fp(str): Where to create the config. If omitted it will be written to the root.
+            fp(str): Where to create the config. If omitted it will be written
+                     to the default location
+
 
        Returns:
-            None
+            filepath to config.ini
     """
     if fp is None:
         fp = INI_FILE
 
-    return read_or_make(fp).file
+    conf_file = read_or_make(fp).filename
+    click.echo('Wrote configfile to %s' % conf_file)
+    return conf_file
 
 
 @cli.command()
@@ -404,7 +408,8 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
        Args:
             name (str): name of the show
-            url (str): the youtube url to the correct theme.
+            url (str): the youtube/tvtunes url to the correct theme.
+            type (str): What source to use for themes.
             rk (str): ratingkey of that show. Pass auto if your lazy.
             just_theme (bool): just add the theme song.
 
@@ -422,8 +427,8 @@ def manually_correct_theme(name, url, type, rk, just_theme):
         if items:
             rk = items[0].ratingKey
 
-    # I dont think think themes be removed anymore as one show can now have several themes
-    # also it dont remove the files in THEMES, this is intended!.
+    # I don't think think the themes in the hashdb should be removed anymore as
+    # one show can now have several themes also it don't remove the files in THEMES, this is intended!
     themes = HT.get_theme(items[0])
     for th in themes:
         LOG.debug('Removing %s from the hashtable', th)
@@ -433,7 +438,6 @@ def manually_correct_theme(name, url, type, rk, just_theme):
     download_theme(items[0], HT, theme_source=type, url=url)
 
     to_pp = []
-    # THis should be removed, if you just want to download the theme. use find theme.
     if just_theme:
         return
 
@@ -444,7 +448,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
 
             for i in item:
                 to_pp.append(PMS.fetchItem(i.ratingKey))
-                # Prob should have edit, but we do this so we can use process_to_db.
+                # Prob should have used edit, but we do this so we can use process_to_db.
                 se.delete(i)
 
         for media in to_pp:
@@ -481,7 +485,7 @@ def add_theme_to_hashtable(threads, directory):
                 all_files.append(fp)
 
     def report(s):  # this shitty reporter they want sucks balls..
-        pass  #print(s)
+        pass  # print(s)
 
     LOG.debug('Creating hashtable, this might take a while..')
 
@@ -549,6 +553,11 @@ def check_file_access(m):
     LOG.debug('Checking if we can reach %s directly', m._prettyfilename())
 
     files = list(m.iterParts())
+    # Now we could get the "wrong" file here.
+    # If the user has duplications we might return the wrong file
+    # CBA with fixing this as it requires to much work :P
+    # And the usecase is rather slim, you could never have dupes.
+    # If the user has they can remove them using plex-cli.
     for file in files:
         if os.path.exists(file.file):
             LOG.debug('Found %s', file.file)
@@ -694,7 +703,7 @@ def check(data):
         # This has to be removed if/when credits are added.
         # Check if its possible to get the duration of the video some way if not we might need to
         # get it via PMS.fetchItem(int(ratingkey))
-        #if progress >= 600:
+        # if progress >= 600:
         #    return
 
         def best_time(item):
@@ -717,7 +726,7 @@ def check(data):
             return sec
 
         def jump(item, sessionkey, sec=None, action=None):
-            #LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
+            # LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
             if sec is None:
                 sec = best_time(item)
 
@@ -775,7 +784,8 @@ def check(data):
 
         if (metadata_type == 4 and state == 0 and
             metadata_state == 'created' and
-            identifier == 'com.plexapp.plugins.library' and CONFIG.get('process_recently_added')):
+            identifier == 'com.plexapp.plugins.library' and
+            CONFIG.get('process_recently_added')):
             LOG.debug('%s was added to %s', title, PMS.friendlyName)
             # Youtubedl can fail if we batch add loads of eps at the same time if there is no
             # theme.

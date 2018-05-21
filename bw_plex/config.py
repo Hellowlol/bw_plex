@@ -15,6 +15,9 @@ debug = boolean(default=False)
 username = string(default='')
 password = string(default='')
 
+thread_pool_number = integer(default=10, min=10, max=50)
+check_for_theme_sec = integer(default=600, min=300, max=600)
+
 logformat = ''
 words = list(default=list('previously on', 'last season', 'last episode'))
 # List of ratingkeys
@@ -34,6 +37,7 @@ check_credits = boolean(default=False)
 # If credit_check_action is changed to stop, the client will stop playback and mark that item as watched.
 check_credits_action = string(default='')
 check_credits_start_next_ep = boolean(default=True)
+check_credits_sec = integer(default=120)
 
 process_recently_added = boolean(default=False)
 process_deleted = boolean(default=False)

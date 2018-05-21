@@ -53,5 +53,3 @@ LOG.setLevel(lvl)
 logging.getLogger("plexapi").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
-
-

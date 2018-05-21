@@ -349,5 +349,4 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
 
 
 if __name__ == '__main__':
-    #cmd()
-    find_credits('http://10.0.0.22:32400/library/parts/5881/1232477443/file.mkv?download=1&X-Plex-Token=TOKEN')
+    cmd()

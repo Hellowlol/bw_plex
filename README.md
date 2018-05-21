@@ -46,6 +46,7 @@ Options:
 Commands:
   add_theme_to_hashtable  Create a hashtable from the themes.
   check_db                Do a manual check of the db.
+  create_config           Create a config file.
   export_db               Export the db to some other format.
   ffmpeg_process          Simple manual test for ffmpeg_process with...
   manually_correct_theme  Set the correct fingerprint of the show in...
