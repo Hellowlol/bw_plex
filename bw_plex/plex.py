@@ -13,7 +13,9 @@ except ImportError:
     from multiprocessing.dummy import ThreadPool as Pool
 
 import click
+import requests
 from sqlalchemy.orm.exc import NoResultFound
+
 
 from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
 
@@ -583,7 +585,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
     """
     global JUMP_LIST
     LOG.debug('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
-    LOG.debug('%s', JUMP_LIST)
+    #LOG.debug('%s', JUMP_LIST)
 
     if offset == -1:
         return
@@ -598,7 +600,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
-            # LOG.debug('client %s %s', client.title, (media.viewOffset / 1000))
+            LOG.debug('client %s %s', client.title, (media.viewOffset / 1000))
 
             # Check that this client is allowed.
             if conf_clients and client.title not in conf_clients:
@@ -618,8 +620,13 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
             # This does not work on plex web since the fucker returns
             # the local url..
-            client = PMS.client(client.title).connect()
-            client.proxyThroughServer()
+            try:
+                client = PMS.client(client.title).connect()
+                client.proxyThroughServer()
+            except requests.exceptions.ConnectionError:
+                LOG.exception('Cant connect to %s', client.title)
+                return
+
             if action != 'stop':
                 client.seekTo(int(offset * 1000))
                 LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
@@ -743,8 +750,8 @@ def check(data):
                 item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
 
                 if item:
-                    LOG.debug('Found %s theme start %s, theme end %s, progress %s', item.prettyname,
-                              item.theme_start_str, item.theme_end_str, to_time(progress))
+                    LOG.debug('Found %s theme start %s, theme end %s, ffmpeg_end %s progress %s', item.prettyname,
+                              item.theme_start_str, item.theme_end_str, item.ffmpeg_end_str, to_time(progress))
 
                     bt = best_time(item)
 
@@ -870,7 +877,7 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
                 start = to_sec(start)
                 end = to_sec(end)
 
-                # TODO HANDLE TYPE to set ffmpeg_ned
+                # TODO HANDLE TYPE to set ffmpeg_end
 
                 if type == 'ffmpeg':
                     item.correct_ffmpeg = end

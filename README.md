@@ -10,13 +10,14 @@
 binge watching for plex
 
 ## Features
-- download theme songs
-- identify outro start and end scanning the video for credits text
-- identify intro start and end using themes song or blackframes and audio silence
-- identify if the video has a recap using subtile and audio
-- process on playback start
-- process on recently added
-- control the client to skip intro/outro
+- download theme songs.
+- identify outro start and end scanning the video for credits text.
+- identify intro start and end using themes song or blackframes and audio silence.
+- identify if the video has a recap using subtitles and audio.
+- process on playback start.
+- process on recently added.
+- control the client to skip intro/outro.
+- start next episode when the credits start.
 
 ## Install
 You should install this from github as this project isnt stable.

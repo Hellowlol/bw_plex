@@ -48,8 +48,8 @@ rfh.setFormatter(frmt)
 LOG.addHandler(rfh)
 
 LOG.setLevel(lvl)
+#LOG.propagate = True
 
 # Disable some logging..
-logging.getLogger("plexapi").setLevel(logging.WARNING)
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
+#logging.getLogger("requests").setLevel(logging.DEBUG)
+#logging.getLogger("urllib3").setLevel(logging.DEBUG)
