@@ -765,7 +765,6 @@ def check(data):
                     POOL.apply_async(task, args=(ratingkey, sessionkey))
 
     elif data.get('type') == 'timeline':
-
         timeline = data.get('TimelineEntry')[0]
         state = timeline.get('state')
         ratingkey = timeline.get('itemID')
@@ -778,6 +777,8 @@ def check(data):
             metadata_state == 'created' and
             identifier == 'com.plexapp.plugins.library' and CONFIG.get('process_recently_added')):
             LOG.debug('%s was added to %s', title, PMS.friendlyName)
+            # Youtubedl can fail if we batch add loads of eps at the same time if there is no
+            # theme.
 
             if ratingkey not in IN_PROG:
                 IN_PROG.append(ratingkey)
