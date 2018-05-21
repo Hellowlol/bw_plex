@@ -17,14 +17,13 @@ import requests
 from sqlalchemy.orm.exc import NoResultFound
 
 
-from bw_plex import FP_HASHES, CONFIG, THEMES, TEMP_THEMES, LOG, INI_FILE
+from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE
 
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Preprocessed
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, search_for_theme_youtube, download_theme,
-                          users_pms)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme)
 
 
 POOL = Pool(CONFIG.get('thread_pool_number', 10))
@@ -33,6 +32,11 @@ IN_PROG = []
 JUMP_LIST = []
 SHOWS = {}
 HT = None
+
+
+def raiser(r):
+    """Helper to raise stuff inside the threadpool"""
+    raise r
 
 
 def find_all_shows(func=None):
@@ -592,7 +596,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
     conf_clients = CONFIG.get('clients', [])
     conf_users = CONFIG.get('users', [])
+    correct_client = None
 
+    clients = PMS.clients()
     for media in PMS.sessions():
         # Find the client.. This client does not have the correct address
         # or 'protocolCapabilities' so we have to get the correct one.
@@ -618,32 +624,40 @@ def client_action(offset=None, sessionkey=None, action='jump'):
             #    LOG.debug('Didnt jump because of offset')
             #    return
 
-            # This does not work on plex web since the fucker returns
-            # the local url..
-            try:
-                client = PMS.client(client.title).connect()
-                client.proxyThroughServer()
-            except requests.exceptions.ConnectionError:
-                LOG.exception('Cant connect to %s', client.title)
-                return
+            for c in clients:
+                # So we got the correct client..
+                if c.machineIdentifier == client.machineIdentifier:
+                    # Plex web sometimes add loopback..
+                    if '127.0.0.1' in c._baseurl:
+                        c._baseurl = c._baseurl.replace('127.0.0.1', client.address)
+                    correct_client = c
+                    break
 
-            if action != 'stop':
-                client.seekTo(int(offset * 1000))
-                LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
-            else:
-                client.stop()
-                # We might need to login on pms as the user..
-                # urs_pms = users_pms(PMS, user)
-                # new_media = urs_pms.fetchItem(int(media.ratingkey))
-                # new_media.markWatched()
-                # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
+            if correct_client:
+                try:
+                    correct_client.connect()
+                    correct_client.proxyThroughServer()
+                except requests.exceptions.ConnectionError:
+                    LOG.exception('Cant connect to %s', client.title)
+                    return
 
-                # Check if we just start the next ep instantly.
-                if CONFIG.get('check_credits_start_next_ep') is True:
-                    nxt = find_next(media)
-                    if nxt:
-                        LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
-                        client.playMedia(nxt)
+                if action != 'stop':
+                    correct_client.seekTo(int(offset * 1000))
+                    LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
+                else:
+                    correct_client.stop()
+                    # We might need to login on pms as the user..
+                    # urs_pms = users_pms(PMS, user)
+                    # new_media = urs_pms.fetchItem(int(media.ratingkey))
+                    # new_media.markWatched()
+                    # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
+
+                    # Check if we just start the next ep instantly.
+                    if CONFIG.get('check_credits_start_next_ep') is True:
+                        nxt = find_next(media)
+                        if nxt:
+                            LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
+                            correct_client.playMedia(nxt)
 
             # Some clients needs some time..
             # time.sleep(0.2)
@@ -738,12 +752,14 @@ def check(data):
                 sec = best_time(item)
 
             if action:
-                POOL.apply_async(client_action, args=(sec, sessionkey, action))
+                POOL.apply_async(client_action, args=(sec, sessionkey, action),
+                                 error_callback=raiser)
                 return
 
             if sessionkey not in JUMP_LIST:
                 JUMP_LIST.append(sessionkey)
-                POOL.apply_async(client_action, args=(sec, sessionkey, action))
+                POOL.apply_async(client_action, args=(sec, sessionkey, action),
+                                 error_callback=raiser)
 
         with session_scope() as se:
             try:
