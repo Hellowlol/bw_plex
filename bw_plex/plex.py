@@ -675,41 +675,6 @@ def task(item, sessionkey):
         process_to_db(nxt)
 
 
-def timeline(data):
-    """Process recently added episodes."""
-    global IN_PROG
-    # Ideas/code is stolen from tautulli! Thanks Jonney!
-    timeline = data.get('TimelineEntry')[0]
-    state = timeline.get('state')
-    ratingkey = timeline.get('itemID')
-    title = timeline.get('title')
-    # section_id = timeline.get('sectionID')
-    metadata_type = timeline.get('type')
-    identifier = timeline.get('identifier')
-    metadata_state = timeline.get('mediaState')
-
-    if ratingkey not in IN_PROG:
-        IN_PROG.append(ratingkey)
-    else:
-        return
-
-    LOG.debug('Got timeline event for %s', title)
-
-    if (metadata_type == 4 and state == 0 and
-        metadata_state == 'created' and
-        identifier == 'com.plexapp.plugins.library' and CONFIG.get('process_recently_added')):
-        LOG.debug('%s was added to %s', title, PMS.friendlyName)
-        ep = PMS.fetchItem(int(ratingkey))
-        POOL.apply_async(process_to_db, args=(ep,))
-
-    elif (metadata_type == 4 and state == 9 and
-          metadata_state == 'deleted' and CONFIG.get('process_deleted')):
-        with session_scope() as se:
-            item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
-            item.delete()
-            LOG.debug('%s was deleted from %s and from media.db', title, PMS.friendlyName)
-
-
 def check(data):
     global JUMP_LIST
 
@@ -800,7 +765,34 @@ def check(data):
                     POOL.apply_async(task, args=(ratingkey, sessionkey))
 
     elif data.get('type') == 'timeline':
-        timeline(data)
+
+        timeline = data.get('TimelineEntry')[0]
+        state = timeline.get('state')
+        ratingkey = timeline.get('itemID')
+        title = timeline.get('title')
+        metadata_type = timeline.get('type')
+        identifier = timeline.get('identifier')
+        metadata_state = timeline.get('metadataState')
+
+        if (metadata_type == 4 and state == 0 and
+            metadata_state == 'created' and
+            identifier == 'com.plexapp.plugins.library' and CONFIG.get('process_recently_added')):
+            LOG.debug('%s was added to %s', title, PMS.friendlyName)
+
+            if ratingkey not in IN_PROG:
+                IN_PROG.append(ratingkey)
+                ep = PMS.fetchItem(int(ratingkey))
+                POOL.apply_async(process_to_db, args=(ep,))
+
+        elif (metadata_type == 4 and state == 9 and
+              metadata_state == 'deleted' and CONFIG.get('process_deleted')):
+            with session_scope() as se:
+                try:
+                    item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
+                    item.delete()
+                    LOG.debug('%s was deleted from %s and from media.db', title, PMS.friendlyName)
+                except NoResultFound:
+                    LOG.debug('%s was deleted from %s', title, PMS.friendlyName)
 
 
 @cli.command()

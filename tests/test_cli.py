@@ -138,7 +138,8 @@ def test_manually_correct_theme():
     pass
 
 
-def test_timeline(intro_file, HT, monkeypatch, mocker, episode):
+# Disable for now. Add this to test_check.
+def _test_timeline(intro_file, HT, monkeypatch, mocker, episode):
 
     def fetchItem(i):
         return episode
@@ -163,6 +164,19 @@ def test_timeline(intro_file, HT, monkeypatch, mocker, episode):
                                "queueSize": 8,
                                "updatedAt": 1526744644}]
     }
+
+    deleted_dict = {'type': 'timeline',
+                    'size': 1,
+                    'TimelineEntry': [{'identifier': 'com.plexapp.plugins.library',
+                                       'sectionID': 2,
+                                       'itemID': 2041,
+                                       'parentItemID': 2035,
+                                       'rootItemID': 2032,
+                                       'type': 4,
+                                       'title': '2 Broke Girls S01 E06',
+                                       'state': 9,
+                                       'metadataState': 'deleted',
+                                       'updatedAt': 1526859691}]}
 
     plex.timeline(data)
     plex.POOL.close()
