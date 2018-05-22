@@ -7,17 +7,17 @@ click
 scipy
 matplotlib
 psutil
-profilehooks
+#profilehooks
 srt
 sqlalchemy
 configobj
 youtube-dl
 beautifulsoup4
 html5lib
-opencv-contrib-python
-pytesseract
-pocketsphinx
-SpeechRecognition
+#opencv-contrib-python
+#pytesseract
+#pocketsphinx
+#SpeechRecognition
 tablib
 
 

@@ -83,10 +83,13 @@ setup(
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-    #extras_require={
-    #    'dev': ['pypandoc']
+    extras_require={
+        'audio': ['pocketsphinx', 'SpeechRecognition'],
+        'video': ['pytesseract', 'opencv-contrib-python'],
+        'all': ['pytesseract', 'opencv-contrib-python', 'pocketsphinx', 'SpeechRecognition']
+        #'dev': ['pypandoc']
         #'test': ['pytest', 'codecov', 'pytest-cov'],
-    #},
+    },
 
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow

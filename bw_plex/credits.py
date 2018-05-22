@@ -12,6 +12,20 @@ import numpy as np
 from bw_plex import LOG
 from bw_plex.misc import sec_to_hh_mm_ss
 
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+    LOG.warning('Scanning for credits is not supported. '
+                'Install the package with pip install bw_plex[all] or bw_plex[video]')
+
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
+    LOG.warning('Extracting text from images is not supported. '
+                'Install the package with pip install bw_plex[all] or bw_plex[video]')
+
 
 color = {'yellow': (255, 255, 0),
          'red': (255, 0, 0),
@@ -46,7 +60,9 @@ def make_imgz(afile, start=600, dest=None, fps=1):
 
 
 def extract_text(img, lang='eng', encoding='utf-8'):
-    import pytesseract
+    if pytesseract is None:
+        return
+
     try:
         import Image
     except ImportError:
@@ -274,7 +290,8 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 
     """
     # LOG.debug('%r %r %r %r %r %r %r', path, offset, fps, duration, check, step, frame_range)
-    import cv2
+    if cv2 is None:
+        return
     frames = []
     start = -1
     end = -1

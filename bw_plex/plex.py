@@ -18,7 +18,6 @@ from sqlalchemy.orm.exc import NoResultFound
 
 
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE
-
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Preprocessed

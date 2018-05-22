@@ -21,6 +21,14 @@ from plexapi.server import PlexServer
 
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 
+# Try to import the optional package.
+try:
+    import speech_recognition
+except ImportError:
+    speech_recognition = None
+    LOG.warning('Failed to import speech_recognition this is required to check for recaps in audio. '
+                'Install the package using pip install bw_plex[audio] or bw_plex[all]')
+
 
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None, verify_ssl=None):
@@ -681,14 +689,15 @@ def to_sec(t):
 
 def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
     """ audio is wave in 16k sample rate."""
-    import speech_recognition as sr
+    if speech_recognition is None:
+        return False
 
     if phrase is None:
         phrase = CONFIG.get('words')
 
     try:
-        r = sr.Recognizer()
-        with sr.AudioFile(audio) as source:
+        r = speech_recognition.Recognizer()
+        with speech_recognition.AudioFile(audio) as source:
             r.adjust_for_ambient_noise(source)
             audio = r.record(source, duration=duration)
             result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
