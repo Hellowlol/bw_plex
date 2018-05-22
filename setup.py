@@ -65,11 +65,12 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='skip intro plex',
+    keywords='skip intro/outro plex',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     packages=find_packages(),
+    include_package_data=True,
 
 
     # List run-time dependencies here.  These will be installed by pip when

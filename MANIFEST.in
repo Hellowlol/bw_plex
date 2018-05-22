@@ -1,0 +1,6 @@
+recursive-include bw_plex/audfprint *
+
+# So we exlude the damn tests from bw_plex
+recursive-include / *.md *.txt *.py
+exclude tests *
+prune tests
