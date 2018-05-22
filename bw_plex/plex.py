@@ -753,7 +753,7 @@ def check(data):
             return sec
 
         def jump(item, sessionkey, sec=None, action=None):
-            LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
+
             if sec is None:
                 sec = best_time(item)
 
@@ -763,6 +763,7 @@ def check(data):
                 return
 
             if sessionkey not in JUMP_LIST:
+                LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
                 JUMP_LIST.append(sessionkey)
                 POOL.apply_async(client_action, args=(sec, sessionkey, action),
                                  error_callback=raiser)
@@ -780,13 +781,13 @@ def check(data):
 
                     if CONFIG.get('check_credits') is True and CONFIG.get('check_credits_action') == 'stop':
                         if item.credits_start and item.credits_start != 1 and progress >= item.credits_start:
-                            LOG.debug('CREDITS IN CORRECT RANGE!')
-                            jump(item, sessionkey, item.credits_start, action='stop')
+                            LOG.debug('We found the start of the credits.')
+                            return jump(item, sessionkey, item.credits_start, action='stop')
 
                     # If recap is detected just instantly skip to intro end.
                     # Now this can failed is there is: recap, new episode stuff, intro, new episode stuff
                     # So thats why skip_only_theme is default as its the safest option.
-                    if mode == 'skip_if_recap' and item.recap and bt != -1:
+                    if mode == 'skip_if_recap' and item.has_recap is True and bt != -1:
                         return jump(item, sessionkey, bt)
 
                     # This mode will allow playback until the theme starts so it should be faster then skip_if_recap.
