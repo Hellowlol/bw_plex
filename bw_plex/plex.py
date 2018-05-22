@@ -772,19 +772,24 @@ def check(data):
                 item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
 
                 if item:
-                    LOG.debug('Found %s theme start %s, theme end %s, ffmpeg_end %s progress %s', item.prettyname,
-                              item.theme_start_str, item.theme_end_str, item.ffmpeg_end_str, to_time(progress))
-
                     bt = best_time(item)
+                    LOG.debug('Found %s theme start %s, theme end %s, ffmpeg_end %s progress %s '
+                              'best_time %s credits_start %s credits_end %s', item.prettyname,
+                              item.theme_start_str, item.theme_end_str, item.ffmpeg_end_str,
+                              to_time(progress), to_time(bt), item.credits_start_str, item.credits_end_str)
 
                     if CONFIG.get('check_credits') is True and CONFIG.get('check_credits_action') == 'stop':
                         if item.credits_start and item.credits_start != 1 and progress >= item.credits_start:
                             LOG.debug('CREDITS IN CORRECT RANGE!')
                             jump(item, sessionkey, item.credits_start, action='stop')
 
-                    if mode == 'skip_if_recap' and item.theme_end and item.theme_start:
+                    # If recap is detected just instantly skip to intro end.
+                    # Now this can failed is there is: recap, new episode stuff, intro, new episode stuff
+                    # So thats why skip_only_theme is default as its the safest option.
+                    if mode == 'skip_if_recap' and item.recap and bt != -1:
                         return jump(item, sessionkey, bt)
 
+                    # This mode will allow playback until the theme starts so it should be faster then skip_if_recap.
                     if mode == 'skip_only_theme':
                         if item.correct_theme_end and item.correct_theme_start:
                             if progress > item.correct_theme_start and progress < item.correct_theme_end:
@@ -799,7 +804,7 @@ def check(data):
             except NoResultFound:
                 if ratingkey not in IN_PROG:
                     IN_PROG.append(ratingkey)
-                    LOG.debug('Failed to find %s in the db', ratingkey)
+                    LOG.debug('Failed to find ratingkey %s in the db', ratingkey)
                     POOL.apply_async(task, args=(ratingkey, sessionkey))
 
     elif data.get('type') == 'timeline':
