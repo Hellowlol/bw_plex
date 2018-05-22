@@ -322,7 +322,8 @@ def process(name, sample, threads, skip_done):
     if sample:
         def lol(i):
             x = i.episodes()[:sample]
-            return all_eps.extend(x)
+            # Lets reload stuff inside the pool.
+            return all_eps.extend([i.reload() for i in x])
 
         find_all_shows(lol)
 
@@ -352,7 +353,6 @@ def process(name, sample, threads, skip_done):
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
-            # FIX me. this does not work after multi themes
             try:
                 p.map(HT.has_theme, sh)
             except KeyboardInterrupt:
