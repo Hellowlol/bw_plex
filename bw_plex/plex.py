@@ -636,17 +636,18 @@ def client_action(offset=None, sessionkey=None, action='jump'):
             if correct_client:
                 try:
                     correct_client.connect()
-                    correct_client.proxyThroughServer()
                 except requests.exceptions.ConnectionError:
                     LOG.exception('Cant connect to %s', client.title)
                     return
 
-                # PMP seems to be really picky about timeline calls, if we dont
-                # it returns 406 errors after 90 sec.
-                if correct_client.platform == 'Konvergo':
-                    correct_client.sendCommand('timeline/poll', wait=0)
+                correct_client.proxyThroughServer()
 
                 if action != 'stop':
+                    # PMP seems to be really picky about timeline calls, if we dont
+                    # it returns 406 errors after 90 sec.
+                    if correct_client.product == 'Plex Media Player':
+                        correct_client.sendCommand('timeline/poll', wait=0)
+
                     correct_client.seekTo(int(offset * 1000))
                     LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
                 else:
