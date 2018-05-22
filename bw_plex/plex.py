@@ -753,7 +753,7 @@ def check(data):
             return sec
 
         def jump(item, sessionkey, sec=None, action=None):
-            # LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
+            LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
             if sec is None:
                 sec = best_time(item)
 
