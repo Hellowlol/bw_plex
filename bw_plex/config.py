@@ -4,6 +4,53 @@ from validate import Validator
 
 vtor = Validator()
 
+
+spec2 = """
+[general]
+thread_pool_number = integer(default=10, min=10, max=50)
+check_for_theme_sec = integer(default=600, min=300, max=600)
+debug = boolean(default=False)
+logformat = ''
+level = option('debug', 'info')
+
+
+[server]
+url = string(default='')
+token = string(default='')
+verify_ssl = boolean(default=False)
+servername = string(default='')
+username = string(default='')
+password = string(default='')
+
+[tv]
+# This could be season, show or ep.
+ignore_intro_ratingkeys = list(default=list())
+ignore_outro_ratingkeys = list(default=list())
+check_credits = boolean(default=False
+check_credits_action = string(default='')
+check_credits_start_next_ep = boolean(default=True)
+check_credits_sec = integer(default=120)
+check_for_theme_sec = integer(default=600, min=300, max=600)
+process_recently_added = boolean(default=False)
+process_deleted = boolean(default=False)
+theme_source = option('all', 'tvtunes', 'plex', 'youtube')
+
+[movie]
+check_credits = boolean(default=False)
+check_credits_action = string(default='')
+check_credits_sec = integer(default=600)
+process_recently_added = boolean(default=False)
+process_deleted = boolean(default=False)
+ignore_intro_ratingkeys = list(default=list())
+ignore_outro_ratingkeys = list(default=list())
+
+
+
+
+"""
+
+
+
 spec = """
 url = string(default='')
 token = string(default='')
