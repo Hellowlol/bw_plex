@@ -137,8 +137,8 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
          nhashraw, rank, min_time, max_time) in rslts:
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.info('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank,
-                     aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
+            LOG.debug('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank,
+                      aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
 
     if len(rslts):
         best = rslts[0]
@@ -147,7 +147,7 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
         LOG.debug('Best match was %s', hashtable.names[best[0]])
         return start_time, end_time
 
-    LOG.debug('no result just returning -1')
+    LOG.debug('no result just returning -1 -1')
 
     return start_time, end_time
 
@@ -202,7 +202,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
             return -1
 
     if match_window:
-         # remove dupes
+        # remove dupes
         match_window = set(tuple(i) for i in match_window)
 
         try:
@@ -480,7 +480,6 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     # ydl_opts['external_downloader'] = 'aria2c'
     # ydl_opts['external_downloader_args'] = []#['-x', '8', '-s', '8', '-k', '256k']
 
-
     ydl = youtube_dl.YoutubeDL(ydl_opts)
 
     def nothing(*args, **kwargs):
@@ -521,7 +520,7 @@ def download_theme(media, ht, theme_source=None, url=None):
     pms = media._server
 
     if theme_source is None:
-        theme_source = CONFIG.get('theme_source', 'plex')
+        theme_source = CONFIG.get('theme_source', 'all')
 
     if theme_source == 'youtube':
         theme = search_for_theme_youtube(name, rk, THEMES, url=url)
@@ -656,6 +655,7 @@ def get_hashtable():
 def download_subtitle(episode):
     import srt
     episode.reload()
+    LOG.debug('Downloading subtitle from PMS')
     pms = episode._server
     to_dl = []
     all_subs = []
@@ -784,6 +784,5 @@ def choose(msg, items, attr):
 
 
 if __name__ == '__main__':
-    #print(search_tunes('Dexter', 1))
+    # print(search_tunes('Dexter', 1))
     print(find_offset_ffmpeg(r'X:\Breaking bad\Season 05\breaking.bad.s05e02.720p.hdtv.x264-orenji.mkv'))
-
