@@ -4,6 +4,7 @@
 import logging
 import os
 import tempfile
+import struct
 import time
 import webbrowser
 
@@ -31,6 +32,10 @@ IN_PROG = []
 JUMP_LIST = []
 SHOWS = {}
 HT = None
+
+is_64bit = struct.calcsize('P') * 8
+if not is_64bit:
+    LOG.info('You not using a python 64 bit version.')
 
 
 def raiser(r):
@@ -186,7 +191,7 @@ def check_db(client_name, skip_done):  # pragma: no cover
 
        Args:
             client_name (None, str): Name of the client you want to use (watch)
-            skip_done (bool): Skip shit that is verified before.
+            skip_done (bool): Skip episodes that already exist in the db.
 
        Returns:
             None
@@ -383,10 +388,10 @@ def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):
 @cli.command()
 @click.option('-fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
-    """Create a config.
+    """Create a config file.
 
        Args:
-            fp(str): Where to create the config. If omitted it will be written
+            fp(str): Where to create the config file. If omitted it will be written
                      to the default location
 
 
@@ -561,7 +566,7 @@ def check_file_access(m):
     # Now we could get the "wrong" file here.
     # If the user has duplications we might return the wrong file
     # CBA with fixing this as it requires to much work :P
-    # And the usecase is rather slim, you could never have dupes.
+    # And the use case is rather slim, you should never have dupes.
     # If the user has they can remove them using plex-cli.
     for file in files:
         if os.path.exists(file.file):
@@ -588,7 +593,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
     """
     global JUMP_LIST
     LOG.debug('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
-    #LOG.debug('%s', JUMP_LIST)
+    # LOG.debug('%s', JUMP_LIST)
 
     if offset == -1:
         return
@@ -904,8 +909,6 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
                 start = to_sec(start)
                 end = to_sec(end)
 
-                # TODO HANDLE TYPE to set ffmpeg_end
-
                 if type == 'ffmpeg':
                     item.correct_ffmpeg = end
 
@@ -915,6 +918,12 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
 
                     if end:
                         item.correct_time_end = end
+                elif type == 'credits':
+                    if start:
+                        item.correct_credits_start = start
+
+                    if end:
+                        item.correct_credits_end = end
 
                 LOG.debug('Set correct_time %s for %s to start %s end %s', type, ep._prettyfilename(), start, end)
 
