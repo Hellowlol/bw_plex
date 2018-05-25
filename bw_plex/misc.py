@@ -33,7 +33,6 @@ except ImportError:
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None, verify_ssl=None):
 
-    LOG.debug('%r', dict(CONFIG))
 
     url = url or CONFIG['server'].get('url')
     token = token or CONFIG['server'].get('token')
@@ -152,7 +151,7 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
         LOG.debug('Best match was %s', hashtable.names[best[0]])
         return start_time, end_time
 
-    LOG.debug('no result just returning -1 -1')
+    LOG.debug('NO match in the hashes.pklz just returning -1 -1')
 
     return start_time, end_time
 

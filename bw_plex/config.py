@@ -4,10 +4,8 @@ from validate import Validator
 
 vtor = Validator()
 
-#d = {'genenral': {'level': option}}
 
-
-spec2 = """
+spec = """
 [general]
 thread_pool_number = integer(default=10, min=10, max=50)
 check_for_theme_sec = integer(default=600, min=300, max=600)
@@ -61,7 +59,7 @@ def migrate(conf):
 
 
 def read_or_make(fp):
-    default = configobj.ConfigObj(None, configspec=spec2,
+    default = configobj.ConfigObj(None, configspec=spec,
                                   write_empty_values=True,
                                   create_empty=True,
                                   list_values=True)
