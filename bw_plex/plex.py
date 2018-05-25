@@ -23,7 +23,7 @@ from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Preprocessed, Movies
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
 
 
 POOL = Pool(CONFIG.get('thread_pool_number', 10))
@@ -86,12 +86,12 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     global HT
 
     # Disable for now.
-    if media.TYPE == 'movie':
-        return
+    # if media.TYPE == 'movie':
+    #    return
 
     # This will download the theme and add it to
     # the hashtable if its missing
-    if theme is None:
+    if media.TYPE == 'episode' and theme is None:
         if HT.has_theme(media, add_if_missing=False) is False:
             LOG.debug('downloading theme from process_to_db')
             theme = download_theme(media, HT)
@@ -99,23 +99,38 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
 
-    if vid is None:
-        vid = convert_and_trim(check_file_access(media), fs=11025, trim=CONFIG.get('check_for_theme_sec', 600))
+    if vid is None and media.TYPE == 'episode':
+        vid = convert_and_trim(check_file_access(media), fs=11025,
+                               trim=CONFIG['tv'].get('check_for_theme_sec', 600))
 
-    # Find the start and the end of the theme in the video file.
-    if end is None:
+    # Find the start and the end of the theme in the episode file.
+    if end is None and media.TYPE == 'episode':
         start, end = get_offset_end(vid, HT)
 
     # Guess when the intro ended using blackframes and audio silence.
     if ffmpeg_end is None:
-        ffmpeg_end = find_offset_ffmpeg(check_file_access(media))
+        if media.TYPE == 'episode':
+            trim = CONFIG['tv'].get('check_intro_ffmpeg_sec')
+        else:
+            trim = CONFIG['movie'].get('check_intro_ffmpeg_sec')
+        ffmpeg_end = find_offset_ffmpeg(check_file_access(media), trim=trim)
 
     # Check for recap.
     if recap is None:
         recap = has_recap(media, CONFIG['tv'].get('words', []), audio=vid)
 
-    if CONFIG.get('check_credits') is True and credits_start is None and credits_end is None:
-        dur = media.duration / 1000 - CONFIG.get('check_credits_sec', 120)
+    if (media.TYPE == 'episode' and CONFIG['tv'].get('check_credits') is True and
+        credits_start is None and credits_end is None):
+
+        dur = media.duration / 1000 - CONFIG['tv'].get('check_credits_sec', 120)
+        credits_start, credits_end = find_credits(check_file_access(media),
+                                                  offset=dur,
+                                                  check=-1)
+
+    elif (media.TYPE == 'movie' and CONFIG['movie'].get('check_credits') is True
+          and credits_start is None and credits_end is None):
+
+        dur = media.duration / 1000 - CONFIG['movie'].get('check_credits_sec', 600)
         credits_start, credits_end = find_credits(check_file_access(media),
                                                   offset=dur,
                                                   check=-1)
@@ -668,6 +683,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                 correct_client.proxyThroughServer()
 
                 if action != 'stop':
+                    if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
+                        LOG.debug('Didnt send seek command this show, season or episode is ignored')
+                        return
                     # PMP seems to be really picky about timeline calls, if we dont
                     # it returns 406 errors after 90 sec.
                     if correct_client.product == 'Plex Media Player':
@@ -676,19 +694,19 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                     correct_client.seekTo(int(offset * 1000))
                     LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
                 else:
-                    correct_client.stop()
-                    # We might need to login on pms as the user..
-                    # urs_pms = users_pms(PMS, user)
-                    # new_media = urs_pms.fetchItem(int(media.ratingkey))
-                    # new_media.markWatched()
-                    # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
+                    if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
+                        correct_client.stop()
+                        # We might need to login on pms as the user..
+                        # urs_pms = users_pms(PMS, user)
+                        # new_media = urs_pms.fetchItem(int(media.ratingkey))
+                        # new_media.markWatched()
+                        # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
 
-                    # Check if we just start the next ep instantly.
-                    if CONFIG['tv'].get('check_credits_start_next_ep') is True:
-                        nxt = find_next(media)
-                        if nxt:
-                            LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
-                            correct_client.playMedia(nxt)
+                        # Check if we just start the next ep instantly.
+                        if CONFIG['tv'].get('check_credits_start_next_ep') is True:
+                            if nxt:
+                                LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
+                                correct_client.playMedia(nxt)
 
             # Some clients needs some time..
             # time.sleep(0.2)
@@ -712,20 +730,24 @@ def task(item, sessionkey):
     global HT
     media = PMS.fetchItem(int(item))
     # LOG.debug('Found %s', media._prettyfilename())
-    if media.TYPE not in ('episode', 'show'):
+    if media.TYPE not in ('episode', 'show', 'movie'):
         return
 
-    LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
-    vid = convert_and_trim(check_file_access(media), fs=11025,
-                           trim=CONFIG['general'].get('check_for_theme_sec', 600))
+    if media.TYPE == 'episode':
+        LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
+        vid = convert_and_trim(check_file_access(media), fs=11025,
+                               trim=CONFIG['general'].get('check_for_theme_sec', 600))
 
-    process_to_db(media, vid=vid)
+        process_to_db(media, vid=vid)
 
-    try:
-        os.remove(vid)
-        LOG.debug('Deleted %s', vid)
-    except IOError:
-        LOG.excetion('Failed to delete %s', vid)
+        try:
+            os.remove(vid)
+            LOG.debug('Deleted %s', vid)
+        except IOError:
+            LOG.excetion('Failed to delete %s', vid)
+
+    elif media.TYPE == 'movie':
+        process_to_db(media)
 
     try:
         IN_PROG.remove(item)
@@ -761,13 +783,13 @@ def check(data):
 
         def best_time(item):
             """Find the best time in the db."""
-            if item.correct_theme_end and item.correct_theme_end != 1:
+            if item.type == 'episode' and item.correct_theme_end and item.correct_theme_end != 1:
                 sec = item.correct_theme_end
 
             elif item.correct_ffmpeg and item.correct_ffmpeg != 1:
                 sec = item.correct_ffmpeg
 
-            elif item.theme_end and item.theme_end != -1:
+            elif item.type == 'episode' and item.theme_end and item.theme_end != -1:
                 sec = item.theme_end
 
             elif item.ffmpeg_end and item.ffmpeg_end != -1:
@@ -796,7 +818,7 @@ def check(data):
 
         with session_scope() as se:
             try:
-                item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
+                item = se.query(Preprocessed, Movies).filter_by(ratingKey=ratingkey).one()
 
                 if item:
                     bt = best_time(item)
@@ -805,7 +827,10 @@ def check(data):
                               item.theme_start_str, item.theme_end_str, item.ffmpeg_end_str,
                               to_time(progress), to_time(bt), item.credits_start_str, item.credits_end_str)
 
-                    if CONFIG['tv'].get('check_credits') is True and CONFIG['tv'].get('check_credits_action') == 'stop':
+                    if (item.type == 'episode' and CONFIG['tv'].get('check_credits') is True and
+                        CONFIG['tv'].get('check_credits_action') == 'stop' or
+                        item.type == 'movie' and CONFIG['movie'].get('check_credits') is True and
+                        CONFIG['movie'].get('check_credits_action') == 'stop'):
                         if item.credits_start and item.credits_start != 1 and progress >= item.credits_start:
                             LOG.debug('We found the start of the credits.')
                             return jump(item, sessionkey, item.credits_start, action='stop')
@@ -813,17 +838,18 @@ def check(data):
                     # If recap is detected just instantly skip to intro end.
                     # Now this can failed is there is: recap, new episode stuff, intro, new episode stuff
                     # So thats why skip_only_theme is default as its the safest option.
-                    if mode == 'skip_if_recap' and item.has_recap is True and bt != -1:
+                    if (mode == 'skip_if_recap' and item.type == 'episode' and
+                        item.has_recap is True and bt != -1):
                         return jump(item, sessionkey, bt)
 
                     # This mode will allow playback until the theme starts so it should be faster then skip_if_recap.
                     if mode == 'skip_only_theme':
-                        if item.correct_theme_end and item.correct_theme_start:
+                        if item.type == 'episode' and item.correct_theme_end and item.correct_theme_start:
                             if progress > item.correct_theme_start and progress < item.correct_theme_end:
                                 LOG.debug('%s is in the correct time range correct_theme_end', item.prettyname)
                                 return jump(item, sessionkey, item.correct_theme_end)
 
-                        elif item.theme_end and item.theme_start:
+                        elif item.type == 'episode' and item.theme_end and item.theme_start:
                             if progress > item.theme_start and progress < item.theme_end:
                                 LOG.debug('%s is in the correct time range theme_end', item.prettyname)
                                 return jump(item, sessionkey, item.theme_end)
@@ -870,7 +896,7 @@ def check(data):
 
             with session_scope() as se:
                 try:
-                    item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()
+                    item = se.query(Preprocessed, Movies).filter_by(ratingKey=ratingkey).one()
                     item.delete()
                     LOG.debug('%s was deleted from %s and from media.db', title, PMS.friendlyName)
                 except NoResultFound:

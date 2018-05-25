@@ -13,11 +13,12 @@ debug = boolean(default=False)
 logformat = ''
 level = option('debug', 'info', default='debug')
 mode = option('skip_only_theme', 'skip_if_recap', default='skip_only_theme')
+ignore_intro_ratingkeys = list(default=list())
+ignore_outro_ratingkeys = list(default=list())
 
 # Clients and users are a whitelist! empty allows all.
-clients = list()
-users = list()
-
+clients = list(default=list())
+users = list(default=list())
 
 [server]
 url = string(default='')
@@ -29,13 +30,14 @@ password = string(default='')
 
 [tv]
 # This could be season, show or ep.
-ignore_intro_ratingkeys = list(default=list())
-ignore_outro_ratingkeys = list(default=list())
+#ignore_intro_ratingkeys = list(default=list())
+#ignore_outro_ratingkeys = list(default=list())
 check_credits = boolean(default=False
 check_credits_action = string(default='')
 check_credits_start_next_ep = boolean(default=True)
 check_credits_sec = integer(default=120)
 check_for_theme_sec = integer(default=600, min=300, max=600)
+check_intro_ffmpeg_sec = integer(default=600)
 process_recently_added = boolean(default=False)
 process_deleted = boolean(default=False)
 theme_source = option('all', 'tvtunes', 'plex', 'youtube', default='all')
@@ -46,10 +48,11 @@ words = list(default=list('previously on', 'last season', 'last episode'))
 check_credits = boolean(default=False)
 check_credits_action = string(default='')
 check_credits_sec = integer(default=600)
+check_intro_ffmpeg_sec = integer(default=600)
 process_recently_added = boolean(default=False)
 process_deleted = boolean(default=False)
-ignore_intro_ratingkeys = list(default=list())
-ignore_outro_ratingkeys = list(default=list())
+#ignore_intro_ratingkeys = list(default=list())
+#ignore_outro_ratingkeys = list(default=list())
 
 """.splitlines()
 

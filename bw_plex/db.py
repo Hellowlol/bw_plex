@@ -28,7 +28,6 @@ class Movies(Base):
     type = Column('type', String)
     location = Column('location', String, nullable=True)
     updatedAt = Column('updatedAt ', DateTime, nullable=True)
-    #has_recap = Column('has_recap', Boolean, nullable=True)
     credits_start = Column('credits_start', Integer, nullable=True)
     credits_start_str = Column('credits_start_str', String, nullable=True)
     correct_credits_start = Column('correct_credits_start', Integer, nullable=True)

@@ -30,9 +30,18 @@ except ImportError:
                 'Install the package using pip install bw_plex[audio] or bw_plex[all]')
 
 
+def ignore_ratingkey(item, key):
+    """Helper to check if this is in a ignorelist"""
+    if item.TYPE == 'movie':
+        return item.ratingKey in key
+    if item.TYPE == 'episode':
+        return any(i for i in [item.ratingKey, item.grandparentRatingKey, item.parentKey] if i in key)
+
+    return False
+
+
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None, verify_ssl=None):
-
 
     url = url or CONFIG['server'].get('url')
     token = token or CONFIG['server'].get('token')
@@ -77,6 +86,9 @@ def users_pms(pms, user):
 def find_next(media):
     """Find what ever you have that is next ep."""
     LOG.debug('Check if we can find the next media item.')
+    if media.TYPE == 'movie':
+        return
+
     eps = media.show().episodes()
 
     for ep in eps:
