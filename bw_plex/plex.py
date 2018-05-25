@@ -737,7 +737,7 @@ def task(item, sessionkey):
     if media.TYPE == 'episode':
         LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
         vid = convert_and_trim(check_file_access(media), fs=11025,
-                               trim=CONFIG['general'].get('check_for_theme_sec', 600))
+                               trim=CONFIG['tv'].get('check_for_theme_sec', 600))
 
         process_to_db(media, vid=vid)
 
@@ -892,7 +892,7 @@ def check(data):
 
             if (metadata_type == 1 and CONFIG['movie'].get('process_deleted') or
                 metadata_state == 4 and CONFIG['tv'].get('process_deleted')):
-                LOG.debug("Didnt start to process %s is process_deleted is disabled")
+                LOG.debug("Didnt start to process %s is process_deleted is disabled for")
                 return
 
             with session_scope() as se:

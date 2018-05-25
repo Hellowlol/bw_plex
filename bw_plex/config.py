@@ -8,7 +8,6 @@ vtor = Validator()
 spec = """
 [general]
 thread_pool_number = integer(default=10, min=10, max=50)
-check_for_theme_sec = integer(default=600, min=300, max=600)
 debug = boolean(default=False)
 logformat = ''
 level = option('debug', 'info', default='debug')
