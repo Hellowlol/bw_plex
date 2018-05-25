@@ -704,6 +704,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
                         # Check if we just start the next ep instantly.
                         if CONFIG['tv'].get('check_credits_start_next_ep') is True:
+                            nxt = find_next(media) # This is always false for movies.
                             if nxt:
                                 LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
                                 correct_client.playMedia(nxt)
