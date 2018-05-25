@@ -21,7 +21,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
-from bw_plex.db import session_scope, Preprocessed
+from bw_plex.db import session_scope, Preprocessed, Movies
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                           get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme)
 
@@ -85,6 +85,10 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     """
     global HT
 
+    # Disable for now.
+    if media.TYPE == 'movie':
+        return
+
     # This will download the theme and add it to
     # the hashtable if its missing
     if theme is None:
@@ -108,7 +112,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     # Check for recap.
     if recap is None:
-        recap = has_recap(media, CONFIG.get('words', []), audio=vid)
+        recap = has_recap(media, CONFIG['tv'].get('words', []), audio=vid)
 
     if CONFIG.get('check_credits') is True and credits_start is None and credits_end is None:
         dur = media.duration / 1000 - CONFIG.get('check_credits_sec', 120)
@@ -122,26 +126,43 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     with session_scope() as se:
         try:
-            se.query(Preprocessed).filter_by(ratingKey=media.ratingKey).one()
+            se.query(Preprocessed, Movies).filter_by(ratingKey=media.ratingKey).one()
         except NoResultFound:
-            p = Preprocessed(show_name=media.grandparentTitle,
-                             ep_title=media.title,
-                             theme_end=end,
-                             theme_start=start,
-                             theme_start_str=to_time(start),
-                             theme_end_str=to_time(end),
-                             ffmpeg_end=ffmpeg_end,
-                             ffmpeg_end_str=to_time(ffmpeg_end),
-                             credits_start=credits_start,
-                             credits_start_str=to_time(credits_start),
-                             credits_end=credits_end,
-                             credits_end_str=to_time(credits_end),
-                             duration=media.duration,
-                             ratingKey=media.ratingKey,
-                             grandparentRatingKey=media.grandparentRatingKey,
-                             prettyname=media._prettyfilename(),
-                             updatedAt=media.updatedAt,
-                             has_recap=recap)
+            if media.TYPE == 'episode':
+                p = Preprocessed(show_name=media.grandparentTitle,
+                                 ep_title=media.title,
+                                 type=media.TYPE,
+                                 theme_end=end,
+                                 theme_start=start,
+                                 theme_start_str=to_time(start),
+                                 theme_end_str=to_time(end),
+                                 ffmpeg_end=ffmpeg_end,
+                                 ffmpeg_end_str=to_time(ffmpeg_end),
+                                 credits_start=credits_start,
+                                 credits_start_str=to_time(credits_start),
+                                 credits_end=credits_end,
+                                 credits_end_str=to_time(credits_end),
+                                 duration=media.duration,
+                                 ratingKey=media.ratingKey,
+                                 grandparentRatingKey=media.grandparentRatingKey,
+                                 prettyname=media._prettyfilename(),
+                                 updatedAt=media.updatedAt,
+                                 has_recap=recap)
+
+            elif media.TYPE == 'movie':
+                p = Movies(title=media.name,
+                           type=media.TYPE,
+                           ffmpeg_end=ffmpeg_end,
+                           ffmpeg_end_str=to_time(ffmpeg_end),
+                           credits_start=credits_start,
+                           credits_start_str=to_time(credits_start),
+                           credits_end=credits_end,
+                           credits_end_str=to_time(credits_end),
+                           duration=media.duration,
+                           ratingKey=media.ratingKey,
+                           prettyname=media._prettyfilename(),
+                           updatedAt=media.updatedAt)
+
             se.add(p)
             LOG.debug('Added %s to media.db', name)
 
@@ -168,9 +189,9 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl):
     if config and os.path.isfile(config):
         CONFIG = read_or_make(config)
 
-    url = url or CONFIG.get('url')
-    token = token or CONFIG.get('token')
-    verify_ssl = verify_ssl or CONFIG.get('verify_ssl')
+    url = url or CONFIG['server'].get('url')
+    token = token or CONFIG['server'].get('token')
+    verify_ssl = verify_ssl or CONFIG['server'].get('verify_ssl')
 
     if url and token or username and password:
 
@@ -598,8 +619,8 @@ def client_action(offset=None, sessionkey=None, action='jump'):
     if offset == -1:
         return
 
-    conf_clients = CONFIG.get('clients', [])
-    conf_users = CONFIG.get('users', [])
+    conf_clients = CONFIG.get('general', {}).get('clients', [])
+    conf_users = CONFIG.get('general', {}).get('users', [])
     correct_client = None
 
     clients = PMS.clients()
@@ -663,7 +684,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                     # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
 
                     # Check if we just start the next ep instantly.
-                    if CONFIG.get('check_credits_start_next_ep') is True:
+                    if CONFIG['tv'].get('check_credits_start_next_ep') is True:
                         nxt = find_next(media)
                         if nxt:
                             LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
@@ -695,7 +716,8 @@ def task(item, sessionkey):
         return
 
     LOG.debug('Download the first 10 minutes of %s as .wav', media._prettyfilename())
-    vid = convert_and_trim(check_file_access(media), fs=11025, trim=CONFIG.get('check_for_theme_sec', 600))
+    vid = convert_and_trim(check_file_access(media), fs=11025,
+                           trim=CONFIG['general'].get('check_for_theme_sec', 600))
 
     process_to_db(media, vid=vid)
 
@@ -729,7 +751,7 @@ def check(data):
         ratingkey = sess.get('ratingKey')
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
-        mode = CONFIG.get('mode', 'skip_only_theme')
+        mode = CONFIG['general'].get('mode', 'skip_only_theme')
 
         # This has to be removed if/when credits are added.
         # Check if its possible to get the duration of the video some way if not we might need to
@@ -783,7 +805,7 @@ def check(data):
                               item.theme_start_str, item.theme_end_str, item.ffmpeg_end_str,
                               to_time(progress), to_time(bt), item.credits_start_str, item.credits_end_str)
 
-                    if CONFIG.get('check_credits') is True and CONFIG.get('check_credits_action') == 'stop':
+                    if CONFIG['tv'].get('check_credits') is True and CONFIG['tv'].get('check_credits_action') == 'stop':
                         if item.credits_start and item.credits_start != 1 and progress >= item.credits_start:
                             LOG.debug('We found the start of the credits.')
                             return jump(item, sessionkey, item.credits_start, action='stop')
@@ -821,21 +843,31 @@ def check(data):
         identifier = timeline.get('identifier')
         metadata_state = timeline.get('metadataState')
 
-        if (metadata_type == 4 and state == 0 and
+        if (metadata_type in (1, 4) and state == 0 and
             metadata_state == 'created' and
-            identifier == 'com.plexapp.plugins.library' and
-            CONFIG.get('process_recently_added')):
+            identifier == 'com.plexapp.plugins.library'):
+
             LOG.debug('%s was added to %s', title, PMS.friendlyName)
             # Youtubedl can fail if we batch add loads of eps at the same time if there is no
             # theme.
+            if (metadata_type == 1 and CONFIG['movie'].get('process_recently_added') or
+                metadata_state == 4 and CONFIG['tv'].get('process_recently_added')):
+                LOG.debug("Didnt start to process %s is process_recently_added is disabled")
+                return
 
             if ratingkey not in IN_PROG:
                 IN_PROG.append(ratingkey)
                 ep = PMS.fetchItem(int(ratingkey))
                 POOL.apply_async(process_to_db, args=(ep,))
 
-        elif (metadata_type == 4 and state == 9 and
-              metadata_state == 'deleted' and CONFIG.get('process_deleted')):
+        elif (metadata_type in (1, 4) and state == 9 and
+              metadata_state == 'deleted'):
+
+            if (metadata_type == 1 and CONFIG['movie'].get('process_deleted') or
+                metadata_state == 4 and CONFIG['tv'].get('process_deleted')):
+                LOG.debug("Didnt start to process %s is process_deleted is disabled")
+                return
+
             with session_scope() as se:
                 try:
                     item = se.query(Preprocessed).filter_by(ratingKey=ratingkey).one()

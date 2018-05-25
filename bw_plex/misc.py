@@ -33,9 +33,12 @@ except ImportError:
 def get_pms(url=None, token=None, username=None,
             password=None, servername=None, verify_ssl=None):
 
-    url = url or CONFIG.get('url')
-    token = token or CONFIG.get('token')
-    verify_ssl = verify_ssl or CONFIG.get('verify_ssl', False)
+    LOG.debug('%r', dict(CONFIG))
+
+    url = url or CONFIG['server'].get('url')
+    token = token or CONFIG['server'].get('token')
+    verify_ssl = verify_ssl or CONFIG['server'].get('verify_ssl', False)
+    servername = servername or CONFIG['server'].get('name')
 
     if url and token:
         sess = requests.Session()
@@ -46,6 +49,8 @@ def get_pms(url=None, token=None, username=None,
     elif username and password and servername:
         acc = MyPlexAccount(username, password)
         PMS = acc.resource(servername).connect()
+
+    assert PMS
 
     LOG.debug('Getting server %s', PMS.friendlyName)
 
@@ -520,7 +525,7 @@ def download_theme(media, ht, theme_source=None, url=None):
     pms = media._server
 
     if theme_source is None:
-        theme_source = CONFIG.get('theme_source', 'all')
+        theme_source = CONFIG['general'].get('theme_source', 'all')
 
     if theme_source == 'youtube':
         theme = search_for_theme_youtube(name, rk, THEMES, url=url)
@@ -693,7 +698,7 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
         return False
 
     if phrase is None:
-        phrase = CONFIG.get('words')
+        phrase = CONFIG['tv'].get('words', [])
 
     try:
         r = speech_recognition.Recognizer()
