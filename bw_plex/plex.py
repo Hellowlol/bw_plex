@@ -165,7 +165,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                                  has_recap=recap)
 
             elif media.TYPE == 'movie':
-                p = Movies(title=media.name,
+                p = Movies(title=media.title,
                            type=media.TYPE,
                            ffmpeg_end=ffmpeg_end,
                            ffmpeg_end_str=to_time(ffmpeg_end),
@@ -930,6 +930,14 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
+
+@cli.command()
+@click.argument('name')
+def test_a_movie(name):
+    result = PMS.search(name)
+
+    if result:
+        process_to_db(result[0])
 
 
 @cli.command()

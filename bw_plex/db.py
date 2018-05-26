@@ -20,7 +20,7 @@ class Movies(Base):
     __tablename__ = "movies"
 
     id = Column(Integer, primary_key=True)
-    name = Column('name', String, nullable=True)
+    title = Column('title', String, nullable=True)
     ffmpeg_end_str = Column('ffmpeg_end_str', String, nullable=True)
     ratingKey = Column('ratingKey', Integer)
     prettyname = Column('prettyname', String, nullable=True)
