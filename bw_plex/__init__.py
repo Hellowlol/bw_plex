@@ -15,6 +15,7 @@ FP_HASHES = os.path.join(DEFAULT_FOLDER, 'hashes.pklz')
 LOG_FILE = os.path.join(DEFAULT_FOLDER, 'log.txt')
 LOG = logging.getLogger('bw_plex')
 INI_FILE = os.path.join(DEFAULT_FOLDER, 'config.ini')
+DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
 
 
 makedirs(DEFAULT_FOLDER, exist_ok=True)

@@ -6,7 +6,7 @@ from datetime import datetime as DT
 
 
 from plexapi.video import Episode, Show
-from plexapi.compat import makedirs
+# from plexapi.compat import makedirs
 from sqlalchemy.orm.exc import NoResultFound
 import pytest
 
@@ -14,7 +14,6 @@ fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bw_plex')
 
 # I dont like it..
 sys.path.insert(1, fp)
-
 
 import bw_plex
 
@@ -38,7 +37,9 @@ bw_plex.TEMP_THEMES = os.path.join(bw_plex.DEFAULT_FOLDER, 'temp_themes')
 bw_plex.FP_HASHES = os.path.join(bw_plex.DEFAULT_FOLDER, 'hashes.pklz')
 bw_plex.LOG_FILE = os.path.join(bw_plex.DEFAULT_FOLDER, 'log.txt')
 bw_plex.INI_FILE = os.path.join(bw_plex.DEFAULT_FOLDER, 'config.ini')
+bw_plex.DB_PATH = os.path.join(bw_plex.DEFAULT_FOLDER, 'media.db')
 
+# Do not remove these imports..
 import bw_plex.plex as plex
 import bw_plex.misc as misc
 import bw_plex.credits as credits

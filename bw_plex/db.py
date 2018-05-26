@@ -1,4 +1,3 @@
-import os
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, Boolean, Column, DateTime, Integer, String
@@ -6,9 +5,8 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-from . import DEFAULT_FOLDER
+from . import DB_PATH
 
-DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
 
 eng = create_engine('sqlite:///' + DB_PATH)
 session_factory = sessionmaker(bind=eng)

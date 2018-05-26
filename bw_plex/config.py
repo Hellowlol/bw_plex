@@ -31,7 +31,7 @@ password = string(default='')
 # This could be season, show or ep.
 #ignore_intro_ratingkeys = list(default=list())
 #ignore_outro_ratingkeys = list(default=list())
-check_credits = boolean(default=False
+check_credits = boolean(default=False)
 check_credits_action = string(default='')
 check_credits_start_next_ep = boolean(default=True)
 check_credits_sec = integer(default=120)

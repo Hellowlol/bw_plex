@@ -730,7 +730,7 @@ def task(item, sessionkey):
     """
     global HT
     media = PMS.fetchItem(int(item))
-    # LOG.debug('Found %s', media._prettyfilename())
+    LOG.debug('Found %s', media._prettyfilename())
     if media.TYPE not in ('episode', 'show', 'movie'):
         return
 
@@ -859,7 +859,8 @@ def check(data):
                 if ratingkey not in IN_PROG:
                     IN_PROG.append(ratingkey)
                     LOG.debug('Failed to find ratingkey %s in the db', ratingkey)
-                    POOL.apply_async(task, args=(ratingkey, sessionkey))
+                    ret = POOL.apply_async(task, args=(ratingkey, sessionkey))
+                    return ret
 
     elif data.get('type') == 'timeline':
         timeline = data.get('TimelineEntry')[0]
@@ -885,7 +886,8 @@ def check(data):
             if ratingkey not in IN_PROG:
                 IN_PROG.append(ratingkey)
                 ep = PMS.fetchItem(int(ratingkey))
-                POOL.apply_async(process_to_db, args=(ep,))
+                ret = POOL.apply_async(process_to_db, args=(ep,))
+                return ret
 
         elif (metadata_type in (1, 4) and state == 9 and
               metadata_state == 'deleted'):

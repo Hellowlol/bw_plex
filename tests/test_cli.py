@@ -26,10 +26,12 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
     def zomg(*args, **kwargs):
         pass
 
-    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
-    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
+    monkeypatch.setitem(plex.CONFIG['tv'], 'theme_source', 'tvtunes')
     monkeypatch.setattr(plex, 'HT', HT)
     monkeypatch.setattr(plex, 'PMS', m)
+    monkeypatch.setitem(plex.CONFIG['tv'], 'check_credits', True)
+    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
+
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
     monkeypatch.setattr(plex, 'client_action', zomg)
 
@@ -47,7 +49,7 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
             }
 
     # This should add the shit to the db. Lets check it.
-    plex.check(data)
+    r = plex.check(data).get()
     plex.POOL.close()
     plex.POOL.join()
 
@@ -74,7 +76,7 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
     m = mocker.Mock()
     m.fetchItem = fetchItem
 
-    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
+    monkeypatch.setitem(plex.CONFIG['tv'], 'theme_source', 'tvtunes')
     monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
     monkeypatch.setattr(plex, 'HT', HT)
     monkeypatch.setattr(plex, 'PMS', m)
@@ -110,10 +112,11 @@ def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker
     def zomg(*args, **kwargs):
         pass
 
-    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
+    monkeypatch.setattr(plex, 'PMS', m)
+    monkeypatch.setitem(plex.CONFIG['tv'], 'theme_source', 'tvtunes')
     monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
     monkeypatch.setattr(plex, 'HT', HT)
-    monkeypatch.setattr(plex, 'PMS', m)
+
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
 
     res = cli_runner.invoke(plex.process, ['-n', 'dexter', '-s', '1', '-t', '2', '-sd'])

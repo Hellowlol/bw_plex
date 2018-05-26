@@ -536,7 +536,7 @@ def download_theme(media, ht, theme_source=None, url=None):
     pms = media._server
 
     if theme_source is None:
-        theme_source = CONFIG['general'].get('theme_source', 'all')
+        theme_source = CONFIG['tv'].get('theme_source', 'all')
 
     if theme_source == 'youtube':
         theme = search_for_theme_youtube(name, rk, THEMES, url=url)
