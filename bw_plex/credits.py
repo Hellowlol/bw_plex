@@ -171,9 +171,9 @@ def locate_text(image, debug=False):
         cv2.imshow('grey', grey)
 
     # Pull out grahically overlayed text from a video image
-    #blur = cv2.GaussianBlur(grey, (5, 5), 0)
+    blur = cv2.GaussianBlur(grey, (3, 3), 0)
     # test media blur
-    blur = cv2.medianBlur(grey, 7)
+    #blur = cv2.medianBlur(grey, 1)
 
     if debug:
         cv2.imshow('blur', blur)
@@ -190,7 +190,7 @@ def locate_text(image, debug=False):
         [x, y, w, h] = cv2.boundingRect(contour)
 
         # Remove small rects
-        if w < 2 or h < 2: # 2
+        if w < 5 or h < 5: # 2
             continue
 
         # Throw away rectangles which don't match a character aspect ratio
@@ -203,14 +203,17 @@ def locate_text(image, debug=False):
     mask = np.zeros((height, width, 1), np.uint8)
     # To expand rectangles, i.e. increase sensitivity to nearby rectangles
     # Add knobs?
-    xscaleFactor = 12  # 12
-    yscaleFactor = 3  # 0
+    # lets scale this alot so we get mostly one big square
+    # todo when/if detect motion.
+    xscaleFactor = 14 # 14
+    yscaleFactor = 4 # 4
     for box in rects:
         [x, y, w, h] = box
         # Draw filled bounding boxes on mask
         cv2.rectangle(mask, (x - xscaleFactor, y - yscaleFactor),
                       (x + w + xscaleFactor, y + h + yscaleFactor),
                       color['white'], cv2.FILLED)
+
     if debug:
         cv2.imshow("Mask", mask)
 
@@ -219,7 +222,7 @@ def locate_text(image, debug=False):
     rectangles = []
     contours = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     for contour in contours[1]:
-
+        # This is disabled since we are not after the text but the text area.
         # Only preserve "squarish" features
         #peri = cv2.arcLength(contour, True)
         #approx = cv2.approxPolyDP(contour, 0.01 * peri, True)
@@ -237,7 +240,7 @@ def locate_text(image, debug=False):
         x, y, w, h = rect
         cv2.rectangle(image, (x, y), (x + w, y + h), color['blue'], 2)
 
-        # Remove small areas and areas that don't have text like features
+        #Remove small areas and areas that don't have text like features
         # such as a long width.
         if ((float(w * h) / (width * height)) < 0.006):
             # remove small areas
@@ -249,10 +252,15 @@ def locate_text(image, debug=False):
                 continue
 
         else:
+            pass
+            # This is disabled as we want to cache the large area of text
+            # to backup this shit for movement detection
             # General catch for larger identified areas that they have
             # a text width profile
-            if float(w) / h < 1.8:
-                continue
+            # and it does not fit for jap letters.
+
+            #if float(w) / h < 1.8:
+            #    continue
 
         rectangles.append(rect)
 
