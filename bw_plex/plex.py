@@ -23,12 +23,12 @@ from sqlalchemy.orm.exc import NoResultFound
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
-from bw_plex.db import session_scope, Preprocessed, Movies
+from bw_plex.db import session_scope, Processed
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                           get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
 
 
-POOL = Pool(CONFIG.get('thread_pool_number', 10))
+POOL = Pool(int(CONFIG.get('thread_pool_number', 10)))
 PMS = None
 IN_PROG = []
 JUMP_LIST = []
@@ -156,31 +156,31 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     with session_scope() as se:
         try:
-            t = se.query(Preprocessed, Movies).filter_by(ratingKey=media.ratingKey).one()
+            se.query(Processed).filter_by(ratingKey=media.ratingKey).one()
         except NoResultFound:
             if media.TYPE == 'episode':
-                p = Preprocessed(show_name=media.grandparentTitle,
-                                 ep_title=media.title,
-                                 type=media.TYPE,
-                                 theme_end=end,
-                                 theme_start=start,
-                                 theme_start_str=to_time(start),
-                                 theme_end_str=to_time(end),
-                                 ffmpeg_end=ffmpeg_end,
-                                 ffmpeg_end_str=to_time(ffmpeg_end),
-                                 credits_start=credits_start,
-                                 credits_start_str=to_time(credits_start),
-                                 credits_end=credits_end,
-                                 credits_end_str=to_time(credits_end),
-                                 duration=media.duration,
-                                 ratingKey=media.ratingKey,
-                                 grandparentRatingKey=media.grandparentRatingKey,
-                                 prettyname=media._prettyfilename(),
-                                 updatedAt=media.updatedAt,
-                                 has_recap=recap)
+                p = Processed(show_name=media.grandparentTitle,
+                              title=media.title,
+                              type=media.TYPE,
+                              theme_end=end,
+                              theme_start=start,
+                              theme_start_str=to_time(start),
+                              theme_end_str=to_time(end),
+                              ffmpeg_end=ffmpeg_end,
+                              ffmpeg_end_str=to_time(ffmpeg_end),
+                              credits_start=credits_start,
+                              credits_start_str=to_time(credits_start),
+                              credits_end=credits_end,
+                              credits_end_str=to_time(credits_end),
+                              duration=media.duration,
+                              ratingKey=media.ratingKey,
+                              grandparentRatingKey=media.grandparentRatingKey,
+                              prettyname=media._prettyfilename(),
+                              updatedAt=media.updatedAt,
+                              has_recap=recap)
 
             elif media.TYPE == 'movie':
-                p = Movies(title=media.title,
+                p = Processed(title=media.title,
                            type=media.TYPE,
                            ffmpeg_end=ffmpeg_end,
                            ffmpeg_end_str=to_time(ffmpeg_end),
@@ -787,7 +787,7 @@ def check(data):
         if sess.get('state') != 'playing':
             return
 
-        ratingkey = sess.get('ratingKey')
+        ratingkey = int(sess.get('ratingKey'))
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
@@ -833,7 +833,7 @@ def check(data):
 
         with session_scope() as se:
             try:
-                item = se.query(Preprocessed, Movies).filter_by(ratingKey=ratingkey).one()
+                item = se.query(Processed).filter_by(ratingKey=ratingkey).one()
 
                 if item:
                     bt = best_time(item)
@@ -913,7 +913,7 @@ def check(data):
 
             with session_scope() as se:
                 try:
-                    item = se.query(Preprocessed, Movies).filter_by(ratingKey=ratingkey).one()
+                    item = se.query(Processed).filter_by(ratingKey=ratingkey).one()
                     item.delete()
                     LOG.debug('%s was deleted from %s and from media.db', title, PMS.friendlyName)
                 except NoResultFound:
