@@ -78,6 +78,7 @@ def find_all_shows(func=None):
     return all_shows
 
 
+@log_exception
 def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=None,
                   recap=None, credits_start=None, credits_end=None):
     """Process a plex media item to the db
@@ -155,7 +156,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     with session_scope() as se:
         try:
-            se.query(Preprocessed, Movies).filter_by(ratingKey=media.ratingKey).one()
+            t = se.query(Preprocessed, Movies).filter_by(ratingKey=media.ratingKey).one()
         except NoResultFound:
             if media.TYPE == 'episode':
                 p = Preprocessed(show_name=media.grandparentTitle,
@@ -631,7 +632,7 @@ def check_file_access(m):
                 return PMS.url('%s?download=1' % file.key)
 
 
-@log_exception()
+@log_exception
 def client_action(offset=None, sessionkey=None, action='jump'):
     """Seek the client to the offset.
 
@@ -732,7 +733,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
             return
 
-@log_exception()
+@log_exception
 def task(item, sessionkey):
     """Main func for processing a episode.
 
