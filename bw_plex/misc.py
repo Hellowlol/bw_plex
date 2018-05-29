@@ -720,7 +720,7 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
             LOG.debug('Found %s in audio', result)
             return result.strip()
 
-    except sr.UnknownValueError:
+    except speech_recognition.UnknownValueError:
         pass
 
     return False
