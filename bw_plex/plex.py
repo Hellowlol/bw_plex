@@ -8,6 +8,8 @@ import struct
 import time
 import webbrowser
 
+from functools import wraps
+
 try:
     from multiprocessing.pool import ThreadPool as Pool
 except ImportError:
@@ -38,9 +40,21 @@ if not is_64bit:
     LOG.info('You not using a python 64 bit version.')
 
 
-def raiser(r):
-    """Helper to raise stuff inside the threadpool"""
-    raise r
+def log_exception(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        try:
+            if kwargs:
+                return func(*args, **kwargs)
+            else:
+                return func(*args)
+        except:
+            err = "There was an exception in "
+            err += func.__name__
+            log.exception(err)
+            raise
+    
+    return inner
 
 
 def find_all_shows(func=None):
@@ -617,6 +631,7 @@ def check_file_access(m):
                 return PMS.url('%s?download=1' % file.key)
 
 
+@log_exception()
 def client_action(offset=None, sessionkey=None, action='jump'):
     """Seek the client to the offset.
 
@@ -717,7 +732,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
             return
 
-
+@log_exception()
 def task(item, sessionkey):
     """Main func for processing a episode.
 
@@ -745,7 +760,7 @@ def task(item, sessionkey):
             os.remove(vid)
             LOG.debug('Deleted %s', vid)
         except IOError:
-            LOG.excetion('Failed to delete %s', vid)
+            LOG.exception('Failed to delete %s', vid)
 
     elif media.TYPE == 'movie':
         process_to_db(media)
@@ -807,15 +822,13 @@ def check(data):
                 sec = best_time(item)
 
             if action:
-                POOL.apply_async(client_action, args=(sec, sessionkey, action),
-                                 error_callback=raiser)
+                POOL.apply_async(client_action, args=(sec, sessionkey, action))
                 return
 
             if sessionkey not in JUMP_LIST:
                 LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
                 JUMP_LIST.append(sessionkey)
-                POOL.apply_async(client_action, args=(sec, sessionkey, action),
-                                 error_callback=raiser)
+                POOL.apply_async(client_action, args=(sec, sessionkey, action))
 
         with session_scope() as se:
             try:
