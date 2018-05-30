@@ -253,7 +253,7 @@ def check_db(client_name, skip_done):  # pragma: no cover
         client = PMS.client(client_name).connect()
 
     with session_scope() as se:
-        items = se.query(Preprocessed).all()
+        items = se.query(Processed).all()
         click.echo('')
 
         for item in sorted(items, key=lambda k: k.ratingKey):
@@ -385,7 +385,7 @@ def process(name, sample, threads, skip_done):
     if skip_done:
         # Now there must be a better way..
         with session_scope() as se:
-            items = se.query(Preprocessed).all()
+            items = se.query(Processed).all()
             for item in items:
                 for ep in all_eps:
                     if ep.ratingKey == item.ratingKey:
@@ -505,7 +505,7 @@ def manually_correct_theme(name, url, type, rk, just_theme):
     if rk:
         with session_scope() as se:
             # Find all episodes of this show.
-            item = se.query(Preprocessed).filter_by(grandparentRatingKey=rk)
+            item = se.query(Processed).filter_by(grandparentRatingKey=rk)
 
             for i in item:
                 to_pp.append(PMS.fetchItem(i.ratingKey))
@@ -564,11 +564,11 @@ def export_db(format, save_path, write_file, show_html):
     """Export the db to some other format."""
     import tablib
 
-    keys = [k for k in Preprocessed.__dict__.keys() if not k.startswith('_')]
+    keys = [k for k in Processed.__dict__.keys() if not k.startswith('_')]
     data = []
 
     with session_scope() as se:
-        db_items = se.query(Preprocessed).all()
+        db_items = se.query(Processed).all()
 
         for item in db_items:
             data.append(item._to_tuple(keys=keys))
@@ -580,7 +580,7 @@ def export_db(format, save_path, write_file, show_html):
         t = td
 
     if write_file:
-        fullpath = os.path.join(save_path, '%s.%s' % (Preprocessed.__name__, format))
+        fullpath = os.path.join(save_path, '%s.%s' % (Processed.__name__, format))
         with open(fullpath, 'wb') as f:
             f.write(t.encode('utf-8'))
         click.echo('Wrote file to %s' % fullpath)
@@ -988,7 +988,7 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
 
         if ep:
             with session_scope() as se:
-                item = se.query(Preprocessed).filter_by(ratingKey=ep.ratingKey).one()
+                item = se.query(Processed).filter_by(ratingKey=ep.ratingKey).one()
                 start = to_sec(start)
                 end = to_sec(end)
 
