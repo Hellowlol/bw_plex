@@ -846,7 +846,8 @@ def check(data):
                         CONFIG['tv'].get('check_credits_action') == 'stop' or
                         item.type == 'movie' and CONFIG['movie'].get('check_credits') is True and
                         CONFIG['movie'].get('check_credits_action') == 'stop'):
-                        if item.credits_start and item.credits_start != 1 and progress >= item.credits_start:
+                        # todo check for correct credits too
+                        if item.credits_start and item.credits_start != -1 and progress >= item.credits_start:
                             LOG.debug('We found the start of the credits.')
                             return jump(item, sessionkey, item.credits_start, action='stop')
 
