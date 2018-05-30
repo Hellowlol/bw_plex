@@ -70,7 +70,7 @@ def in_db(ratingkey):
     rk = int(ratingkey)
     with session_scope() as se:
         try:
-            item = se.query(Preprocessed).filter_by(ratingKey=rk).one()
+            item = se.query(Processed).filter_by(ratingKey=rk).one()
             return item
         except NoResultFound:
             return
