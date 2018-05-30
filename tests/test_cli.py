@@ -54,7 +54,7 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
     plex.POOL.join()
 
     with plex.session_scope() as se:
-        assert se.query(plex.Preprocessed).filter_by(ratingKey=episode.ratingKey).one()
+        assert se.query(plex.Processed).filter_by(ratingKey=episode.ratingKey).one()
 
         # lets check that we can export db shit too.
 
