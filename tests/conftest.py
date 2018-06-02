@@ -43,7 +43,7 @@ bw_plex.DB_PATH = os.path.join(bw_plex.DEFAULT_FOLDER, 'media.db')
 import bw_plex.plex as plex
 import bw_plex.misc as misc
 import bw_plex.credits as credits
-from bw_plex.db import session_scope, Preprocessed
+from bw_plex.db import session_scope, Processed
 
 TEST_DATA = os.path.join(os.path.dirname(__file__), 'test_data')
 
