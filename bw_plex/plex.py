@@ -51,9 +51,9 @@ def log_exception(func):
         except:
             err = "There was an exception in "
             err += func.__name__
-            log.exception(err)
+            LOG.exception(err)
             raise
-    
+
     return inner
 
 
@@ -181,17 +181,17 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
             elif media.TYPE == 'movie':
                 p = Processed(title=media.title,
-                           type=media.TYPE,
-                           ffmpeg_end=ffmpeg_end,
-                           ffmpeg_end_str=to_time(ffmpeg_end),
-                           credits_start=credits_start,
-                           credits_start_str=to_time(credits_start),
-                           credits_end=credits_end,
-                           credits_end_str=to_time(credits_end),
-                           duration=media.duration,
-                           ratingKey=media.ratingKey,
-                           prettyname=media._prettyfilename(),
-                           updatedAt=media.updatedAt)
+                              type=media.TYPE,
+                              ffmpeg_end=ffmpeg_end,
+                              ffmpeg_end_str=to_time(ffmpeg_end),
+                              credits_start=credits_start,
+                              credits_start_str=to_time(credits_start),
+                              credits_end=credits_end,
+                              credits_end_str=to_time(credits_end),
+                              duration=media.duration,
+                              ratingKey=media.ratingKey,
+                              prettyname=media._prettyfilename(),
+                              updatedAt=media.updatedAt)
 
             se.add(p)
             LOG.debug('Added %s to media.db', name)
@@ -277,7 +277,7 @@ def check_db(client_name, skip_done):  # pragma: no cover
                 if (not skip_done and item.correct_theme_start) or not item.correct_theme_start:
 
                     click.echo('Found theme_start at %s %s theme_end %s %s' % (item.theme_start,
-                                item.theme_start_str, item.theme_end, item.theme_end_str))
+                               item.theme_start_str, item.theme_end, item.theme_end_str))
 
                     client.playMedia(media, offset=item.theme_start * 1000)
                     time.sleep(1)
@@ -733,6 +733,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
             return
 
+
 @log_exception
 def task(item, sessionkey):
     """Main func for processing a episode.
@@ -846,6 +847,7 @@ def check(data):
                         CONFIG['tv'].get('check_credits_action') == 'stop' or
                         item.type == 'movie' and CONFIG['movie'].get('check_credits') is True and
                         CONFIG['movie'].get('check_credits_action') == 'stop'):
+
                         # todo check for correct credits too
                         if item.credits_start and item.credits_start != -1 and progress >= item.credits_start:
                             LOG.debug('We found the start of the credits.')
@@ -854,8 +856,7 @@ def check(data):
                     # If recap is detected just instantly skip to intro end.
                     # Now this can failed is there is: recap, new episode stuff, intro, new episode stuff
                     # So thats why skip_only_theme is default as its the safest option.
-                    if (mode == 'skip_if_recap' and item.type == 'episode' and
-                        item.has_recap is True and bt != -1):
+                    if (mode == 'skip_if_recap' and item.type == 'episode' and item.has_recap is True and bt != -1):
                         return jump(item, sessionkey, bt)
 
                     # This mode will allow playback until the theme starts so it should be faster then skip_if_recap.
@@ -947,6 +948,7 @@ def watch():
         click.echo('Aborting')
         ffs.stop()
         POOL.terminate()
+
 
 @cli.command()
 @click.argument('name')
