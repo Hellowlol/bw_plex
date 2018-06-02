@@ -252,6 +252,8 @@ def check_db(client_name, skip_done):  # pragma: no cover
     else:
         client = PMS.client(client_name).connect()
 
+    client.proxyThroughServer()
+
     with session_scope() as se:
         items = se.query(Processed).all()
         click.echo('')
@@ -266,7 +268,7 @@ def check_db(client_name, skip_done):  # pragma: no cover
             click.echo('*%s*' % ('-' * 80))
             click.echo('')
 
-            media = PMS.fetchItem(item.ratingkey)
+            media = PMS.fetchItem(item.ratingKey)
 
             if item.theme_start == -1 or item.theme_end == -1:
                 click.echo('Exists in the db but the start of the theme was not found.'
