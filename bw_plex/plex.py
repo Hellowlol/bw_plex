@@ -57,7 +57,7 @@ def log_exception(func):
     return inner
 
 
-def find_all_shows(func=None):
+def find_all_movies_shows(func=None):
     """ Helper of get all the shows on a server.
 
         Args:
@@ -69,7 +69,7 @@ def find_all_shows(func=None):
     all_shows = []
 
     for section in PMS.library.sections():
-        if section.TYPE == 'show':
+        if section.TYPE in ('movie', 'show'):
             all_shows += section.all()
 
     if func:
@@ -362,35 +362,40 @@ def process(name, sample, threads, skip_done):
 
     """
     global HT
-    all_eps = []
+    all_items = []
 
     if name:
-        shows = find_all_shows()
-        shows = [s for s in shows if s.title.lower().startswith(name.lower())]
-        shows = choose('Select what show to process', shows, 'title')
+        medias = find_all_movies_shows()
+        medias = [s for s in medias if s.title.lower().startswith(name.lower())]
+        medias = choose('Select what item to process', medias, 'title')
 
-        for show in shows:
-            eps = show.episodes()
-            eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
-            all_eps += eps
+        for media in medias:
+            if media.TYPE == 'show':
+                eps = media.episodes()
+                eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
+                all_items += eps
+            else:
+                all_items.append(media)
 
     if sample:
         def lol(i):
-            x = i.episodes()[:sample]
-            # Lets reload stuff inside the pool.
-            return all_eps.extend([i.reload() for i in x])
+            if i.TYPE == 'show':
+                x = i.episodes()[:sample]
+                return all_items.extend(x)
+            else:
+                return all_items.append(i)
 
-        find_all_shows(lol)
+        find_all_movies_shows(lol)
 
     if skip_done:
         # Now there must be a better way..
         with session_scope() as se:
             items = se.query(Processed).all()
             for item in items:
-                for ep in all_eps:
+                for ep in all_items:
                     if ep.ratingKey == item.ratingKey:
                         click.secho("Removing %s at it's already is processed" % item.prettyname, fg='red')
-                        all_eps.remove(ep)
+                        all_items.remove(ep)
 
     HT = get_hashtable()
 
@@ -400,11 +405,11 @@ def process(name, sample, threads, skip_done):
         except Exception as e:
             logging.error(e, exc_info=True)
 
-    if all_eps:
+    if all_items:
         p = Pool(threads)
 
         # Download all the themes first, skip the ones that we already have..
-        gr = set([i.grandparentRatingKey for i in all_eps]) - set(HT.get_themes().keys())
+        gr = set([i.grandparentRatingKey for i in all_items if i.TYPE == 'episode']) - set(HT.get_themes().keys())
         LOG.debug('Downloading theme for %s shows this might take a while..', len(gr))
         if len(gr):
             sh = p.map(PMS.fetchItem, gr)
@@ -414,7 +419,7 @@ def process(name, sample, threads, skip_done):
                 pass
 
         try:
-            p.map(prot, all_eps)
+            p.map(prot, all_items)
         except KeyboardInterrupt:
             p.terminate()
 
