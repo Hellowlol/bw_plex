@@ -61,7 +61,7 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
         res = cli_runner.invoke(plex.export_db, ['-f', 'json', '-fp', str(tmpdir), '-wf'])
         print(res.output)
 
-        fp = os.path.join(str(tmpdir), 'Preprocessed.json')
+        fp = os.path.join(str(tmpdir), 'Processed.json')
         assert os.path.exists(fp)
 
         with open(fp, 'r') as f:
