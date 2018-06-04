@@ -100,7 +100,7 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
 
 def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker):
     # Let the mock begin..
-    mocker.patch.object(plex, 'find_all_shows', side_effect=[[media], [episode]])
+    mocker.patch.object(plex, 'find_all_movies_shows', side_effect=[[media], [episode]])
     mocker.patch('click.prompt', side_effect=['0', '0'])
 
     def fetchItem(i):
