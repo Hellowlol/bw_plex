@@ -129,7 +129,9 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
                 break
 
     cap.release()
-    cv2.destroyAllWindows()
+
+    if hasattr(cv2, 'destroyAllWindows'):
+        cv2.destroyAllWindows()
 
 
 def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no cover
