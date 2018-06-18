@@ -1026,7 +1026,7 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
                 LOG.debug('Set correct_time %s for %s to start %s end %s', type, ep._prettyfilename(), start, end)
 
 
-if __name__ == '__main__':
+def real_main():
     try:
         cli()
     except:
@@ -1035,3 +1035,8 @@ if __name__ == '__main__':
         # Make sure we save if we need it.
         if HT and HT.dirty:
             HT.save()
+
+
+
+if __name__ == '__main__':
+    real_main()
