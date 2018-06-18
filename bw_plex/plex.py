@@ -231,6 +231,8 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl):
                       servername=servername,
                       verify_ssl=verify_ssl)
 
+    assert PMS, 'You need to add a url and token or username password and servername'
+
 
 @cli.command()
 @click.option('-cn', '--client_name', default=None)

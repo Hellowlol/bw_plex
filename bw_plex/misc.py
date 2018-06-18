@@ -58,7 +58,7 @@ def get_pms(url=None, token=None, username=None,
         acc = MyPlexAccount(username, password)
         PMS = acc.resource(servername).connect()
 
-    assert PMS
+    assert PMS is not None, 'You need to add a url and token or username password and servername'
 
     LOG.debug('Getting server %s', PMS.friendlyName)
 
@@ -545,7 +545,7 @@ def download_theme(media, ht, theme_source=None, url=None):
         theme = search_tunes(name, rk, url=url)
         theme = list(itertools.chain.from_iterable(theme.values()))
 
-    elif theme_source == 'plex':
+    elif theme_source == 'plex' and _theme is not None:
         theme = pms.url(_theme, includeToken=True)
         LOG.debug('Downloading theme via plex %s', theme)
 
@@ -554,7 +554,10 @@ def download_theme(media, ht, theme_source=None, url=None):
         st = search_tunes(name, rk, url=url)
         st_res = list(itertools.chain.from_iterable(st.values()))
         theme.extend(st_res)
-        theme.append(pms.url(_theme, includeToken=True))
+
+        if _theme is not None:
+            theme.append(pms.url(_theme, includeToken=True))
+
         theme.append(search_for_theme_youtube(name, rk, THEMES, url=url))
 
     if not isinstance(theme, list):
