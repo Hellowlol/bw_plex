@@ -231,8 +231,6 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl):
                       servername=servername,
                       verify_ssl=verify_ssl)
 
-    assert PMS, 'You need to add a url and token or username password and servername'
-
 
 @cli.command()
 @click.option('-cn', '--client_name', default=None)
@@ -250,7 +248,12 @@ def check_db(client_name, skip_done):  # pragma: no cover
             None
     """
     if client_name is None:
-        client = choose('Select what client to use', PMS.clients(), 'title')[0]
+        client = choose('Select what client to use', PMS.clients(), 'title')
+        if len(client):
+            client = client[0]
+        else:
+            click.echo('No client to check with.. Aborting')
+            return
     else:
         client = PMS.client(client_name).connect()
 
