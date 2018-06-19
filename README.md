@@ -29,7 +29,9 @@ CPU/Memory usage can be rather high, so use a 64 bit python install.
 Note: This tool only works on your local network.
 
 ```
-Usage: plex.py [OPTIONS] COMMAND [ARGS]...
+Usage: bw_plex
+
+[OPTIONS] COMMAND [ARGS]...
 
   CLI tool that monitors pms and jumps the client to after the theme.
 
@@ -57,8 +59,11 @@ Commands:
   watch                   Start watching the server for stuff to do.
 ```
 
+You can read the help for the subcommands using --help:
+```bw_plex export_db --help```
+
 The most common will be:
-```python plex.py watch```
+```bw_plex watch```
 
 ## How it works:
 
