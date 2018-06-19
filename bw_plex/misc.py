@@ -534,6 +534,7 @@ def download_theme(media, ht, theme_source=None, url=None):
             _theme = media.show().theme
 
     pms = media._server
+    theme = []
 
     if theme_source is None:
         theme_source = CONFIG['tv'].get('theme_source', 'all')
@@ -550,7 +551,6 @@ def download_theme(media, ht, theme_source=None, url=None):
         LOG.debug('Downloading theme via plex %s', theme)
 
     elif theme_source == 'all':
-        theme = []
         st = search_tunes(name, rk, url=url)
         st_res = list(itertools.chain.from_iterable(st.values()))
         theme.extend(st_res)
