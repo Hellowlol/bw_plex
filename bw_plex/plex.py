@@ -472,7 +472,7 @@ def create_config(fp=None):
 @cli.command()
 @click.argument('name')
 @click.argument('url')
-@click.option('-t', '--type', default=None)
+@click.option('-t', '--type', default=None, type=click.Choice(['manual', 'tvtunes', 'plex', 'youtube', 'all']))
 @click.option('-rk', help='Add rating key', default='auto')
 @click.option('-jt', '--just_theme', default=False, is_flag=True)
 @click.option('-rot', '--remove_old_theme', default=False, is_flag=True)
@@ -482,7 +482,7 @@ def manually_correct_theme(name, url, type, rk, just_theme, remove_old_theme):
 
        Args:
             name (str): name of the show
-            url (str): the youtube/tvtunes url to the correct theme.
+            url (str): the youtube/tvtunes url or filepath to the correct theme.
             type (str): What source to use for themes.
             rk (str): ratingkey of that show. Pass auto if your lazy.
             just_theme (bool): just add the theme song not reprocess stuff.
@@ -510,8 +510,8 @@ def manually_correct_theme(name, url, type, rk, just_theme, remove_old_theme):
 
     # Download the themes depending on the manual option or config file.
     download_theme(items[0], HT, theme_source=type, url=url)
-
     to_pp = []
+
     if just_theme:
         return
 
@@ -1036,7 +1036,6 @@ def real_main():
         # Make sure we save if we need it.
         if HT and HT.dirty:
             HT.save()
-
 
 
 if __name__ == '__main__':

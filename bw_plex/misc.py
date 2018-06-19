@@ -536,10 +536,16 @@ def download_theme(media, ht, theme_source=None, url=None):
     pms = media._server
     theme = []
 
+    if os.path.isfile(url):
+        theme_source = 'manual'
+
     if theme_source is None:
         theme_source = CONFIG['tv'].get('theme_source', 'all')
 
-    if theme_source == 'youtube':
+    if theme_source == 'manual':
+        theme.append(url)
+
+    elif theme_source == 'youtube':
         theme = search_for_theme_youtube(name, rk, THEMES, url=url)
 
     elif theme_source == 'tvtunes':
