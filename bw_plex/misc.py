@@ -536,7 +536,7 @@ def download_theme(media, ht, theme_source=None, url=None):
     pms = media._server
     theme = []
 
-    if os.path.isfile(url):
+    if url and os.path.isfile(url):
         theme_source = 'manual'
 
     if theme_source is None:

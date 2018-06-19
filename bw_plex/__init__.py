@@ -3,11 +3,10 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 
-from plexapi.compat import makedirs
+from plexapi.compat import makedirs, string_type
+from plexapi.utils import SecretsFilter
 from .config import read_or_make
 
-
-#VERSION = '0.0.1'
 DEFAULT_FOLDER = os.path.expanduser('~/.config/bw_plex')
 THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
 TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')
@@ -28,6 +27,7 @@ if CONFIG.get('level') in ['', 'info']:  # Should we just use a int?
     lvl = logging.INFO
 else:
     lvl = logging.DEBUG
+
 
 handle = logging.NullHandler()
 
@@ -50,7 +50,44 @@ LOG.addHandler(rfh)
 
 LOG.setLevel(lvl)
 
-# Disable some logging..
-# logging.getLogger("plexapi").setLevel(logging.DEBUG)
-# logging.getLogger("requests").setLevel(logging.DEBUG)
-# logging.getLogger("urllib3").setLevel(logging.DEBUG)
+
+class RedactFilter(logging.Filter):
+    """ Logging filter to hide secrets. 
+        
+        Borrow from https://relaxdiego.com/2014/07/logging-in-python.html
+        with some minor adjustments
+
+    """
+
+    def __init__(self, secrets=None):
+        self.secrets = secrets or set()
+
+    def add_secret(self, secret):
+        if secret is not None:
+            self.secrets.add(secret)
+        return secret
+
+    def filter(self, record):
+        record.msg = self.redact(record.msg)
+        if isinstance(record.args, dict):
+            for k in record.args.keys():
+                record.args[k] = self.redact(record.args[k])
+        else:
+            record.args = tuple(self.redact(arg) for arg in record.args)
+        return True
+
+    def redact(self, msg):
+        msg = isinstance(msg, string_type) and msg or str(msg)
+        for pattern in self.secrets:
+            msg = msg.replace(pattern, "<hidden>")
+        return msg
+
+
+if not CONFIG['general']['debug']:
+    LOG.addFilter(RedactFilter(secrets=[i for i in [CONFIG['server']['token'],
+                                                    CONFIG['server']['password']] if i]
+                               )
+                  )
+else:
+    LOG.info('Log is not sanitized!')
+    # TODO add http log.
