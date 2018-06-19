@@ -475,7 +475,8 @@ def create_config(fp=None):
 @click.option('-t', '--type', default=None)
 @click.option('-rk', help='Add rating key', default='auto')
 @click.option('-jt', '--just_theme', default=False, is_flag=True)
-def manually_correct_theme(name, url, type, rk, just_theme):
+@click.option('-rot', '--remove_old_theme', default=False, is_flag=True)
+def manually_correct_theme(name, url, type, rk, just_theme, remove_old_theme):
     """Set the correct fingerprint of the show in the hashes.db and
        process the eps of that show in the db against the new theme fingerprint.
 
@@ -484,7 +485,8 @@ def manually_correct_theme(name, url, type, rk, just_theme):
             url (str): the youtube/tvtunes url to the correct theme.
             type (str): What source to use for themes.
             rk (str): ratingkey of that show. Pass auto if your lazy.
-            just_theme (bool): just add the theme song.
+            just_theme (bool): just add the theme song not reprocess stuff.
+            remove_old_theme (bool): Removes all the old themes of this show
 
        Returns:
             None
@@ -500,12 +502,11 @@ def manually_correct_theme(name, url, type, rk, just_theme):
         if items:
             rk = items[0].ratingKey
 
-    # I don't think think the themes in the hashdb should be removed anymore as
-    # one show can now have several themes also it don't remove the files in THEMES, this is intended!
-    themes = HT.get_theme(items[0])
-    for th in themes:
-        LOG.debug('Removing %s from the hashtable', th)
-        HT.remove(th)
+    if remove_old_theme:
+        themes = HT.get_theme(items[0])
+        for th in themes:
+            LOG.debug('Removing %s from the hashtable', th)
+            HT.remove(th)
 
     # Download the themes depending on the manual option or config file.
     download_theme(items[0], HT, theme_source=type, url=url)
