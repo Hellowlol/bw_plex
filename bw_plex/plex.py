@@ -20,7 +20,7 @@ import requests
 from sqlalchemy.orm.exc import NoResultFound
 
 
-from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE
+from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, add_debug
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Processed
@@ -198,7 +198,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
-@click.option('--debug', '-d', default=True, is_flag=True, help='Add debug logging.')
+@click.option('--debug', '-d', default=False, is_flag=True, help='Add debug logging.')
 @click.option('--username', '-u', default=None, help='Your plex username')
 @click.option('--password', '-p', default=None, help='Your plex password')
 @click.option('--servername', '-s', default=None, help='The server you want to monitor.')
@@ -215,6 +215,9 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl):
         LOG.setLevel(logging.DEBUG)
     else:
         LOG.setLevel(logging.INFO)
+
+    # Enables debug logging for urllib3 and plexpai.
+    add_debug(debug)
 
     if config and os.path.isfile(config):
         CONFIG = read_or_make(config)

@@ -4,7 +4,6 @@ import sys
 from logging.handlers import RotatingFileHandler
 
 from plexapi.compat import makedirs, string_type
-from plexapi.utils import SecretsFilter
 from .config import read_or_make
 
 DEFAULT_FOLDER = os.path.expanduser('~/.config/bw_plex')
@@ -28,13 +27,12 @@ if CONFIG.get('level') in ['', 'info']:  # Should we just use a int?
 else:
     lvl = logging.DEBUG
 
-
 handle = logging.NullHandler()
 
-frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(message)s'))
+frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(filename)s:%(lineno)d :: %(message)s'))
 handle.setFormatter(frmt)
 LOG.addHandler(handle)
-
+# %(filename)s:%(lineno)d
 # CONSOLE
 stream_handle = logging.StreamHandler()
 stream_handle.setFormatter(frmt)
@@ -52,8 +50,8 @@ LOG.setLevel(lvl)
 
 
 class RedactFilter(logging.Filter):
-    """ Logging filter to hide secrets. 
-        
+    """ Logging filter to hide secrets.
+
         Borrow from https://relaxdiego.com/2014/07/logging-in-python.html
         with some minor adjustments
 
@@ -83,11 +81,18 @@ class RedactFilter(logging.Filter):
         return msg
 
 
-if not CONFIG['general']['debug']:
-    LOG.addFilter(RedactFilter(secrets=[i for i in [CONFIG['server']['token'],
-                                                    CONFIG['server']['password']] if i]
-                               )
-                  )
-else:
-    LOG.info('Log is not sanitized!')
-    # TODO add http log.
+def add_debug(debug=False):
+    if not CONFIG['general']['debug'] or debug is False:
+        LOG.addFilter(RedactFilter(secrets=[i for i in [CONFIG['server']['token'],
+                                                        CONFIG['server']['password']] if i]
+                                   )
+                      )
+    else:
+        LOG.info('Log is not sanitized!')
+
+        packages = ['plexapi', 'requests', 'urllib3']
+        for pack in packages:
+            _pack = logging.getLogger(pack)
+            _pack.setLevel(logging.DEBUG)
+            _pack.addHandler(rfh)
+            _pack.addHandler(stream_handle)
