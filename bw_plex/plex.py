@@ -663,6 +663,21 @@ def client_action(offset=None, sessionkey=None, action='jump'):
     LOG.debug('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
     # LOG.debug('%s', JUMP_LIST)
 
+    def proxy_on_fail(func):
+        import plexapi
+        @wraps(func)
+        def inner():
+            try:
+                func()
+            except plexapi.exceptions.BadRequest:
+                try:
+                    LOG.debug('Failed to reach the client directly, trying via server.')
+                    correct_client.proxyThroughServer()
+                    func()
+                except:
+                    correct_client.proxyThroughServer()
+                    raise
+
     if offset == -1:
         return
 
@@ -712,8 +727,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                     LOG.exception('Cant connect to %s', client.title)
                     return
 
-                correct_client.proxyThroughServer()
-
                 if action != 'stop':
                     if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
                         LOG.debug('Didnt send seek command this show, season or episode is ignored')
@@ -723,11 +736,11 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                     if correct_client.product == 'Plex Media Player':
                         correct_client.sendCommand('timeline/poll', wait=0)
 
-                    correct_client.seekTo(int(offset * 1000))
+                    proxy_on_fail(correct_client.seekTo(int(offset * 1000)))
                     LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
                 else:
                     if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
-                        correct_client.stop()
+                        proxy_on_fail(correct_client.stop())
                         # We might need to login on pms as the user..
                         # urs_pms = users_pms(PMS, user)
                         # new_media = urs_pms.fetchItem(int(media.ratingkey))
@@ -739,7 +752,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                             nxt = find_next(media) # This is always false for movies.
                             if nxt:
                                 LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
-                                correct_client.playMedia(nxt)
+                                proxy_on_fail(correct_client.playMedia(nxt))
 
             # Some clients needs some time..
             # time.sleep(0.2)
@@ -844,7 +857,7 @@ def check(data):
                 return
 
             if sessionkey not in JUMP_LIST:
-                LOG.debug('Called jump with %s %s %s %s', item, sessionkey, sec, action)
+                LOG.debug('Called jump with %s %s %s %s', item.prettyname, sessionkey, sec, action)
                 JUMP_LIST.append(sessionkey)
                 POOL.apply_async(client_action, args=(sec, sessionkey, action))
 
