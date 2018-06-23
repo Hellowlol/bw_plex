@@ -5,7 +5,6 @@ https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 
-import os
 from setuptools import setup, find_packages
 
 # Possibly convert the README.md to .rst-format
@@ -32,7 +31,7 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     use_scm_version=True,
     setup_requires=['setuptools_scm', 'pypandoc'],
-    #version='0.0.1',
+    # version='0.0.1',
 
     description='Skip intros.',
     long_description=README,
@@ -69,7 +68,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests']),
     include_package_data=True,
 
 

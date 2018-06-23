@@ -1,6 +1,1 @@
-
-recursive-include bw_plex/audfprint *.txt *.py LICENSE Makefile *.md .gitignore
-# Only way the damn tests seems to be removed
-exclude *
-# Make sure we include normal files in the root dir.
-include *.in *.txt *.md *.cfg *.py
+recursive-exclude tests *
