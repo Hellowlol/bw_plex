@@ -35,13 +35,13 @@ def ignore_ratingkey(item, key):
     if item.TYPE == 'movie':
         return item.ratingKey in key
     if item.TYPE == 'episode':
-        return any(i for i in [item.ratingKey, item.grandparentRatingKey, item.parentKey] if i in key)
+        return any(i for i in [item.ratingKey, item.grandparentRatingKey, item.parentRatingKey] if i in key)
 
     return False
 
 
 def get_pms(url=None, token=None, username=None,
-            password=None, servername=None, verify_ssl=None):
+            password=None, servername=None, verify_ssl=None):  # pragma: no cover
 
     url = url or CONFIG['server'].get('url')
     token = token or CONFIG['server'].get('token')
@@ -65,7 +65,7 @@ def get_pms(url=None, token=None, username=None,
     return PMS
 
 
-def users_pms(pms, user):
+def users_pms(pms, user):  # pragma: no cover
     """Login on your server using the users access credentials."""
     from plexapi.exceptions import NotFound
     LOG.debug('Logging in on PMS as %s', user)
@@ -309,7 +309,7 @@ def get_valid_filename(s):
         except (UnicodeError, UnicodeDecodeError, AttributeError):
             try:
                 input_str = unicodedata.normalize('NFKD', input_str)
-            except:
+            except:  # pragma: no cover
                 pass
 
         return u''.join([c for c in input_str if not unicodedata.combining(c)])
@@ -353,7 +353,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
     o, e = psox.communicate()
 
-    if not psox.returncode == 0:
+    if not psox.returncode == 0:  # pragma: no cover
         LOG.exception(e)
         raise Exception("FFMpeg failed")
 
@@ -513,7 +513,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
                 ydl.download([name + ' theme song'])
             return t + '.wav'
 
-        except:
+        except:  # pragma: no cover
             LOG.exception('Failed to download theme song %s' % name)
 
     LOG.debug('Done downloading theme for %s', name)

@@ -28,7 +28,7 @@ SHOWS = {}
 HT = None
 
 is_64bit = struct.calcsize('P') * 8
-if not is_64bit:
+if not is_64bit:  # pragma: no cover
     LOG.info('You not using a python 64 bit version.')
 
 
@@ -40,7 +40,8 @@ def log_exception(func):
                 return func(*args, **kwargs)
             else:
                 return func(*args)
-        except:
+
+        except:  # pragma: no cover
             err = "There was an exception in "
             err += func.__name__
             LOG.exception(err)
@@ -49,7 +50,7 @@ def log_exception(func):
     return inner
 
 
-def find_all_movies_shows(func=None):
+def find_all_movies_shows(func=None):  # pragma: no cover
     """ Helper of get all the shows on a server.
 
         Args:
@@ -196,9 +197,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--servername', '-s', default=None, help='The server you want to monitor.')
 @click.option('--url', default=None, help='url to the server you want to monitor')
 @click.option('--token', '-t', default=None, help='plex-x-token')
-@click.option('--config', '-c', default=None, help='Not in use atm.')
+@click.option('--config', '-c', default=None, help='Path to config file.')
 @click.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
-@click.option('--default_folder', '-df', default=None, help='default folder to store shit')
+@click.option('--default_folder', '-df', default=None, help='Override for the default folder, typically used by dockers.')
 def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder):
     """ Entry point for the CLI."""
     global PMS
@@ -432,7 +433,7 @@ def process(name, sample, threads, skip_done):
 @click.option('-dv', default=0.5, type=float)
 @click.option('-pix_th', default=0.10, type=float)
 @click.option('-au_db', default=50, type=int)
-def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):
+def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):  # pragma: no cover
     """Simple manual test for ffmpeg_process with knobs to turn."""
 
     n = find_offset_ffmpeg(name, trim=trim, dev=dev, duration_audio=da,
@@ -469,7 +470,7 @@ def create_config(fp=None):
 @click.option('-rk', help='Add rating key', default='auto')
 @click.option('-jt', '--just_theme', default=False, is_flag=True)
 @click.option('-rot', '--remove_old_theme', default=False, is_flag=True)
-def manually_correct_theme(name, url, type, rk, just_theme, remove_old_theme):
+def manually_correct_theme(name, url, type, rk, just_theme, remove_old_theme):  # pragma: no cover
     """Set the correct fingerprint of the show in the hashes.db and
        process the eps of that show in the db against the new theme fingerprint.
 
@@ -639,7 +640,7 @@ def check_file_access(m):
 
 
 @log_exception
-def client_action(offset=None, sessionkey=None, action='jump'):
+def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no cover
     """Seek the client to the offset.
 
        Args:
@@ -651,7 +652,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):
     """
     global JUMP_LIST
     LOG.debug('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
-    # LOG.debug('%s', JUMP_LIST)
 
     def proxy_on_fail(func):
         import plexapi
@@ -665,8 +665,8 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                     LOG.debug('Failed to reach the client directly, trying via server.')
                     correct_client.proxyThroughServer()
                     func()
-                except:
-                    correct_client.proxyThroughServer()
+                except:  # pragma: no cover
+                    correct_client.proxyThroughServer(value=False)
                     raise
 
     if offset == -1:
@@ -722,6 +722,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
                     if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
                         LOG.debug('Didnt send seek command this show, season or episode is ignored')
                         return
+
                     # PMP seems to be really picky about timeline calls, if we dont
                     # it returns 406 errors after 90 sec.
                     if correct_client.product == 'Plex Media Player':
@@ -768,7 +769,7 @@ def task(item, sessionkey):
     global HT
     media = PMS.fetchItem(int(item))
     LOG.debug('Found %s', media._prettyfilename())
-    if media.TYPE not in ('episode', 'show', 'movie'):
+    if media.TYPE not in ('episode', 'show', 'movie'):  # pragma: no cover
         return
 
     if media.TYPE == 'episode':
@@ -781,7 +782,7 @@ def task(item, sessionkey):
         try:
             os.remove(vid)
             LOG.debug('Deleted %s', vid)
-        except IOError:
+        except IOError:  # pragma: no cover
             LOG.exception('Failed to delete %s', vid)
 
     elif media.TYPE == 'movie':
@@ -789,7 +790,7 @@ def task(item, sessionkey):
 
     try:
         IN_PROG.remove(item)
-    except ValueError:
+    except ValueError:  # pragma: no cover
         LOG.debug('Failed to remove %s from IN_PROG', item)
 
     nxt = find_next(media)
@@ -813,12 +814,6 @@ def check(data):
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
 
-        # This has to be removed if/when credits are added.
-        # Check if its possible to get the duration of the video some way if not we might need to
-        # get it via PMS.fetchItem(int(ratingkey))
-        # if progress >= 600:
-        #    return
-
         def best_time(item):
             """Find the best time in the db."""
             if item.type == 'episode' and item.correct_theme_end and item.correct_theme_end != 1:
@@ -838,7 +833,7 @@ def check(data):
 
             return sec
 
-        def jump(item, sessionkey, sec=None, action=None):
+        def jump(item, sessionkey, sec=None, action=None):  # pragma: no cover
 
             if sec is None:
                 sec = best_time(item)
@@ -914,8 +909,8 @@ def check(data):
             LOG.debug('%s was added to %s', title, PMS.friendlyName)
             # Youtubedl can fail if we batch add loads of eps at the same time if there is no
             # theme.
-            if (metadata_type == 1 and CONFIG['movie'].get('process_recently_added') or
-                metadata_state == 4 and CONFIG['tv'].get('process_recently_added')):
+            if (metadata_type == 1 and not CONFIG['movie'].get('process_recently_added') or
+                metadata_state == 4 and not CONFIG['tv'].get('process_recently_added')):
                 LOG.debug("Didnt start to process %s is process_recently_added is disabled")
                 return
 
@@ -928,8 +923,8 @@ def check(data):
         elif (metadata_type in (1, 4) and state == 9 and
               metadata_state == 'deleted'):
 
-            if (metadata_type == 1 and CONFIG['movie'].get('process_deleted') or
-                metadata_state == 4 and CONFIG['tv'].get('process_deleted')):
+            if (metadata_type == 1 and not CONFIG['movie'].get('process_deleted') or
+                metadata_state == 4 and not CONFIG['tv'].get('process_deleted')):
                 LOG.debug("Didnt start to process %s is process_deleted is disabled for")
                 return
 
@@ -944,7 +939,7 @@ def check(data):
 
 @cli.command()
 @click.argument('-f', type=click.Path(exists=True))
-def match(f):
+def match(f):  # pragma: no cover
     """Manual match for a file. This is useful for testing we finds the correct start and
        end time."""
     global HT
@@ -954,7 +949,7 @@ def match(f):
 
 
 @cli.command()
-def watch():
+def watch(): # # pragma: no cover
     """Start watching the server for stuff to do."""
     global HT
     HT = get_hashtable()
@@ -972,7 +967,7 @@ def watch():
 
 @cli.command()
 @click.argument('name')
-def test_a_movie(name):
+def test_a_movie(name):  # pragma: no cover
     result = PMS.search(name)
 
     if result:

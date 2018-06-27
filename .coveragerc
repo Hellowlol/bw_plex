@@ -9,6 +9,7 @@ exclude_lines =
 
     raise NotImplementedError
     except ImportError
+    except KeyboardInterrupt
 
     # Don't complain if non-runnable code isn't run:
     if 0:

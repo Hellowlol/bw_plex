@@ -5,7 +5,7 @@ import tempfile
 from datetime import datetime as DT
 
 
-from plexapi.video import Episode, Show
+from plexapi.video import Episode, Show, Movie
 # from plexapi.compat import makedirs
 from sqlalchemy.orm.exc import NoResultFound
 import pytest
@@ -66,6 +66,7 @@ def episode(mocker):
     ep.title = ''
     ep.grandparentTitle = 'Dexter'
     ep.ratingKey = 1337
+    ep.parentRatingKey = 1337
     ep._server = ''
     ep.title = 'Dexter'
     ep.index = 1
@@ -77,6 +78,28 @@ def episode(mocker):
 
     def _prettyfilename():
         return 'Dexter.s01.e01'
+
+    def iterParts():
+        yield os.path.join(TEST_DATA, 'dexter_s03e01_intro.mkv')
+
+    ep._prettyfilename = _prettyfilename
+
+    return ep
+
+
+@pytest.fixture()
+def film(mocker):
+    ep = mocker.MagicMock(spec=Movie)
+    ep.TYPE = 'movie'
+    ep.name = 'Random'
+    ep.title = 'Random'
+    ep.ratingKey = 7331
+    ep._server = ''
+    ep.duration = 60 * 60 * 1000  # 1h in ms
+    ep.updatedAt = DT(1970, 1, 1)
+
+    def _prettyfilename():
+        return 'Random'
 
     def iterParts():
         yield os.path.join(TEST_DATA, 'dexter_s03e01_intro.mkv')

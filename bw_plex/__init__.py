@@ -29,7 +29,7 @@ subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
                'set_manual_theme_time', 'test_a_movie']
 
 
-def trim_argv():
+def trim_argv():  # pragma: no cover
     """Remove any sub commands and arguments for subcommands."""
     args = sys.argv[:]
     for cmd in subcommands:

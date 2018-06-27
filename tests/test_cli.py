@@ -5,8 +5,9 @@ from conftest import plex
 import click
 
 
-def test_cli():
-    pass
+def test_cli(cli_runner):
+    res = cli_runner.invoke(plex.cli, ['--help'])
+    click.echo(res.output)
 
 
 def test_create_config(monkeypatch, cli_runner, tmpdir):
@@ -17,11 +18,18 @@ def test_create_config(monkeypatch, cli_runner, tmpdir):
     assert os.path.exists(fullpath)
 
 
-def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker):
-    def fetchItem(i):
+def test_check(episode, film, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker):
+    def fetchItem_ep(i):
         return episode
+
+    def fetchItem_film(i):
+        return film
+
+    mf = mocker.Mock()
+    mf.fetchItem = fetchItem_film
+
     m = mocker.Mock()
-    m.fetchItem = fetchItem
+    m.fetchItem = fetchItem_ep
 
     def zomg(*args, **kwargs):
         pass
@@ -30,11 +38,14 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
     monkeypatch.setattr(plex, 'HT', HT)
     monkeypatch.setattr(plex, 'PMS', m)
     monkeypatch.setitem(plex.CONFIG['tv'], 'check_credits', True)
+    monkeypatch.setitem(plex.CONFIG['tv'], 'process_deleted', True)
+    # monkeypatch.setitem(plex.CONFIG['movie'], 'process_deleted', True)
     monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
 
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
     monkeypatch.setattr(plex, 'client_action', zomg)
 
+    # tv
     data = {"PlaySessionStateNotification": [{"guid": "",
                                               "key": "/library/metadata/1337",
                                               "playQueueItemID": 22631,
@@ -72,6 +83,41 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
             assert json.load(f)
 
 
+    item_deleted = {"type": "timeline",
+            "size": 1,
+            "TimelineEntry": [{"identifier": "com.plexapp.plugins.library",
+                               "sectionID": 2,
+                               "itemID": 1337,
+                               "type": 4,
+                               "title": "Dexter S01 E01",
+                               "state": 9,
+                               "mediaState": "deleted",
+                               "queueSize": 8,
+                               "updatedAt": 1526744644}]
+            }
+
+    r = plex.check(item_deleted)
+    if r:
+        r.get()
+
+    monkeypatch.setattr(plex, 'PMS', mf)
+    data_movie = {"PlaySessionStateNotification": [{"guid": "",
+                                                    "key": "/library/metadata/7331",
+                                                    "playQueueItemID": 22631,
+                                                    "ratingKey": "7331",
+                                                    "sessionKey": "84",
+                                                    "state": "playing",
+                                                    "transcodeSession": "4avh8p7h64n4e9a16xsqvr9e",
+                                                    "url": "",
+                                                    "viewOffset": 1000}],
+                  "size": 1,
+                  "type": "playing"
+                  }
+
+    r = plex.check(data_movie)
+    if r:
+        r.get()
+
 
 def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker):
     # This is tested in check
@@ -102,19 +148,25 @@ def _test_process_to_db(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT
             assert json.load(f)
 
 
-def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker):
+def test_process(cli_runner, monkeypatch, episode, film, media, HT, intro_file, mocker):
     # Let the mock begin..
     mocker.patch.object(plex, 'find_all_movies_shows', side_effect=[[media], [episode]])
     mocker.patch('click.prompt', side_effect=['0', '0'])
 
-    def fetchItem(i):
+    def fetchItem_ep(i):
         return episode
 
+    def fetchItem_m(i):
+        return film
+
     m = mocker.Mock()
-    m.fetchItem = fetchItem
+    m.fetchItem = fetchItem_ep
 
     def zomg(*args, **kwargs):
         pass
+
+    mf = mocker.Mock()
+    mf.fetchItem = fetchItem_m
 
     monkeypatch.setattr(plex, 'PMS', m)
     monkeypatch.setitem(plex.CONFIG['tv'], 'theme_source', 'tvtunes')
@@ -123,8 +175,11 @@ def test_process(cli_runner, monkeypatch, episode, media, HT, intro_file, mocker
 
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
 
-    res = cli_runner.invoke(plex.process, ['-n', 'dexter', '-s', '1', '-t', '2', '-sd'])
+    res = cli_runner.invoke(plex.process, ['-n', 'dexter', '-s', '1', '-t', '2'])
     #print(res.output)
+
+    monkeypatch.setattr(plex, 'PMS', mf)
+    res = cli_runner.invoke(plex.process, ['-n', 'Random', '-s', '1', '-sd'])
 
 
 def test_add_theme_to_hashtable(cli_runner, monkeypatch, HT):

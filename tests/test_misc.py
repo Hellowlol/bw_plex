@@ -15,6 +15,24 @@ def test_get_valid_filename():
     assert misc.get_valid_filename('M*A*S*H') == 'MASH'
 
 
+def test_ignoreratingkey(film, episode):
+    assert misc.ignore_ratingkey(episode, [1337])
+    assert misc.ignore_ratingkey(film, [7331])
+    assert not misc.ignore_ratingkey(episode, [113])
+
+
+def test_sec_to_hh_mm_ss():
+    x = misc.sec_to_hh_mm_ss(60)
+    assert x == '00:01:00'
+
+
+def test_findnxt(film, episode):
+    assert not misc.find_next(film)
+    # this should fail was there is no more
+    # episodes.
+    assert not misc.find_next(episode)
+
+
 @pytest.mark.xfail
 def test_find_offset_ffmpeg(intro_file):
     x = misc.find_offset_ffmpeg(intro_file)
@@ -83,6 +101,10 @@ def test_choose(monkeypatch, mocker):
         some = misc.choose('select', l, 'title')
         assert some[0].title == 1
         assert some[1].title == 7
+
+    with mocker.patch('click.prompt', side_effect=['1000', '-1:']):
+        some = misc.choose('select', l, 'title')
+        assert some[0].title == 9
 
 
 def test_to_time():
