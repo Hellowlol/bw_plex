@@ -8,39 +8,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from . import DB_PATH
 
 
-eng = create_engine('sqlite:///' + DB_PATH)
-session_factory = sessionmaker(bind=eng)
-sess = scoped_session(session_factory)
+eng = None
+session_factory = None
+sess = None
 Base = declarative_base()
-
-"""
-class Movies(Base):
-    __tablename__ = "movies"
-
-    id = Column(Integer, primary_key=True)
-    title = Column('title', String, nullable=True)
-    ffmpeg_end_str = Column('ffmpeg_end_str', String, nullable=True)
-    ratingKey = Column('ratingKey', Integer)
-    prettyname = Column('prettyname', String, nullable=True)
-    duration = Column('duration', Integer)
-    type = Column('type', String)
-    location = Column('location', String, nullable=True)
-    updatedAt = Column('updatedAt ', DateTime, nullable=True)
-    credits_start = Column('credits_start', Integer, nullable=True)
-    credits_start_str = Column('credits_start_str', String, nullable=True)
-    correct_credits_start = Column('correct_credits_start', Integer, nullable=True)
-    correct_credits_end = Column('correct_credits_end', Integer, nullable=True)
-    credits_end = Column('credits_end', Integer, nullable=True)
-    credits_end_str = Column('credits_end_str', String, nullable=True)
-    ffmpeg_end = Column('ffmpeg_end', Integer, nullable=True)
-    correct_ffmpeg = Column('correct_ffmpeg', Integer, nullable=True)  # This for manual override.
-
-    def _to_tuple(self, keys=None):
-        if keys is None:
-            keys = [i for i in self.__dict__.keys() if not i.startswith('_')]
-
-        return tuple(getattr(self, i) for i in keys)
-"""
 
 
 class Processed(Base):
@@ -81,8 +52,14 @@ class Processed(Base):
         return tuple(getattr(self, i) for i in keys)
 
 
-# Create db.
-Base.metadata.create_all(eng)
+def db_init():
+    global eng, session_factory, sess
+
+    eng = create_engine('sqlite:///' + DB_PATH)
+    session_factory = sessionmaker(bind=eng)
+    sess = scoped_session(session_factory)
+    # Create db.
+    Base.metadata.create_all(eng)
 
 
 @contextmanager

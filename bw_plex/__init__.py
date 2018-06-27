@@ -1,52 +1,45 @@
 import os
 import logging
-import sys
 from logging.handlers import RotatingFileHandler
+import sys
+
+try:
+    from multiprocessing.pool import ThreadPool as Pool
+except ImportError:
+    from multiprocessing.dummy import ThreadPool as Pool
 
 from plexapi.compat import makedirs, string_type
-from .config import read_or_make
 
-DEFAULT_FOLDER = os.path.expanduser('~/.config/bw_plex')
-THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
-TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')
-FP_HASHES = os.path.join(DEFAULT_FOLDER, 'hashes.pklz')
-LOG_FILE = os.path.join(DEFAULT_FOLDER, 'log.txt')
+
+DEFAULT_FOLDER = None
+THEMES = None
+TEMP_THEMES = None
+FP_HASHES = None
+LOG_FILE = None
 LOG = logging.getLogger('bw_plex')
-INI_FILE = os.path.join(DEFAULT_FOLDER, 'config.ini')
-DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
+INI_FILE = None
+DB_PATH = None
+CONFIG = None
+PMS = None
+POOL = None
 
 
-makedirs(DEFAULT_FOLDER, exist_ok=True)
-makedirs(THEMES, exist_ok=True)
-makedirs(TEMP_THEMES, exist_ok=True)
+subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
+               'ffmpeg_process', 'manually_correct_theme', 'process', 'match',
+               'set_manual_theme_time', 'test_a_movie']
 
-CONFIG = read_or_make(INI_FILE)
 
-if CONFIG.get('level') in ['', 'info']:  # Should we just use a int?
-    lvl = logging.INFO
-else:
-    lvl = logging.DEBUG
+def trim_argv():
+    """Remove any sub commands and arguments for subcommands."""
+    args = sys.argv[:]
+    for cmd in subcommands:
+        try:
+            idx = args.index(cmd)
+            return args[idx:]
+        except ValueError:
+            pass
 
-handle = logging.NullHandler()
-
-frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(filename)s:%(lineno)d :: %(message)s'))
-handle.setFormatter(frmt)
-LOG.addHandler(handle)
-# %(filename)s:%(lineno)d
-# CONSOLE
-stream_handle = logging.StreamHandler()
-stream_handle.setFormatter(frmt)
-LOG.addHandler(stream_handle)
-
-handle.setFormatter(frmt)
-LOG.addHandler(handle)
-
-# FILE
-rfh = RotatingFileHandler(LOG_FILE, 'a', 512000, 3)
-rfh.setFormatter(frmt)
-LOG.addHandler(rfh)
-
-LOG.setLevel(lvl)
+    return []
 
 
 class RedactFilter(logging.Filter):
@@ -61,7 +54,7 @@ class RedactFilter(logging.Filter):
         self.secrets = secrets or set()
 
     def add_secret(self, secret):
-        if secret is not None:
+        if secret is not None and secret:
             self.secrets.add(secret)
         return secret
 
@@ -81,12 +74,97 @@ class RedactFilter(logging.Filter):
         return msg
 
 
-def add_debug(debug=False):
-    if not CONFIG['general']['debug'] or debug is False:
-        LOG.addFilter(RedactFilter(secrets=[i for i in [CONFIG['server']['token'],
-                                                        CONFIG['server']['password']] if i]
-                                   )
-                      )
+FILTER = RedactFilter()
+
+
+def arg_extract(keys=None):
+    """ghetto parser for cli arguments."""
+    possible_kw = {'token': ('-t', '--token'),
+                   'username': ('-u', '--username'),
+                   'password': ('-p', '--password'),
+                   'servername': ('-s', '--servername'),
+                   'config': ('-c', '--config'),
+                   'verify_ssl': ('-vs', '--verify_ssl'),
+                   'default_folder': ('-df', '--default_folder'),
+                   'url': ('-u', '--username'),
+                   'debug': ('-d', '--debug')
+           }
+
+    d = {}
+    trimmed_args = trim_argv()
+    for i, arg in enumerate(trimmed_args):
+        for k, v in possible_kw.items():
+            if arg in v:
+                d[k] = trimmed_args[i + 1]
+
+    if keys:
+        return dict((key, value) for key, value in d.items() if key in keys)
+
+    return d
+
+
+def init(folder=None, debug=False, config=None):
+    global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL
+
+    DEFAULT_FOLDER = folder or os.path.expanduser('~/.config/bw_plex')
+
+    #if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
+    #    print('You default folder if not writeable')
+    #    sys.exit()
+
+    THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
+    TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')
+    FP_HASHES = os.path.join(DEFAULT_FOLDER, 'hashes.pklz')
+    LOG_FILE = os.path.join(DEFAULT_FOLDER, 'log.txt')
+    INI_FILE = config or os.path.join(DEFAULT_FOLDER, 'config.ini')
+    DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
+
+    makedirs(DEFAULT_FOLDER, exist_ok=True)
+    makedirs(THEMES, exist_ok=True)
+    makedirs(TEMP_THEMES, exist_ok=True)
+
+    from bw_plex.config import read_or_make
+    CONFIG = read_or_make(INI_FILE)
+    POOL = Pool(int(CONFIG.get('thread_pool_number', 10)))
+
+    from bw_plex.db import db_init
+    db_init()
+
+    # Setup some logging.
+
+    if debug or CONFIG['general']['level'] == 'debug':
+        LOG.setLevel(logging.DEBUG)
+    else:
+        LOG.setLevel(logging.INFO)
+
+    handle = logging.NullHandler()
+
+    frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(filename)s:%(lineno)d :: %(message)s'))
+    handle.setFormatter(frmt)
+    LOG.addHandler(handle)
+
+    stream_handle = logging.StreamHandler()
+    stream_handle.setFormatter(frmt)
+    LOG.addHandler(stream_handle)
+
+    handle.setFormatter(frmt)
+    LOG.addHandler(handle)
+
+    # FILE
+    rfh = RotatingFileHandler(LOG_FILE, 'a', 512000, 3)
+    rfh.setFormatter(frmt)
+    LOG.addHandler(rfh)
+
+
+
+    FILTER.add_secret(CONFIG['server']['token'])
+    FILTER.add_secret(CONFIG['server']['password'])
+    secret_args = arg_extract(keys=['username', 'token', 'password']).values()
+    for arg in secret_args:
+        FILTER.add_secret(arg)
+
+    if not CONFIG['general']['debug'] and debug is False:
+        LOG.addFilter(FILTER)
     else:
         LOG.info('Log is not sanitized!')
 

@@ -1,6 +1,6 @@
 librosa
 plexapi>=3.0.6
-joblib
+joblib==0.11
 numpy
 docopt
 click

@@ -10,17 +10,11 @@ import webbrowser
 
 from functools import wraps
 
-try:
-    from multiprocessing.pool import ThreadPool as Pool
-except ImportError:
-    from multiprocessing.dummy import ThreadPool as Pool
-
 import click
 import requests
 from sqlalchemy.orm.exc import NoResultFound
 
-
-from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, add_debug
+from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Processed
@@ -28,8 +22,6 @@ from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_of
                           get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
 
 
-POOL = Pool(int(CONFIG.get('thread_pool_number', 10)))
-PMS = None
 IN_PROG = []
 JUMP_LIST = []
 SHOWS = {}
@@ -206,18 +198,16 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--token', '-t', default=None, help='plex-x-token')
 @click.option('--config', '-c', default=None, help='Not in use atm.')
 @click.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
-def cli(debug, username, password, servername, url, token, config, verify_ssl):
+@click.option('--default_folder', '-df', default=None, help='default folder to store shit')
+def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder):
     """ Entry point for the CLI."""
     global PMS
     global CONFIG
 
-    if debug:
-        LOG.setLevel(logging.DEBUG)
-    else:
-        LOG.setLevel(logging.INFO)
-
-    # Enables debug logging for urllib3 and plexpai.
-    add_debug(debug)
+    # Remember to update the subcommands in __init__ if sub commands are added.
+    # Default folder is handled in fake_main as we need to modify
+    # the variables before import plex.py, its just listed here for the help
+    # message etc.
 
     if config and os.path.isfile(config):
         CONFIG = read_or_make(config)
@@ -237,7 +227,7 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl):
 
 @cli.command()
 @click.option('-cn', '--client_name', default=None)
-@click.option('-sd', '-skip_done', default=False, is_flag=True)
+@click.option('-sd', '--skip_done', default=False, is_flag=True)
 def check_db(client_name, skip_done):  # pragma: no cover
     """Do a manual check of the db. This will start playback on a client and seek the video file where we have found
        theme start/end and ffmpeg_end. You will be asked if its a correct match, press y or set the correct time in
@@ -665,6 +655,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):
 
     def proxy_on_fail(func):
         import plexapi
+
         @wraps(func)
         def inner():
             try:
@@ -1055,4 +1046,4 @@ def real_main():
 
 
 if __name__ == '__main__':
-    real_main()
+    print('You need to use bw_plex or cli.py')

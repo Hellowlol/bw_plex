@@ -95,7 +95,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'bw_plex=bw_plex.plex:real_main',
+            'bw_plex=bw_plex.cli:fake_main',
         ]
     },
 

@@ -49,19 +49,23 @@ def test_check(episode, intro_file, cli_runner, tmpdir, monkeypatch, HT, mocker)
             }
 
     # This should add the shit to the db. Lets check it.
-    r = plex.check(data).get()
-    plex.POOL.close()
-    plex.POOL.join()
+    r = plex.check(data)
+    # if we get a async result we want to block it
+    # this is done so this test can run independently
+    if r is not None:
+        r.get()
+    #plex.POOL.close()
+    #plex.POOL.join()
 
     with plex.session_scope() as se:
         assert se.query(plex.Processed).filter_by(ratingKey=episode.ratingKey).one()
 
         # lets check that we can export db shit too.
-
-        res = cli_runner.invoke(plex.export_db, ['-f', 'json', '-fp', str(tmpdir), '-wf'])
+        tmp = str(tmpdir)
+        res = cli_runner.invoke(plex.export_db, ['-f', 'json', '-fp', tmp, '-wf'])
         print(res.output)
 
-        fp = os.path.join(str(tmpdir), 'Processed.json')
+        fp = os.path.join(tmp, 'Processed.json')
         assert os.path.exists(fp)
 
         with open(fp, 'r') as f:
