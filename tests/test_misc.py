@@ -1,3 +1,4 @@
+import os
 import math
 import pytest
 from conftest import misc
@@ -109,3 +110,14 @@ def test_choose(monkeypatch, mocker):
 
 def test_to_time():
     assert misc.to_time(-1) == '00:00'
+
+
+def test_edl_line():
+    assert '1    2    0' == misc.edl_line(1, 2, 0)
+
+
+def tests_edl_stuff(tmpdir):
+    fp = os.path.join(str(tmpdir), 'sn.s13e37.avi')
+    f = misc.edl(fp, list(misc.edl_line(1, 2, 0)))
+    x = fp.read()
+    assert x.strip() ==  '1    2    0'

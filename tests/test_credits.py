@@ -20,7 +20,6 @@ def test_locate_text():
 
 def test_extract_text():
     fp = os.path.join(TEST_DATA, 'blacktext_whitebg_2.png')
-
     assert credits.extract_text(fp) == b'A\n\nJOHN GOLDWYN\n\nPRODUCTION'
 
 
@@ -28,8 +27,6 @@ def test_find_credits_frame_range_false(outro_file):
     start, end = credits.find_credits(outro_file, offset=3, frame_range=False, check=7)
     assert math.floor(start) == 3
     assert math.floor(end) == 3
-    # print('start', start)
-    # print('end', end)
 
 
 def test_find_credits(outro_file):
@@ -43,8 +40,8 @@ def test_find_hash(outro_file):
     for h, _ in credits.hash_file(outro_file):
         hashes.append(h)
 
+    img_file = os.path.join(TEST_DATA, 'text_greenbg_4.jpg')
     needels, files = credits.hash_image_folder(TEST_DATA)
 
     for i, hash_ in credits.find_hashes(needels, hashes):
-        assert files[i] == os.path.join(TEST_DATA, 'text_greenbg_4.jpg')
-
+        assert files[i] == img_file

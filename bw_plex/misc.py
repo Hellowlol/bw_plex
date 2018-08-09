@@ -808,6 +808,33 @@ def choose(msg, items, attr):
     return result
 
 
+def edl(path, lines=None):
+    if lines is None:
+        lines = []
+
+    pattern = '(.mkv|.mp4|.avi)'
+    re.sub(pattern, '', path)
+    edl_path = path + '.edl'
+    with open(edl_path, 'wb') as f:
+        f.seek(2)
+        for line in lines:
+            f.write('%s' % line)
+
+    return edl_path
+
+
+def edl_line(start, end, type='scene'):
+    types = {'cut': 0,
+             'mute': 1,
+             'scene': 2,
+             'commercial': 3}
+    t = types.get(type)
+    if t is None:
+        t = type
+    s = '%s    %s    %s' % (start, end, t)
+    return s
+
+
 if __name__ == '__main__':
     # print(search_tunes('Dexter', 1))
     print(find_offset_ffmpeg(r'X:\Breaking bad\Season 05\breaking.bad.s05e02.720p.hdtv.x264-orenji.mkv'))
