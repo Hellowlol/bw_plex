@@ -815,10 +815,11 @@ def edl(path, lines=None):
     pattern = '(.mkv|.mp4|.avi)'
     re.sub(pattern, '', path)
     edl_path = path + '.edl'
-    with open(edl_path, 'wb') as f:
-        f.seek(2)
+    with open(edl_path, 'w+') as f:
+        f.seek(0, 2)
         for line in lines:
-            f.write('%s' % line)
+            f.write(line)
+            f.write('\n')
 
     return edl_path
 

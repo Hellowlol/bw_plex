@@ -117,8 +117,9 @@ def test_edl_line():
 
 
 def tests_edl_stuff(tmpdir):
+    line = misc.edl_line(1, 2, 0)
     fp = os.path.join(str(tmpdir), 'sn.s13e37.avi')
-    f = misc.edl(fp, list(misc.edl_line(1, 2, 0)))
+    f = misc.edl(fp, [line])
     with open(f, 'r') as fh:
         x = fh.read()
         assert x.strip() ==  '1    2    0'
