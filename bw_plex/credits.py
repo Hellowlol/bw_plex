@@ -26,6 +26,11 @@ except ImportError:
     LOG.warning('Extracting text from images is not supported. '
                 'Install the package with pip install bw_plex[all] or bw_plex[video]')
 
+try:
+    import Image
+except ImportError:
+    from PIL import Image
+
 
 color = {'yellow': (255, 255, 0),
          'red': (255, 0, 0),
@@ -37,8 +42,11 @@ color = {'yellow': (255, 255, 0),
 
 image_type = ('.png', '.jpeg', '.jpg')
 
+
 if sys.version_info > (3, 0):
-    basestring = str
+    _str = str
+else:
+    _str = (unicode, str)
 
 
 def make_imgz(afile, start=600, dest=None, fps=1):
@@ -63,12 +71,7 @@ def extract_text(img, lang='eng', encoding='utf-8'):
     if pytesseract is None:
         return
 
-    try:
-        import Image
-    except ImportError:
-        from PIL import Image
-
-    if isinstance(img, basestring):
+    if isinstance(img, _str):
         img = Image.open(img)
 
     return pytesseract.image_to_string(img, lang=lang).encode(encoding, 'ignore')
@@ -158,7 +161,7 @@ def locate_text(image, debug=False):
     import cv2
 
     # Compat so we can use a frame and img file..
-    if isinstance(image, basestring) and os.path.isfile(image):
+    if isinstance(image, _str) and os.path.isfile(image):
         image = cv2.imread(image)
 
     if debug:
@@ -332,6 +335,51 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
 
     LOG.debug('credits_start %s, credits_end %s', start, end)
     return start, end
+
+
+def create_imghash(img):
+    """Create a phash"""
+    import cv2
+
+    if isinstance(img, _str):
+        img = cv2.imread(img, 0)
+
+    return cv2.img_hash.pHash(img)
+
+
+def hash_file(path, step=1):
+    if isinstance(path, _str) and path.endswith(image_type):
+        yield create_imghash(path), 0
+
+    for (h, pos) in video_frame_by_frame(path, frame_range=False, step=step):
+
+        hashed_img = create_imghash(h)
+        hashed_img = hashed_img.flatten().tolist()
+
+        yield hashed_img, pos
+
+
+def hash_image_folder(folder):
+    result = []
+    all_files = []
+    for root, dirs, files in os.walk(folder):
+        for f in files:
+            if not f.endswith(image_type):
+                continue
+
+            fp = os.path.join(root, f)
+            all_files.append(fp)
+            h = create_imghash(fp).flatten().tolist()
+            result.append(h)
+
+    return result, all_files
+
+
+def find_hashes(needels, stack):
+    for i, straw in enumerate(stack):
+        for needel in needels:
+            if straw == needel:
+                yield i, straw
 
 
 @click.command()

@@ -36,3 +36,15 @@ def test_find_credits(outro_file):
     start, end = credits.find_credits(outro_file, frame_range=True, check=9999)
     assert math.floor(start) == 4.0
     assert math.floor(end) == 58
+
+
+def test_find_hash(outro_file):
+    hashes = []
+    for h, _ in credits.hash_file(outro_file):
+        hashes.append(h)
+
+    needels, files = credits.hash_image_folder(TEST_DATA)
+
+    for i, hash_ in credits.find_hashes(needels, hashes):
+        assert files[i] == os.path.join(TEST_DATA, 'text_greenbg_4.jpg')
+
