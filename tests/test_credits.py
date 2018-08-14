@@ -57,5 +57,3 @@ def test_find_where_a_img_is_in_video(outro_file):
         if vh == h:
             # Check that the image if between 47 sec and 49 sec.
             assert i > 47464 and i < 49425
-    else:
-        raise
