@@ -52,7 +52,7 @@ else:
 def make_imgz(afile, start=600, dest=None, fps=1):
     """Helper to generate images."""
 
-    dest_path = dest + '\out%d.png'
+    dest_path = dest + '\out%d.jpg'
     fps = 'fps=%s' % fps
     t = sec_to_hh_mm_ss(start)
 
@@ -348,8 +348,10 @@ def create_imghash(img):
 
 
 def hash_file(path, step=1):
+    # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
-        yield create_imghash(path), 0
+        yield create_imghash(path).flatten().tolist(), 0
+        return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=False, step=step):
 
@@ -376,10 +378,12 @@ def hash_image_folder(folder):
 
 
 def find_hashes(needels, stack):
-    for i, straw in enumerate(stack):
-        for needel in needels:
+    #print(needels)
+    for i, (straw, pos) in enumerate(stack):
+        for n, needel in enumerate(needels):
             if straw == needel:
-                yield i, straw
+                # hash, where in millisec, i, neelel number
+                yield straw, pos, i, n
 
 
 @click.command()
@@ -424,4 +428,6 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
 
 
 if __name__ == '__main__':
-    cmd()
+    #cmd()
+
+    make_imgz(r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\out.mkv', start=45, fps=1, dest=r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\del')

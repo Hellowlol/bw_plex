@@ -36,12 +36,26 @@ def test_find_credits(outro_file):
 
 
 def test_find_hash(outro_file):
-    hashes = []
-    for h, _ in credits.hash_file(outro_file):
-        hashes.append(h)
+    hashes = list(credits.hash_file(outro_file))
+    img_file = os.path.join(TEST_DATA, 'out8.jpg')
+    img_hash, _ = next(credits.hash_file(img_file))
 
-    img_file = os.path.join(TEST_DATA, 'text_greenbg_4.jpg')
     needels, files = credits.hash_image_folder(TEST_DATA)
 
-    for i, hash_ in credits.find_hashes(needels, hashes):
-        assert files[i] == img_file
+    for kek, pos, i, n in credits.find_hashes(needels, hashes):
+        assert kek == img_hash and files[n] == img_file
+
+
+def test_find_where_a_img_is_in_video(outro_file):
+    img_file = os.path.join(TEST_DATA, 'out8.jpg')
+
+    h, t = next(credits.hash_file(img_file))
+
+    v_hashes = list(credits.hash_file(outro_file))
+
+    for vh, i in v_hashes:
+        if vh == h:
+            # Check that the image if between 47 sec and 49 sec.
+            assert i > 47464 and i < 49425
+    else:
+        raise
