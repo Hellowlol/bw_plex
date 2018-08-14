@@ -347,13 +347,13 @@ def create_imghash(img):
     return cv2.img_hash.pHash(img)
 
 
-def hash_file(path, step=1):
+def hash_file(path, step=1, frame_range=False):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
         yield create_imghash(path).flatten().tolist(), 0
         return
 
-    for (h, pos) in video_frame_by_frame(path, frame_range=False, step=step):
+    for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step):
 
         hashed_img = create_imghash(h)
         hashed_img = hashed_img.flatten().tolist()
@@ -372,15 +372,14 @@ def hash_image_folder(folder):
             fp = os.path.join(root, f)
             all_files.append(fp)
             h = create_imghash(fp).flatten().tolist()
-            result.append(h)
+            result.append((h, 0))
 
     return result, all_files
 
 
 def find_hashes(needels, stack):
-    #print(needels)
     for i, (straw, pos) in enumerate(stack):
-        for n, needel in enumerate(needels):
+        for n, (needel, npos) in enumerate(needels):
             if straw == needel:
                 # hash, where in millisec, i, neelel number
                 yield straw, pos, i, n

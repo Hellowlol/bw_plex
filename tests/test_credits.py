@@ -2,7 +2,7 @@ import math
 import os
 import glob
 
-from conftest import credits, TEST_DATA
+from conftest import credits, TEST_DATA, misc
 
 image_type = ('.png', '.jpeg', '.jpg')
 
@@ -57,3 +57,17 @@ def test_find_where_a_img_is_in_video(outro_file):
         if vh == h:
             # Check that the image if between 47 sec and 49 sec.
             assert i > 47464 and i < 49425
+
+
+def test_find_partial_video_inside_another(intro_file):
+    # This is cut from the one minute mark.
+    part = os.path.join(TEST_DATA, 'part.mkv')
+
+    part_hashes = list(credits.hash_file(part, frame_range=True))
+
+    intro_hashes = list(credits.hash_file(intro_file))
+
+    for straw, position, i, stacknumber in credits.find_hashes(part_hashes, intro_hashes):
+        print(misc.sec_to_hh_mm_ss(position/1000), i, stacknumber)
+
+
