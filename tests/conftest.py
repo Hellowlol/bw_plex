@@ -23,6 +23,7 @@ bw_plex.init(folder=os.path.join(tempfile.gettempdir(), 'bw_plex_test_root'), de
 # Do not remove these imports..
 import bw_plex.plex as plex
 import bw_plex.misc as misc
+import bw_plex.hashing as hashing
 import bw_plex.credits as credits
 from bw_plex.db import session_scope, Processed
 

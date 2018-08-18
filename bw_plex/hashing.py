@@ -1,9 +1,8 @@
-import operator
-import itertools
 from collections import OrderedDict
 
 
 class Hash:
+    """Hash and where the hash was found."""
     __slots__ = ('name', 'pos')
 
     def __init__(self, name):
@@ -59,27 +58,3 @@ class Hashlist():
     def __iter__(cls):
         for i in cls._kek.values():
             yield i
-
-
-
-"""
-k = Hashlist()
-
-t = [([1],2), ([1],3), ([3],3), ([3],3), ([3],3), ([3],3)]
-for tt in t:
-    h, u = tt
-    k.add_items(h, u)
-
-
-#print(vars(k))
-
-stuff = k.most_common()
-for i in stuff:
-    print(i)
-    #print(i.size)
-
-first = k[0]
-print(first.name)
-print(first.size)
-print(first.pos)
-"""
