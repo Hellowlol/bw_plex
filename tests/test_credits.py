@@ -44,8 +44,8 @@ def test_find_hash(outro_file):
 
     needels, files = credits.hash_image_folder(TEST_DATA)
 
-    for kek, pos, i, n in credits.find_hashes(needels, hashes):
-        assert kek == img_hash and files[n] == img_file
+    for stack_hash, stack_ms, stacknr, needel_ms, needelnr in credits.find_hashes(needels, hashes):
+        assert stack_hash == img_hash and files[needelnr]
 
 
 def test_find_where_a_img_is_in_video(outro_file):
@@ -83,8 +83,7 @@ def test_most_common(intro_file):
     intro_hashes = list(credits.hash_file(intro_file))
 
     def mc():
-        #d = {}
-        #print(intro_hashes[0][0])
+
         l = []
         for hash_, t in intro_hashes:
             d = {}
