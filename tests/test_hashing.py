@@ -15,3 +15,7 @@ def test_hashing():
     assert first.name == (3,)
     assert first.size == 4
     assert first.pos == [3, 3, 3, 3]
+
+
+def test_string_hash():
+    assert 'c20ad4d76fe97759aa27a0c99bff6710' == hashing.string_hash([[1], [2]])

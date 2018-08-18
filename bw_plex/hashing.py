@@ -5,9 +5,8 @@ from itertools import chain
 
 def string_hash(stack):
     """convert a all hashes to one hash."""
-    # untested
     h = ''.join((str(i) for i in chain(*stack)))
-    return hashlib.md5(h).hexdigest()
+    return hashlib.md5(h.encode('utf-8')).hexdigest()
 
 
 class Hash:
