@@ -377,12 +377,21 @@ def hash_image_folder(folder):
     return result, all_files
 
 
-def find_hashes(needels, stack):
+def find_hashes(needels, stack, ignore_black_frames=True, no_dupe_frames=True):
+    """ stack should be i [([hash], pos)] sames goes for the needels.]"""
+    frames = []
     for i, (straw, pos) in enumerate(stack):
+        if ignore_black_frames and not sum(straw):
+            continue
+
         for n, (needel, npos) in enumerate(needels):
-            if straw == needel:
-                # hash, where in millisec, i, neelel number
-                yield straw, pos, i, n
+
+            if straw == needel and straw not in frames:
+                if no_dupe_frames:
+                    frames.append(straw)
+
+                # match_hash, pos in ms in stackfile, number in stack, pos in ms in needels file, number in needels.
+                yield straw, pos, i, npos, n
 
 
 @click.command()
