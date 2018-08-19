@@ -35,7 +35,7 @@ def trim_argv():  # pragma: no cover
     for cmd in subcommands:
         try:
             idx = args.index(cmd)
-            return args[idx:]
+            return args[:idx]
         except ValueError:
             pass
 
