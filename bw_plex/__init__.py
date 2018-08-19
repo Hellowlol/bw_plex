@@ -95,7 +95,11 @@ def arg_extract(keys=None):
     for i, arg in enumerate(trimmed_args):
         for k, v in possible_kw.items():
             if arg in v:
-                d[k] = trimmed_args[i + 1]
+                # Just set the flags.
+                if k in ('debug', 'verify_ssl'):
+                    d[k] = True
+                else:
+                    d[k] = trimmed_args[i + 1]
 
     if keys:
         return dict((key, value) for key, value in d.items() if key in keys)

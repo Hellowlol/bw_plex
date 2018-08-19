@@ -11,9 +11,9 @@ def test_trim_args():
 
 
 def test_arg_extract(mocker):
-    args = ['bw_plex', '-d', '--username', 'kek', '-p', 'mysecret', 'watch']
+    args = ['bw_plex', '-d', '--username', 'kek', '-p', 'mysecret', 'add_theme_to_hashtable', '-d']
 
-    with mocker.patch('bw_plex.trim_argv', args):
+    with mocker.patch('bw_plex.trim_argv', return_value=args):
         kw = bw_plex.arg_extract()
         assert kw
         assert kw['username'] == 'kek'
