@@ -29,9 +29,9 @@ subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
                'set_manual_theme_time', 'test_a_movie']
 
 
-def trim_argv():  # pragma: no cover
+def trim_argv(args=None):  # pragma: no cover
     """Remove any sub commands and arguments for subcommands."""
-    args = sys.argv[:]
+    args = args or sys.argv[:]
     for cmd in subcommands:
         try:
             idx = args.index(cmd)
