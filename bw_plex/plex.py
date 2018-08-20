@@ -651,7 +651,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             None
     """
     global JUMP_LIST
-    LOG.debug('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
+    LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
 
     def proxy_on_fail(func):
         import plexapi
@@ -662,7 +662,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 func()
             except plexapi.exceptions.BadRequest:
                 try:
-                    LOG.debug('Failed to reach the client directly, trying via server.')
+                    LOG.info('Failed to reach the client directly, trying via server.')
                     correct_client.proxyThroughServer()
                     func()
                 except:  # pragma: no cover
@@ -684,16 +684,16 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
-            LOG.debug('client %s %s', client.title, (media.viewOffset / 1000))
+            LOG.info('client %s %s', client.title, (media.viewOffset / 1000))
 
             # Check that this client is allowed.
             if conf_clients and client.title not in conf_clients:
-                LOG.debug('Client %s is not whitelisted', client.title)
+                LOG.info('Client %s is not whitelisted', client.title)
                 return
 
             # Check that this user is allowed.
             if conf_users and user not in conf_users:
-                LOG.debug('User %s is not whitelisted', user)
+                LOG.info('User %s is not whitelisted', user)
                 return
 
             # To stop processing. from func task if we have used to much time..
@@ -703,6 +703,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             #    return
 
             for c in clients:
+                LOG.info('%s %s' % (c.machineIdentifier, client.machineIdentifier))
                 # So we got the correct client..
                 if c.machineIdentifier == client.machineIdentifier:
                     # Plex web sometimes add loopback..
@@ -713,6 +714,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
 
             if correct_client:
                 try:
+                    LOG.info('Connectiong to %s', correct_client.title)
                     correct_client.connect()
                 except requests.exceptions.ConnectionError:
                     LOG.exception('Cant connect to %s', client.title)
@@ -720,7 +722,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
 
                 if action != 'stop':
                     if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
-                        LOG.debug('Didnt send seek command this show, season or episode is ignored')
+                        LOG.info('Didnt send seek command this show, season or episode is ignored')
                         return
 
                     # PMP seems to be really picky about timeline calls, if we dont
@@ -729,7 +731,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         correct_client.sendCommand('timeline/poll', wait=0)
 
                     proxy_on_fail(correct_client.seekTo(int(offset * 1000)))
-                    LOG.debug('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
+                    LOG.info('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
                 else:
                     if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
                         proxy_on_fail(correct_client.stop())
@@ -743,8 +745,10 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         if CONFIG['tv'].get('check_credits_start_next_ep') is True:
                             nxt = find_next(media) # This is always false for movies.
                             if nxt:
-                                LOG.debug('Start playback on %s with %s', user, nxt._prettyfilename())
+                                LOG.info('Start playback on %s with %s', user, nxt._prettyfilename())
                                 proxy_on_fail(correct_client.playMedia(nxt))
+            else:
+                LOG.info('Didnt find the correct client.')
 
             # Some clients needs some time..
             # time.sleep(0.2)
