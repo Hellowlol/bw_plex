@@ -596,6 +596,10 @@ def get_hashtable():
             self.__filename = name
 
         self.load_pkl(name)
+        LOG.debug('Files in the hashtable')
+        for n in self.name:
+            LOG.debug(n)
+
         return self
 
     def save(self, name=None, params=None, file_object=None):
