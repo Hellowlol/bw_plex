@@ -597,7 +597,7 @@ def get_hashtable():
 
         self.load_pkl(name)
         LOG.debug('Files in the hashtable')
-        for n in self.name:
+        for n in self.names:
             LOG.debug(n)
 
         return self
