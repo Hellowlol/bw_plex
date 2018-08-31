@@ -28,9 +28,6 @@ username = string(default='')
 password = string(default='')
 
 [tv]
-# This could be season, show or ep.
-#ignore_intro_ratingkeys = list(default=list())
-#ignore_outro_ratingkeys = list(default=list())
 check_credits = boolean(default=False)
 check_credits_action = string(default='')
 check_credits_start_next_ep = boolean(default=True)
@@ -41,8 +38,9 @@ process_recently_added = boolean(default=False)
 process_deleted = boolean(default=False)
 theme_source = option('all', 'tvtunes', 'plex', 'youtube', default='all')
 words = list(default=list('previously on', 'last season', 'last episode'))
+create_edl = boolean(default=False)
+edl_action_type = integer(default=3)
 
-# This will be ignored for now.
 [movie]
 check_credits = boolean(default=False)
 check_credits_action = string(default='')
@@ -50,8 +48,13 @@ check_credits_sec = integer(default=600)
 check_intro_ffmpeg_sec = integer(default=600)
 process_recently_added = boolean(default=False)
 process_deleted = boolean(default=False)
-#ignore_intro_ratingkeys = list(default=list())
-#ignore_outro_ratingkeys = list(default=list())
+create_edl = boolean(default=False)
+edl_action_type = integer(default=3)
+
+[edl]
+write_edl_tvshows = boolean(default=False)
+write_edl_movies = boolean(default=False)
+
 
 """.splitlines()
 
