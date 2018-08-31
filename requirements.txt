@@ -1,4 +1,7 @@
+
 librosa
+# lets pin websocket-client until the bugs are fixed
+websocket-client==0.47
 plexapi>=3.0.6
 joblib
 numpy
@@ -14,11 +17,10 @@ configobj
 youtube-dl
 beautifulsoup4
 html5lib
-#opencv-contrib-python
-#pytesseract
-#pocketsphinx
-#SpeechRecognition
 tablib
+
+
+
 
 
 # Any more i have forgotten?
