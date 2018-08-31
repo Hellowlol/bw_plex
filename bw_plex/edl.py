@@ -9,6 +9,40 @@ TYPES = {'cut': '0',
 TYPES.update(dict((v,k) for (k,v) in TYPES.items()))
 
 
+def db_to_edl(item, type=3):
+    elds = []
+
+    # Add credits
+    if (item.correct_theme_start and
+        item.correct_theme_start != -1 and
+        item.correct_theme_end and
+        item.correct_theme_end != -1):
+
+        elds.append([item.correct_theme_start,
+                     item.correct_theme_end,
+                     TYPES[type]])
+
+    elif (item.theme_start and
+          item.theme_start != -1 and
+          item.theme_end and
+          item.theme_end != -1):
+
+        elds.append([item.theme_start,
+                     item.theme_end,
+                     TYPES[type]])
+
+    if (item.credits_start and
+        item.credits_start != -1 and
+        item.credits_end and
+        item.credits_end != -1):
+
+        elds.append([item.credits_start,
+                     item.credits_end,
+                     TYPES[type]])
+
+    return elds
+
+
 def dir_has_edl(path):
     """reuse all folders in root to check if edl exists returns
        a list off all edls or a empty list"""
@@ -63,6 +97,9 @@ def write_edl(path, lines):
             path.
 
     """
+    if not len(lines):
+        return
+
     path = create_edl_path(path)
     with open(path, 'w') as f:
         for line in lines:

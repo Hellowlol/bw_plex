@@ -148,6 +148,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
         credits_start = -1
         credits_end = -1
 
+    # We assume this is kinda right, # double check this # TODO
+    location = list(media.iterParts())[0]
+
     with session_scope() as se:
         try:
             se.query(Processed).filter_by(ratingKey=media.ratingKey).one()
@@ -172,7 +175,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               prettyname=media._prettyfilename(),
                               updatedAt=media.updatedAt,
                               has_recap=recap,
-                              location=list(media.iterParts())[0]
+                              location=location
                               )
 
             elif media.TYPE == 'movie':
@@ -188,11 +191,18 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               ratingKey=media.ratingKey,
                               prettyname=media._prettyfilename(),
                               updatedAt=media.updatedAt,
-                              location=list(media.iterParts())[0]
+                              location=location
                               )
 
             se.add(p)
             LOG.debug('Added %s to media.db', name)
+
+
+            if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
+                edl.write_edl(location, db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
+
+            elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
+                edl.write_edl(location, db_to_edl(p, type=CONFIG['movie']['edl_action_type'])
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
@@ -873,7 +883,8 @@ def check(data):
                 return
 
             if sessionkey not in JUMP_LIST:
-                LOG.debug('Called jump with %s %s %s %s', item.prettyname, sessionkey, sec, action)
+                LOG.debug('Called jump with %s %s %s %s', item.prettyname,
+                          sessionkey, sec, action)
                 JUMP_LIST.append(sessionkey)
                 POOL.apply_async(client_action, args=(sec, sessionkey, action))
 
@@ -1056,13 +1067,14 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
                     if end:
                         item.correct_credits_end = end
 
-                LOG.debug('Set correct_time %s for %s to start %s end %s', type, ep._prettyfilename(), start, end)
+                LOG.debug('Set correct_time %s for %s to start %s end %s',
+                          type, ep._prettyfilename(), start, end)
 
 
 def real_main():
     try:
         cli()
-    except:
+    except: # pragma: no cover
         raise
     finally:
         # Make sure we save if we need it.
