@@ -18,7 +18,7 @@ from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Processed
-import bw_plex.edl
+import bw_plex.edl as edl
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                           get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
 
@@ -171,7 +171,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               grandparentRatingKey=media.grandparentRatingKey,
                               prettyname=media._prettyfilename(),
                               updatedAt=media.updatedAt,
-                              has_recap=recap)
+                              has_recap=recap,
+                              location=list(media.iterParts())[0]
+                              )
 
             elif media.TYPE == 'movie':
                 p = Processed(title=media.title,
@@ -185,7 +187,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               duration=media.duration,
                               ratingKey=media.ratingKey,
                               prettyname=media._prettyfilename(),
-                              updatedAt=media.updatedAt)
+                              updatedAt=media.updatedAt,
+                              location=list(media.iterParts())[0]
+                              )
 
             se.add(p)
             LOG.debug('Added %s to media.db', name)
@@ -446,12 +450,19 @@ def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):  # pragma: no cover
 @cli.command()
 @click.option('-t', default='scene marker', type=click.Choice(['cut', 'scene marker', 'mute', 'commercial break']),
               help='What type of edl is this')
-def create_edl_from_db(t):
+@click.option('-sp', '--save_path', default=None)
+def create_edl_from_db(t, save_path):
     with session_scope() as se:
         db_items = se.query(Processed).all()
         for item in db_items:
+            # Maybe remove this later?
+            if save_path:
+                loc = edl.create_edl_path(os.path.join(save_path, os.path.basename(item.location)))
+            else:
+                loc = item.location
+
             try:
-                t = edl.write_edl(item.location, [[item.theme_start, item.theme_end, edl.TYPES[t]]])
+                t = edl.write_edl(loc, [[item.theme_start, item.theme_end, edl.TYPES[t]]])
                 click.echo('Wrote %s' %  t)
             except:
                 LOG.exception('Failed to write edl.')

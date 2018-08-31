@@ -51,10 +51,6 @@ process_deleted = boolean(default=False)
 create_edl = boolean(default=False)
 edl_action_type = integer(default=3)
 
-[edl]
-write_edl_tvshows = boolean(default=False)
-write_edl_movies = boolean(default=False)
-
 
 """.splitlines()
 
