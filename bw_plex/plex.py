@@ -18,6 +18,7 @@ from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
 from bw_plex.db import session_scope, Processed
+import bw_plex.edl
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                           get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
 
@@ -440,6 +441,20 @@ def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):  # pragma: no cover
                            duration_video=dv, pix_th=pix_th, au_db=au_db)
     click.echo(n)
     return n
+
+
+@cli.command()
+@click.option('-t', default='scene marker', type=click.Choice(['cut', 'scene marker', 'mute', 'commercial break']),
+              help='What type of edl is this')
+def create_edl_from_db(t):
+    with session_scope() as se:
+        db_items = se.query(Processed).all()
+        for item in db_items:
+            try:
+                t = edl.write_edl(item.location, [[item.theme_start, item.theme_end, edl.TYPES[t]]])
+                click.echo('Wrote %s' %  t)
+            except:
+                LOG.exception('Failed to write edl.')
 
 
 @cli.command()

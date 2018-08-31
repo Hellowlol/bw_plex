@@ -1,5 +1,13 @@
 import os
 
+TYPES = {'cut': '0',
+         'mute': '1',
+         'scene marker': '2',
+         'commercial break': '3'}
+
+
+TYPES.update(dict((v,k) for (k,v) in TYPES.items()))
+
 
 def dir_has_edl(path):
     """reuse all folders in root to check if edl exists returns
