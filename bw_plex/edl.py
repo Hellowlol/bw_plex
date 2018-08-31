@@ -23,12 +23,14 @@ def dir_has_edl(path):
 
 
 def create_edl_path(path):
+    """Convert a file with a ext to .edl ext."""
     f_without_ext = os.path.splitext(path)[0]
     edl_path = f_without_ext + '.edl'
     return edl_path
 
 
 def has_edl(path):
+    """Check if we have a edl with the same name as the file."""
 
     # check that we has access to the file incase bw_plex doesnt use the same
     # source mapping as bw_plex (running in a docker or what evs)
@@ -52,6 +54,15 @@ def has_edl(path):
 
 
 def write_edl(path, lines):
+    """Write a edl file.
+
+       path(str): path,
+       lines(list): [[1,2,3]]
+
+       return:
+            path.
+
+    """
     path = create_edl_path(path)
     with open(path, 'w') as f:
         for line in lines:
