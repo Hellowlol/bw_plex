@@ -25,6 +25,7 @@ import bw_plex.plex as plex
 import bw_plex.misc as misc
 import bw_plex.hashing as hashing
 import bw_plex.credits as credits
+import bw_plex.edl as edl
 from bw_plex.db import session_scope, Processed
 
 TEST_DATA = os.path.join(os.path.dirname(__file__), 'test_data')

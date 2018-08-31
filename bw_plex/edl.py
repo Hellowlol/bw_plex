@@ -27,7 +27,7 @@ def has_edl(path):
     if not os.path.exists(path):
         pass
         # do remapping here
-        # xxx
+        # TODO
     # Check the the video file exist.
     if os.path.isfile(path):
         edl_path = create_edl_path(path)
@@ -45,9 +45,9 @@ def has_edl(path):
 
 def write_edl(path, lines):
     path = create_edl_path(path)
-    with open(path, 'wb') as f:
+    with open(path, 'w') as f:
         for line in lines:
-            f.write('%s' % '    '.join(line))
+            f.write('%s' % '    '.join(str(i) for i in line))
 
     return path
 
