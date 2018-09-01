@@ -199,10 +199,10 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
 
             if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
-                edl.write_edl(location, db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
+                edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
 
             elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
-                edl.write_edl(location, db_to_edl(p, type=CONFIG['movie']['edl_action_type'])
+                edl.write_edl(location,edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
@@ -472,8 +472,8 @@ def create_edl_from_db(t, save_path):
                 loc = item.location
 
             try:
-                t = edl.write_edl(loc, [[item.theme_start, item.theme_end, edl.TYPES[t]]])
-                click.echo('Wrote %s' %  t)
+                t = edl.write_edl(loc, edl.db_to_edl(item, edl.TYPES[t]))
+                click.echo('Wrote %s' % t)
             except:
                 LOG.exception('Failed to write edl.')
 

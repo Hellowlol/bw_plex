@@ -101,9 +101,9 @@ def write_edl(path, lines):
         return
 
     path = create_edl_path(path)
-    with open(path, 'w') as f:
+    with open(path, 'w+') as f:
         for line in lines:
-            f.write('%s' % '    '.join(str(i) for i in line))
+            f.write('%s\n' % '    '.join(str(i) for i in line))
 
     return path
 
