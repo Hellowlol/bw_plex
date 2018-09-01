@@ -12,7 +12,7 @@ def test_write_edl(tmpdir, monkeypatch, mock):
 
     with open(edl_file, 'r') as f:
         result = f.read()
-        assert result == '1    2    3'
+        assert result == '1    2    3\n'
 
 
 def test_has_edl(tmpdir, mock):

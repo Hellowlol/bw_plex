@@ -149,7 +149,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
         credits_end = -1
 
     # We assume this is kinda right, # double check this # TODO
-    location = list(media.iterParts())[0]
+    location = list(i.file for i in media.iterParts() if i)[0]
 
     with session_scope() as se:
         try:
