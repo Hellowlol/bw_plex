@@ -112,6 +112,19 @@ def write_edl(path, lines):
 
 
 def write_chapters_to_file(path, cleanup=False):
+    """Use ffmpeg to add chapters to a videofile.mf_file
+
+
+       Args:
+            path(str): path to the video file we should add chapters to
+            cleanup(bool): Default False, remote the .metadatafile
+                           after chapters has been added.
+
+       Return:
+            path
+
+
+    """
 
     edl = has_edl(path)
     if edl:
@@ -141,6 +154,15 @@ def write_chapters_to_file(path, cleanup=False):
 
 
 def edl_to_metadata_file(path):
+    """Convert a .edl file to a ffmepg metadata file.
+       This way we can add chapters to shows as this isnt suppored by plex
+
+       Args:
+            path (str): path to the edl we should use.
+
+       Return
+            path to metadata file.
+    """
     # Should we check if this file has metadata/chapters so we dont overwrite it
     # Lets come back to this later.
     if not os.path.isfile(path) and path.endswith('.edl'):
