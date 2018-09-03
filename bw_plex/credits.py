@@ -37,7 +37,8 @@ color = {'yellow': (255, 255, 0),
          'blue': (0, 0, 255),
          'lime': (0, 255, 0),
          'white': (255, 255, 255),
-         'fuchsia': (255, 0, 255)
+         'fuchsia': (255, 0, 255),
+         'black': (0, 0, 0)
         }
 
 image_type = ('.png', '.jpeg', '.jpg')
@@ -337,6 +338,21 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
     return start, end
 
 
+def fill_rects(image, rects):
+    """This is used to fill the rects (location of credits)
+
+       The idea if to mask the credits so we can check if there is any background
+       movement while the credits are running. Like the movie cars etc.
+       See if we can grab something usefull from
+       https://gist.github.com/luipillmann/d76eb4f4eea0320bb35dcd1b2a4575ee
+    """
+    for rect in rects:
+        x, y, w, h = rect
+        cv2.rectangle(image, (x, y), (x + w, y + h), color['black'], cv2.FILLED)
+
+    return image
+
+
 def create_imghash(img):
     """Create a phash"""
     import cv2
@@ -437,5 +453,20 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
 
 if __name__ == '__main__':
     #cmd()
+    def test():
+        import cv2
+        i = r"C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
+        i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
 
-    make_imgz(r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\out.mkv', start=45, fps=1, dest=r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\del')
+        img = cv2.imread(i)
+        ffs = img.copy()
+        rects = locate_text(ffs, debug=True)
+
+        f = fill_rects(img, rects)
+        cv2.imshow('ass', f)
+        cv2.waitKey(0)
+
+    test()
+
+
+    #make_imgz(r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\out.mkv', start=45, fps=1, dest=r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\del')
