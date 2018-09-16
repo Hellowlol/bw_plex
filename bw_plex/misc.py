@@ -336,16 +336,16 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
     tmp_name = tmp.name
     tmp.close()
 
-    afile = '"%s"' % afile
+    q_file = '"%s"' % afile
     if trim is None:
         cmd = [
-            'ffmpeg', '-i', afile, '-ac', '1', '-ar',
+            'ffmpeg', '-i', q_file, '-ac', '1', '-ar',
             str(fs), '-acodec', 'pcm_s16le', tmp_name
         ]
 
     else:
         cmd = [
-            'ffmpeg', '-i', afile, '-ac', '1', '-ar',
+            'ffmpeg', '-i', q_file, '-ac', '1', '-ar',
             str(fs), '-ss', '0', '-t', str(trim), '-acodec', 'pcm_s16le',
             tmp_name
         ]
@@ -381,9 +381,9 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):  # pragma:
         tmp.close()
         outfile = tmp_name
 
-    afile = '"%s"' % afile
+    q_file = '"%s"' % afile
 
-    cmd = ['ffmpeg', '-i', afile, '-ss', '0', '-t',
+    cmd = ['ffmpeg', '-i', q_file, '-ss', '0', '-t',
            str(trim), '-codec:a', 'libmp3lame', '-qscale:a', '6', outfile]
 
     LOG.debug('calling ffmepg with %s' % ' '.join(cmd))
