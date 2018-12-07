@@ -70,7 +70,7 @@ def test_find_partial_video_inside_another(intro_file):
     part_hashes = list(credits.hash_file(part, frame_range=False))
     intro_hashes = list(credits.hash_file(intro_file, frame_range=True))
 
-    for straw, sms, i, pms, _ in credits.find_hashes(part_hashes, intro_hashes, no_dupe_frames=True):
+    for straw, sms, i, pms, _, z in credits.find_hashes(part_hashes, intro_hashes, no_dupe_frames=True):
         sms_sec = math.floor(sms / 1000)
         pms_sec = math.floor(pms / 1000)
 
