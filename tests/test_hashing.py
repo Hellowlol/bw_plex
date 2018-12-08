@@ -19,3 +19,4 @@ def test_hashing():
 
 def test_string_hash():
     assert 'c20ad4d76fe97759aa27a0c99bff6710' == hashing.string_hash([[1], [2]])
+

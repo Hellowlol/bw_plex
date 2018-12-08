@@ -78,6 +78,7 @@ def test_find_partial_video_inside_another(intro_file):
         assert pms_sec >= 0 and pms_sec <= 120
         print('%r %s %s' % (straw, misc.sec_to_hh_mm_ss(sms_sec), misc.sec_to_hh_mm_ss(pms_sec)))
 
+
 def test_most_common(intro_file):
 
     intro_hashes = list(credits.hash_file(intro_file))

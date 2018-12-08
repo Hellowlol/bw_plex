@@ -853,6 +853,7 @@ def check(data):
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
+        no_wait_tick = CONFIG['general'].get('no_wait_tick', 0)
 
         def best_time(item):
             """Find the best time in the db."""
@@ -909,6 +910,9 @@ def check(data):
                             LOG.debug('We found the start of the credits.')
                             return jump(item, sessionkey, item.credits_start, action='stop')
 
+                    # Let's try to not wait for the next tick.
+                    progress = progress + no_wait_tick
+
                     # If recap is detected just instantly skip to intro end.
                     # Now this can failed is there is: recap, new episode stuff, intro, new episode stuff
                     # So thats why skip_only_theme is default as its the safest option.
@@ -917,6 +921,7 @@ def check(data):
 
                     # This mode will allow playback until the theme starts so it should be faster then skip_if_recap.
                     if mode == 'skip_only_theme':
+                        # For manual corrected themes..
                         if item.type == 'episode' and item.correct_theme_end and item.correct_theme_start:
                             if progress > item.correct_theme_start and progress < item.correct_theme_end:
                                 LOG.debug('%s is in the correct time range correct_theme_end', item.prettyname)
