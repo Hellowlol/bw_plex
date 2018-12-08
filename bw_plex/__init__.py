@@ -113,7 +113,7 @@ def init(folder=None, debug=False, config=None):
     DEFAULT_FOLDER = folder or os.path.expanduser('~/.config/bw_plex')
 
     #if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
-    #    print('You default folder if not writeable')
+    #    print('You default folder is not writeable')
     #    sys.exit()
 
     THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
@@ -158,6 +158,8 @@ def init(folder=None, debug=False, config=None):
     rfh = RotatingFileHandler(LOG_FILE, 'a', 512000, 3)
     rfh.setFormatter(frmt)
     LOG.addHandler(rfh)
+
+    LOG.info('default folder set to %s', DEFAULT_FOLDER)
 
 
 
