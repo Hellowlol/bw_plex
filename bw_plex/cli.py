@@ -9,13 +9,13 @@ def fake_main():
     args = bw_plex.trim_argv()
     for i, e in enumerate(args):  # pragma: no cover
 
-        if e == '--default_folder' or e == '-df':
+        if e in ('default_folder', '--default_folder', '-df'):
             default_folder = args[i + 1]
 
-        if e == '--debug' or e == '-d':
+        if e in ('debug', '--debug', '-d'):
             debug = True
 
-        if e == '--config' or e == '-c':
+        if e in ('config', '--config', '-c'):
             config = args[i + 1]
 
     bw_plex.init(folder=default_folder, debug=debug, config=config)
