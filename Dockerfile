@@ -40,11 +40,12 @@ WORKDIR /app/bw_plex
 
 RUN pip3 install -e .
 
-COPY root/ /
+# COPY root/ /
 VOLUME /config
 
 
 CMD ["sh", "-c", "bw_plex --url ${url} -t ${token} -df /config watch"]
+
 
 # docker build -t bw_plex:latest .
 # docker run -it bw_plex
