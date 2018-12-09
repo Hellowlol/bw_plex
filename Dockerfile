@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-# This images is much bigger then i want, ill try to reduce it 
+# This images is much bigger then i want, ill try to reduce it
 # but im such a docker noob, send a PR if you know how to fix it.
 
 MAINTAINER hellowlol1@gmail.com
@@ -39,6 +39,12 @@ RUN git clone https://github.com/Hellowlol/bw_plex.git /app/bw_plex
 WORKDIR /app/bw_plex
 
 RUN pip3 install -e .
+
+COPY root/ /
+VOLUME /config
+
+
+CMD ["sh", "-c", "bw_plex --url ${url} -t ${token} -df /config watch"]
 
 # docker build -t bw_plex:latest .
 # docker run -it bw_plex
