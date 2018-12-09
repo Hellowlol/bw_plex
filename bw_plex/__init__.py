@@ -135,7 +135,6 @@ def init(folder=None, debug=False, config=None):
     db_init()
 
     # Setup some logging.
-
     if debug or CONFIG['general']['level'] == 'debug':
         LOG.setLevel(logging.DEBUG)
     else:
@@ -160,8 +159,6 @@ def init(folder=None, debug=False, config=None):
     LOG.addHandler(rfh)
 
     LOG.info('default folder set to %s', DEFAULT_FOLDER)
-
-
 
     FILTER.add_secret(CONFIG['server']['token'])
     FILTER.add_secret(CONFIG['server']['password'])
