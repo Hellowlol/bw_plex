@@ -44,7 +44,7 @@ def test_find_hash(outro_file):
 
     needels, files = credits.hash_image_folder(TEST_DATA)
 
-    for stack_hash, stack_ms, stacknr, needel_ms, needelnr in credits.find_hashes(needels, hashes):
+    for stack_hash, stack_ms, stacknr, needel_ms, needelnr, stacknr in credits.find_hashes(needels, hashes):
         assert stack_hash == img_hash and files[needelnr]
 
 

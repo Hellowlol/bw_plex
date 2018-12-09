@@ -110,11 +110,11 @@ def arg_extract(keys=None):
 def init(folder=None, debug=False, config=None):
     global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL
 
-    DEFAULT_FOLDER = folder or os.path.expanduser('~/.config/bw_plex')
+    DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
 
-    #if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
-    #    print('You default folder is not writeable')
-    #    sys.exit()
+    if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
+        print('You default folder is not writeable')
+        sys.exit()
 
     THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
     TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')
