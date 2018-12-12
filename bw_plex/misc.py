@@ -119,7 +119,7 @@ def analyzer():
     a.n_hop = a.n_fft // 2
     a.shifts = 4
     a.fail_on_error = False
-    a.density = 20
+    a.density = 50
     return a
 
 
@@ -132,11 +132,11 @@ def matcher():
     m.exact_count = True
     m.max_returns = 100
     # Remember https://github.com/dpwe/audfprint/issues/8
-    # m.time_quantile = 0.02
+    m.time_quantile = 0.02
     # This need to be high as we might get to many hashes before
     # we have found the end.
     m.max_alignments_per_id = 10000
-    # m.sort_by_time = True
+    #m.sort_by_time = True # remove this?
     return m
 
 
@@ -153,8 +153,10 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
          nhashraw, rank, min_time, max_time) in rslts:
             end_time = max_time * t_hop
             start_time = min_time * t_hop
-            LOG.debug('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank,
-                      aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
+            #LOG.debug('START %s', (max_time - min_time) * t_hop)
+            #LOG.debug('END %s', (min_time + aligntime) * t_hop)
+            LOG.debug('Match %s rank %s aligntime %s nhashaligned %s nhashraw %s theme song %s started at %s (%s) in ended at %s (%s)' % (tophitid, rank,
+                      aligntime, nhashaligned, nhashraw, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
 
     if len(rslts):
         best = rslts[0]

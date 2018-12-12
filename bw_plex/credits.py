@@ -78,7 +78,7 @@ def extract_text(img, lang='eng', encoding='utf-8'):
     return pytesseract.image_to_string(img, lang=lang).encode(encoding, 'ignore')
 
 
-def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
+def video_frame_by_frame(path, offset=0, frame_range=None, step=1, end=None):
     """ Returns a video files frame by frame.by
 
         Args:
@@ -86,6 +86,7 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
             offset (int): Should we start from offset inside vid
             frame_range (list, None): List of frames numbers we should grab.
             step(int): check every n, note this is ignored if frame_range is False
+            end (int, None): 
 
         Returns:
             numpy.ndarray
@@ -101,7 +102,8 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1):
 
         duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
         duration = int(duration)
-        end = duration
+        if end is None:
+            end = duration
         start = int(offset)
 
         # Just yield very step frame and currect time.
@@ -363,13 +365,13 @@ def create_imghash(img):
     return cv2.img_hash.pHash(img)
 
 
-def hash_file(path, step=1, frame_range=False):
+def hash_file(path, step=1, frame_range=False, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
         yield create_imghash(path).flatten().tolist(), 0
         return
 
-    for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step):
+    for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
 
         hashed_img = create_imghash(h)
         hashed_img = hashed_img.flatten().tolist()
