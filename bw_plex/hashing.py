@@ -36,7 +36,7 @@ class Hashlist():
         # covert the list to tuple so its hashable
         hh = tuple(h)
         if hh not in cls._kek:
-            cls._kek[hh] = Hash(name=hh)
+            cls._kek[hh] = Hash(name=h)
         # Add whrer thsi
         cls._kek[hh].add_pos(pos)
 
@@ -50,7 +50,7 @@ class Hashlist():
         """
         x = sorted(cls._kek.values(), key=lambda f: f.size, reverse=True)
         if n:
-            return x[n:]
+            return x[:n]
 
         return x
 
