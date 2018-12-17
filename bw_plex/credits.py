@@ -11,6 +11,7 @@ import numpy as np
 
 from bw_plex import LOG
 from bw_plex.misc import sec_to_hh_mm_ss
+from bw_plex.hashing import ImageHash
 
 try:
     import cv2
@@ -355,6 +356,21 @@ def fill_rects(image, rects):
     return image
 
 
+def dhash(image, hashSize=8):
+    import cv2
+    # resize the input image, adding a single column (width) so we
+    # can compute the horizontal gradient
+    resized = cv2.resize(image, (hashSize + 1, hashSize))
+
+    # compute the (relative) horizontal gradient between adjacent
+    # column pixels
+    diff = resized[:, 1:] > resized[:, :-1]
+    return diff
+
+    # convert the difference image to a hash
+    return sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
+
+
 def create_imghash(img):
     """Create a phash"""
     import cv2
@@ -365,18 +381,32 @@ def create_imghash(img):
     return cv2.img_hash.pHash(img)
 
 
+
+def create_imghash_avg(img):
+    """Create a phash"""
+    import cv2
+
+    if isinstance(img, _str):
+        img = cv2.imread(img, 0)
+
+    return cv2.img_hash.averageHash(img)
+
+
 def hash_file(path, step=1, frame_range=False, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
-        yield create_imghash(path).flatten().tolist(), 0
+        yield create_imghash(path), 0
         return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
-
         hashed_img = create_imghash(h)
-        hashed_img = hashed_img.flatten().tolist()
-
-        yield hashed_img, pos
+        #hashed_img = dhash(h)
+        nn = ImageHash(hashed_img)
+        #hashed_img = hashed_img#.flatten().tolist()
+        #t = dhash(h)
+        #print(t)
+        #yield t, pos
+        yield nn, h, pos
 
 
 def hash_image_folder(folder):
@@ -395,7 +425,7 @@ def hash_image_folder(folder):
     return result, all_files
 
 
-def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True):
+def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
     """ This can be used to fin a image in a video or a part of a video.
 
     stack should be i [([hash], pos)] sames goes for the needels.]"""
@@ -405,12 +435,18 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True):
 
     for tt, stack in enumerate(stacks):
         for i, (straw, pos) in enumerate(stack):
-            if ignore_black_frames and not sum(straw):
+            if ignore_black_frames and not sum(straw.hash):
                 continue
 
             for n, (needel, npos) in enumerate(needels):
+                # check this?
+                if thresh and straw not in frames and straw - needel <= thresh:
+                    if no_dupe_frames:
+                        frames.append(straw)
 
-                if straw == needel and straw not in frames:
+                    yield straw, pos, i, npos, n, tt
+
+                elif straw == needel and straw not in frames:
                     if no_dupe_frames:
                         frames.append(straw)
 
