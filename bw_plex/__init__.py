@@ -112,7 +112,7 @@ def init(folder=None, debug=False, config=None):
 
     DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
 
-    if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
+    if os.path.isdir(DEFAULT_FOLDER) and not os.access(DEFAULT_FOLDER, os.W_OK):
         print('You default folder is not writeable')
         sys.exit()
 
