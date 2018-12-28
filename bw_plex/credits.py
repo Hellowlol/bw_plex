@@ -4,7 +4,6 @@ import glob
 import os
 import subprocess
 import re
-import sys
 
 import click
 import numpy as np
@@ -43,11 +42,10 @@ color = {'yellow': (255, 255, 0),
 
 image_type = ('.png', '.jpeg', '.jpg')
 
-
-if sys.version_info > (3, 0):
-    _str = str
-else:
+try:
     _str = (unicode, str)
+except NameError:
+    _str = str
 
 
 def make_imgz(afile, start=600, dest=None, fps=1):
