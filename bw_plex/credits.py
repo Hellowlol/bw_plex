@@ -392,7 +392,7 @@ def create_imghash_avg(img):
     return cv2.img_hash.averageHash(img)
 
 
-def hash_file(path, step=1, frame_range=False, end=None):
+def hash_file(path, step=9, frame_range=True, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
         yield create_imghash(path), 0
@@ -400,12 +400,8 @@ def hash_file(path, step=1, frame_range=False, end=None):
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
         hashed_img = create_imghash(h)
-        #hashed_img = dhash(h)
         nn = ImageHash(hashed_img)
-        #hashed_img = hashed_img#.flatten().tolist()
-        #t = dhash(h)
-        #print(t)
-        #yield t, pos
+        #nn = ImageHash(hashed_img)
         yield nn, h, pos
 
 

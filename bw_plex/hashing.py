@@ -21,8 +21,37 @@ def _binary_array_to_hex(arr):
     """
     bit_string = ''.join(str(b) for b in 1 * arr.flatten())
     width = int(np.ceil(len(bit_string) / 4))
-    return '{:0>{width}x}'.format(int(bit_string, 2), width=width)
+    print('bit_string', bit_string)
+    print('width', width)
+    return '{:0>{width}x}'.format(int(bit_string, 16), width=width)
 
+
+def binary_array_to_hex(arr):
+    h = 0
+    s = []
+    for i,v in enumerate(arr):
+        if v:
+            h += 2**(i % 8)
+        if (i % 8) == 7:
+            s.append(hex(h)[2:].rjust(2, '0'))
+            h = 0
+    return "".join(s)
+
+
+
+def hex_to_hash(hexstr):
+    """
+    Convert a stored hash (hex, as retrieved from str(Imagehash))
+    back to a Imagehash object.
+    """
+    l = []
+    if len(hexstr) != 2*(16*16)/8:
+        raise ValueError('The hex string has the wrong length')
+    for i in range(16*16/8):
+        h = hexstr[i*2:i*2+2]
+        v = int("0x" + h, 16)
+        l.append([v & 2**i > 0 for i in range(8)])
+    return ImageHash(numpy.array(l).reshape((16,16)))
 
 
 class ImageHash(object):
@@ -39,7 +68,10 @@ class ImageHash(object):
         self.pos.append(pos)
 
     def __str__(self):
-        return _binary_array_to_hex(self.hash)
+        return ''.join(hex(i) for i in self.hash)
+        #return binary_array_to_hex(self.hash)
+        #return self.hash.tostring().encode('utf8')
+        #return _binary_array_to_hex(self.hash)
 
     def __repr__(self):
         return repr(self.hash)
@@ -62,6 +94,7 @@ class ImageHash(object):
         return not np.array_equal(self.hash, other.hash)
 
     def __hash__(self):
+        #return sum([2**(i % 8) for i, v in enumerate(self.hash) if v])
         return sum([2 ** i for i, v in enumerate(self.hash) if v])
 
     def __iter__(self):
@@ -148,7 +181,7 @@ class Hashlist():
  
         #x = sorted(cls._kek.values(), key=lambda f: f.size, reverse=True)
         # We sort on size but remove all black frames. As they pretty common.
-        x = sorted((i for i in cls._kek.values() if np.sum(i.hash)), key=lambda f: f.size, reverse=True)
+        x = sorted((i for i in cls._kek.values() if i.size > 1), key=lambda f: f.size, reverse=True)
 
         if n:
             return x[:n]
@@ -184,21 +217,34 @@ class Hashlist():
 
         return closestdbHash, closestdbHash_i
 
-    #@profile(immediate=True)
+    @profile(immediate=True)
     def most_common(cls):
         """find the most common, this looks for any withing a certen hamming distance."""
-        items = list(cls._kek.values())
-        hashes = np.array([i.hash for i in items])
+        hashes = np.array([i.hash for i in cls._kek.values()])
         result = []
         idx = []
-        for h in hashes:
-            hh, idxx = cls.lookslike(h, hashes)
-            result.extend(h)
-            idx.extend(idxx)
+        #@profile(immediate=True)
+        def zomg():
+            #hashes = np.array([i.hash for i in items])
+            #result = []
+            #idx = []
+            for h in hashes:
+                hh, idxx = cls.lookslike(h, hashes)
+                print('hh', hh)
+                result.append(h)
+                idx.append(idxx)
 
         #print(result)
-        print(len(result))
-        return result
+        #print(len(result))
+        zomg()
+        return result, idx
+
+    def find_intro_hashes(cls):
+
+        """ """
+        t = sorted(cls._kek.keys(), key=lambda k: k.size, reverse=True)
+        return [i for i in t if i >= cls._added_stacks]
+
 
     def lookslike(cls, img, stuff):
         """img in a iamge hash
@@ -211,6 +257,7 @@ class Hashlist():
         binarydiff = stuff != img.reshape((1, -1))
         hammingdiff = binarydiff.sum(axis=1)
         closestdbHash = np.where(hammingdiff < 5)
+        #print(stuff[closestdbHash], 'ass')
         return stuff[closestdbHash], closestdbHash
 
 

@@ -16,8 +16,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
 from bw_plex.config import read_or_make
-from bw_plex.credits import find_credits
-from bw_plex.db import session_scope, Processed
+from bw_plex.credits import find_credits, hash_file
+from bw_plex.db import session_scope, Processed, Images
 import bw_plex.edl as edl
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
                           get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
@@ -93,6 +93,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     """
     global HT
+    add_images = False
 
     # Disable for now.
     # if media.TYPE == 'movie':
@@ -100,6 +101,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     # This will download the theme and add it to
     # the hashtable if its missing
+    
     if media.TYPE == 'episode' and theme is None:
         if HT.has_theme(media, add_if_missing=False) is False:
             LOG.debug('downloading theme from process_to_db')
@@ -197,12 +199,32 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             se.add(p)
             LOG.debug('Added %s to media.db', name)
 
-
             if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
                 edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
 
             elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
                 edl.write_edl(location,edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
+
+        try:
+            n = se.query(Images).filter_by(ratingKey=media.ratingKey).one()
+        except NoResultFound:
+            LOG.debug('This shit does not have images')
+            add_images = True
+
+    if add_images:
+        to_db_hashes = []
+        for imghash, frame, pos in hash_file(check_file_access(media)):
+            to_db_hashes.append((imghash, pos))
+
+    with session_scope() as ssee:
+        for img_db_h, img_db_pos in to_db_hashes:
+            img = Images(ratingKey=media.ratingKey,
+                         hash=img_db_h.hash.tostring(),
+                         grandparentRatingKey=media.grandparentRatingKey,
+                         offset=img_db_pos,
+                         time=to_time(img_db_pos))
+            ssee.add(img)
+            LOG.debug('Added %s to images', img_db_h)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')

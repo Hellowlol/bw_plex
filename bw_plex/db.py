@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, Boolean, Column, DateTime, Integer, String
+from sqlalchemy import create_engine, Boolean, Column, DateTime, Integer, String, LargeBinary
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -8,11 +8,47 @@ from sqlalchemy.ext.declarative import declarative_base
 from . import DB_PATH
 
 
+# https://stackoverflow.com/questions/48851097/how-to-load-a-sqlite3-extension-in-sqlalchemy
+# https://stackoverflow.com/questions/48851097/how-to-load-a-sqlite3-extension-in-sqlalchemy
+# https://github.com/droe/sqlite-hexhammdist
+
+
 eng = None
 session_factory = None
 sess = None
 Base = declarative_base()
 
+
+class Images(Base):
+    __tablename__ = 'images'
+
+    id = Column(Integer, primary_key=True)
+    ratingKey = Column('ratingKey', Integer)
+    hash = Column('hash', LargeBinary)
+    hex = Column('hex', String)
+    grandparentRatingKey = Column('grandparentRatingKey', Integer, nullable=True)
+    offset = Column('offset', Integer, nullable=True)
+    time = Column('time', String)
+
+
+"""
+SELECT DISTINCT ratingKey
+FROM "table"
+WHERE phash IN (
+  SELECT phash
+  FROM "table"
+  GROUP BY phash
+  HAVING count(*) > 2
+)
+"""
+
+"""
+SELECT ratingKey, hex, count(*) as "count"
+FROM "images"
+GROUP BY ratingKey, hex
+HAVING count(*) > 2
+"""
+#https://www.geeksforgeeks.org/sql-group-by/
 
 class Processed(Base):
     """Table for preprocessed stuff."""
@@ -60,6 +96,11 @@ def db_init():
     sess = scoped_session(session_factory)
     # Create db.
     Base.metadata.create_all(eng)
+
+
+def load_extension(dbapi_conn, unused):
+    dbapi_conn.enable_load_extension(True)
+    dbapi_conn.load_extension('/path/tolibSqliteIcu.so')
 
 
 @contextmanager
