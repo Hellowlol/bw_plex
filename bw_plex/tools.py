@@ -1,4 +1,8 @@
 import os
+import numpy as np
+
+from bw_plex.credits import  create_imghash, video_frame_by_frame
+from bw_plex.hashing import ImageHash
 
 
 def visulize_intro_from_hashes(first, hashes, pause=0.2, end=500):
