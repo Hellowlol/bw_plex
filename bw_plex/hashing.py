@@ -62,6 +62,7 @@ class ImageHash(object):
         # for lazy compat
         return self.hash.reshape(*args)
 
+
 def hex_to_hash(hexstr):
     """
     Convert a stored hash (hex, as retrieved from str(Imagehash))

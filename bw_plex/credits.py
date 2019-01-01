@@ -423,7 +423,7 @@ def hash_image_folder(folder):
 
 
 def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
-    """ This can be used to fin a image in a video or a part of a video.
+    """ This can be used to find a image in a video or a part of a video.
 
     stack should be i [([hash], pos)] sames goes for the needels.]"""
     frames = []
