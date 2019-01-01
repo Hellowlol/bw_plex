@@ -431,11 +431,11 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, 
         stacks = [stacks]
 
     for tt, stack in enumerate(stacks):
-        for i, (straw, pos) in enumerate(stack):
+        for i, (straw, frame, pos) in enumerate(stack):
             if ignore_black_frames and not sum(straw.hash):
                 continue
 
-            for n, (needel, npos) in enumerate(needels):
+            for n, (needel, nframe, npos) in enumerate(needels):
                 # check this?
                 if thresh and straw not in frames and straw - needel <= thresh:
                     if no_dupe_frames:
