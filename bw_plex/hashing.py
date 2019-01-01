@@ -1,9 +1,7 @@
 import hashlib
 from collections import OrderedDict
 from itertools import chain
-from profilehooks import profile
-#from scipy.spatial import KDTree
-
+#from profilehooks import profile
 
 import numpy as np
 
@@ -12,46 +10,6 @@ def string_hash(stack):
     """convert a all hashes to one hash."""
     h = ''.join((str(i) for i in chain(*stack)))
     return hashlib.md5(h.encode('utf-8')).hexdigest()
-
-
-# fix me
-def _binary_array_to_hex(arr):
-    """
-    internal function to make a hex string out of a binary array.
-    """
-    bit_string = ''.join(str(b) for b in 1 * arr.flatten())
-    width = int(np.ceil(len(bit_string) / 4))
-    print('bit_string', bit_string)
-    print('width', width)
-    return '{:0>{width}x}'.format(int(bit_string, 16), width=width)
-
-
-def binary_array_to_hex(arr):
-    h = 0
-    s = []
-    for i,v in enumerate(arr):
-        if v:
-            h += 2**(i % 8)
-        if (i % 8) == 7:
-            s.append(hex(h)[2:].rjust(2, '0'))
-            h = 0
-    return "".join(s)
-
-
-
-def hex_to_hash(hexstr):
-    """
-    Convert a stored hash (hex, as retrieved from str(Imagehash))
-    back to a Imagehash object.
-    """
-    l = []
-    if len(hexstr) != 2*(16*16)/8:
-        raise ValueError('The hex string has the wrong length')
-    for i in range(16*16/8):
-        h = hexstr[i*2:i*2+2]
-        v = int("0x" + h, 16)
-        l.append([v & 2**i > 0 for i in range(8)])
-    return ImageHash(numpy.array(l).reshape((16,16)))
 
 
 class ImageHash(object):
@@ -69,9 +27,6 @@ class ImageHash(object):
 
     def __str__(self):
         return ''.join(hex(i) for i in self.hash)
-        #return binary_array_to_hex(self.hash)
-        #return self.hash.tostring().encode('utf8')
-        #return _binary_array_to_hex(self.hash)
 
     def __repr__(self):
         return repr(self.hash)
@@ -94,7 +49,6 @@ class ImageHash(object):
         return not np.array_equal(self.hash, other.hash)
 
     def __hash__(self):
-        #return sum([2**(i % 8) for i, v in enumerate(self.hash) if v])
         return sum([2 ** i for i, v in enumerate(self.hash) if v])
 
     def __iter__(self):
@@ -108,25 +62,19 @@ class ImageHash(object):
         # for lazy compat
         return self.hash.reshape(*args)
 
-
-
-class Hash:
-    """Hash and where the hash was found.""" # derp
-    __slots__ = ('name', 'pos')
-
-    def __init__(self, name):
-        self.name = name
-        self.pos = []
-
-    def add_pos(self, pos):
-        self.pos.append(pos)
-
-    @property
-    def size(self):
-        return len(self.pos)
-
-    def __str__(self):
-        return r'<Hash %s>' % self.name
+def hex_to_hash(hexstr):
+    """
+    Convert a stored hash (hex, as retrieved from str(Imagehash))
+    back to a Imagehash object.
+    """ # check if this is compat with my way
+    l = []
+    if len(hexstr) != 2 * (16 * 16) / 8:
+        raise ValueError('The hex string has the wrong length')
+    for i in range(16 * 16 / 8):
+        h = hexstr[i * 2: i * 2 + 2]
+        v = int("0x" + h, 16)
+        l.append([v & 2 ** i > 0 for i in range(8)])
+    return ImageHash(np.array(l).reshape((16, 16)))
 
 
 class Hashlist():
@@ -188,55 +136,34 @@ class Hashlist():
 
         return x
 
+    def find_similar(cls, value, thresh=2):
+        # # http://cs231n.github.io/python-numpy-tutorial/#numpyhttp://cs231n.github.io/python-numpy-tutorial/#numpy
 
-    #@profile(immediate=True)
-    def kd(cls, stack):
-        KD = KDTree(stack)
-        return KD
-
-
-
-# http://cs231n.github.io/python-numpy-tutorial/#numpyhttp://cs231n.github.io/python-numpy-tutorial/#numpy
-        
-
-    #@profile(immediate=True)
-    def find_similar(cls, value, thresh=4):
-
-        t =  np.array([i.hash for i in cls._kek.values()]) # if not np.array_equal(i.hash, value.hash)])
-        #print(t.shape)
-        binarydiff = t != value.hash.reshape((1,-1))
+        t = np.array([i.hash for i in cls._kek.values()])  # if not np.array_equal(i.hash, value.hash)])
+        binarydiff = t != value.hash.reshape((1, -1))
         hammingdiff = binarydiff.sum(axis=1)
         if thresh is not None:
             idx = np.where(hammingdiff < thresh)
             return t[idx], idx
 
         closestdbHash_i = np.argmin(hammingdiff)
-        #print('closestdbHash_i', closestdbHash_i)
         closestdbHash = t[closestdbHash_i]
         #print([np.count_nonzero(z != value.hash) for z in closestdbHash])
 
         return closestdbHash, closestdbHash_i
 
-    @profile(immediate=True)
+    #@profile(immediate=True)
     def most_common(cls):
-        """find the most common, this looks for any withing a certen hamming distance."""
+        """find the most common, this looks for any withing a hamming distance."""
         hashes = np.array([i.hash for i in cls._kek.values()])
         result = []
         idx = []
-        #@profile(immediate=True)
-        def zomg():
-            #hashes = np.array([i.hash for i in items])
-            #result = []
-            #idx = []
-            for h in hashes:
-                hh, idxx = cls.lookslike(h, hashes)
-                print('hh', hh)
-                result.append(h)
-                idx.append(idxx)
 
-        #print(result)
-        #print(len(result))
-        zomg()
+        for h in hashes:
+            hh, idxx = cls.lookslike(h, hashes)
+            result.append(h)
+            idx.append(idxx)
+
         return result, idx
 
     def find_intro_hashes(cls):
@@ -257,9 +184,7 @@ class Hashlist():
         binarydiff = stuff != img.reshape((1, -1))
         hammingdiff = binarydiff.sum(axis=1)
         closestdbHash = np.where(hammingdiff < 5)
-        #print(stuff[closestdbHash], 'ass')
         return stuff[closestdbHash], closestdbHash
-
 
     @property
     def size(cls):

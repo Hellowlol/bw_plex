@@ -135,6 +135,9 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1, end=None):
             else:
                 break
 
+            if end and pos / 1000 > end:
+                break
+
     cap.release()
 
     if hasattr(cv2, 'destroyAllWindows'):
@@ -381,7 +384,6 @@ def create_imghash(img):
     return cv2.img_hash.pHash(img)
 
 
-
 def create_imghash_avg(img):
     """Create a phash"""
     import cv2
@@ -401,7 +403,6 @@ def hash_file(path, step=9, frame_range=True, end=None):
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
         hashed_img = create_imghash(h)
         nn = ImageHash(hashed_img)
-        #nn = ImageHash(hashed_img)
         yield nn, h, pos
 
 

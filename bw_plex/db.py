@@ -26,9 +26,22 @@ class Images(Base):
     ratingKey = Column('ratingKey', Integer)
     hash = Column('hash', LargeBinary)
     hex = Column('hex', String)
+    # show ratingkey.
     grandparentRatingKey = Column('grandparentRatingKey', Integer, nullable=True)
+    # shold add season id..
+    # season
+    parentRatingKey = Column('parentRatingKey',  Integer, nullable=True) # season.
     offset = Column('offset', Integer, nullable=True)
     time = Column('time', String)
+
+
+class Reference_Frame(Base):
+    __tablename__ = 'reference_frame'
+    id = Column(Integer, primary_key=True)
+    hex = Column('hex', String)
+    type = Column('type', String) # start or end
+    tvdbid = Column('tvdbid', String, nullable=True)
+
 
 
 """
@@ -49,6 +62,7 @@ GROUP BY ratingKey, hex
 HAVING count(*) > 2
 """
 #https://www.geeksforgeeks.org/sql-group-by/
+
 
 class Processed(Base):
     """Table for preprocessed stuff."""

@@ -101,7 +101,6 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     # This will download the theme and add it to
     # the hashtable if its missing
-    
     if media.TYPE == 'episode' and theme is None:
         if HT.has_theme(media, add_if_missing=False) is False:
             LOG.debug('downloading theme from process_to_db')
@@ -203,28 +202,29 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                 edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
 
             elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
-                edl.write_edl(location,edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
+                edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
 
-        try:
-            n = se.query(Images).filter_by(ratingKey=media.ratingKey).one()
-        except NoResultFound:
-            LOG.debug('This shit does not have images')
-            add_images = True
+        if media.TYPE == 'episode':
+            try:
+                # since it will check every ep if will download hashes from every ep. We might get
+                # away with just checking 2-4 eps.
+                n = se.query(Images).filter_by(ratingKey=media.ratingKey).one()
+            except NoResultFound:
+                add_images = True
 
-    if add_images:
-        to_db_hashes = []
-        for imghash, frame, pos in hash_file(check_file_access(media)):
-            to_db_hashes.append((imghash, pos))
-
-    with session_scope() as ssee:
-        for img_db_h, img_db_pos in to_db_hashes:
+    if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') and add_images:
+        img_hashes = []
+        for imghash, frame, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
             img = Images(ratingKey=media.ratingKey,
-                         hash=img_db_h.hash.tostring(),
+                         hex=str(imghash),
+                         hash=imghash.hash.tostring(),
                          grandparentRatingKey=media.grandparentRatingKey,
-                         offset=img_db_pos,
-                         time=to_time(img_db_pos))
-            ssee.add(img)
-            LOG.debug('Added %s to images', img_db_h)
+                         offset=pos,
+                         time=to_time(pos))
+            img_hashes.append(img)
+
+        with session_scope() as ssee:
+            ssee.add_all(img_hashes)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
@@ -500,6 +500,17 @@ def create_edl_from_db(t, save_path):
                 LOG.exception('Failed to write edl.')
 
 
+@cli.command(help='I do nothing atm')
+@click.option('fp', '--filepath')
+@click.option('-t', '--type', )
+@click.option('-id', '-tvdbid')
+def add_ref_frame(fp, type, tvdbid):
+    pass
+    #import cv2
+    # Should we support both movies and video input.
+    # may create a gui with a slider that we can movie to find the corret frame.
+
+
 @cli.command()
 @click.option('-fp', default=None, help='where to create the config file.')
 def create_config(fp=None):
@@ -685,9 +696,16 @@ def check_file_access(m):
     # And the use case is rather slim, you should never have dupes.
     # If the user has they can remove them using plex-cli.
     for file in files:
+
         if os.path.exists(file.file):
             LOG.debug('Found %s', file.file)
             return file.file
+        elif CONFIG.get('remaps', []):
+            for key, value in CONFIG.get('remaps'):
+                fp = file.file.replace(key, value)
+                if os.path.exists(fp):
+                    LOG.debug('Found %s', fp)
+                    return fp
         else:
             LOG.warning('Downloading from pms..')
             try:

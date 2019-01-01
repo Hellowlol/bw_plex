@@ -26,7 +26,7 @@ POOL = None
 
 subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
                'ffmpeg_process', 'manually_correct_theme', 'process', 'match',
-               'set_manual_theme_time', 'test_a_movie', 'create_edl_from_db']
+               'set_manual_theme_time', 'test_a_movie', 'create_edl_from_db', 'add_ref_frame']
 
 
 def trim_argv(args=None):  # pragma: no cover
