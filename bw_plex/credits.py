@@ -397,7 +397,7 @@ def create_imghash_avg(img):
 def hash_file(path, step=9, frame_range=True, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
-        yield create_imghash(path), 0
+        yield create_imghash(path), cv2.imread(path, 0), 0
         return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
