@@ -112,10 +112,10 @@ def init(folder=None, debug=False, config=None):
 
     DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
     print('default folder set to %s', DEFAULT_FOLDER)
-    
-    if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
-        print('You default folder is not writeable')
-        sys.exit()
+
+    #if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
+    #    print('You default folder is not writeable')
+    #    sys.exit()
 
     THEMES = os.path.join(DEFAULT_FOLDER, 'themes')
     TEMP_THEMES = os.path.join(DEFAULT_FOLDER, 'temp_themes')
