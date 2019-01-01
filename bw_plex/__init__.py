@@ -111,7 +111,8 @@ def init(folder=None, debug=False, config=None):
     global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL
 
     DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
-
+    print('default folder set to %s', DEFAULT_FOLDER)
+    
     if os.path.exists and not os.access(DEFAULT_FOLDER, os.W_OK):
         print('You default folder is not writeable')
         sys.exit()
@@ -157,8 +158,6 @@ def init(folder=None, debug=False, config=None):
     rfh = RotatingFileHandler(LOG_FILE, 'a', 512000, 3)
     rfh.setFormatter(frmt)
     LOG.addHandler(rfh)
-
-    LOG.info('default folder set to %s', DEFAULT_FOLDER)
 
     FILTER.add_secret(CONFIG['server']['token'])
     FILTER.add_secret(CONFIG['server']['password'])
