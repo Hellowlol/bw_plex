@@ -40,10 +40,9 @@ def test_find_credits(outro_file):
 def test_find_hash(outro_file):
     hashes = list(credits.hash_file(outro_file))
     img_file = os.path.join(TEST_DATA, 'out8.jpg')
-    img_hash, _ = next(credits.hash_file(img_file))
+    img_hash, frame, pos = next(credits.hash_file(img_file))
 
     needels, files = credits.hash_image_folder(TEST_DATA)
-
     for stack_hash, stack_ms, stacknr, needel_ms, needelnr, stacknr in credits.find_hashes(needels, hashes):
         assert stack_hash == img_hash and files[needelnr]
 

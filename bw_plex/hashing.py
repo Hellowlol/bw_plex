@@ -16,7 +16,7 @@ class ImageHash(object):
     """
     Hash encapsulation. Can be used for dictionary keys and comparisons.
     """
-    __slots__ = ('name', 'pos', 'size', 'add_pos', 'hash')
+    __slots__ = ('pos', 'add_pos', 'hash')
 
     def __init__(self, binary_array):
         self.hash = binary_array.flatten()
@@ -154,14 +154,14 @@ class Hashlist():
         return closestdbHash, closestdbHash_i
 
     #@profile(immediate=True)
-    def most_common(cls):
+    def most_common(cls, thresh=2):
         """find the most common, this looks for any withing a hamming distance."""
         hashes = np.array([i.hash for i in cls._kek.values()])
         result = []
         idx = []
 
         for h in hashes:
-            hh, idxx = cls.lookslike(h, hashes)
+            hh, idxx = cls.find_similar(h, hashes, thresh=thresh)
             result.append(h)
             idx.append(idxx)
 
@@ -174,7 +174,7 @@ class Hashlist():
         return [i for i in t if i >= cls._added_stacks]
 
 
-    def lookslike(cls, img, stuff):
+    def lookslike(cls, img, stuff, thresh=2):
         """img in a iamge hash
 
            stuff is a array of hashes.
@@ -184,7 +184,7 @@ class Hashlist():
         """
         binarydiff = stuff != img.reshape((1, -1))
         hammingdiff = binarydiff.sum(axis=1)
-        closestdbHash = np.where(hammingdiff < 5)
+        closestdbHash = np.where(hammingdiff < thresh)
         return stuff[closestdbHash], closestdbHash
 
     @property

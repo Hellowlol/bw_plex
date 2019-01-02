@@ -387,9 +387,11 @@ def create_imghash(img):
 def create_imghash_avg(img):
     """Create a phash"""
     import cv2
+    print(img)
 
     if isinstance(img, _str):
         img = cv2.imread(img, 0)
+    print(img)
 
     return cv2.img_hash.averageHash(img)
 
@@ -397,16 +399,19 @@ def create_imghash_avg(img):
 def hash_file(path, step=9, frame_range=True, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
-        yield create_imghash(path), cv2.imread(path, 0), 0
+        yield ImageHash(create_imghash(path)), cv2.imread(path, 0), 0
         return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
-        hashed_img = create_imghash(h)
-        nn = ImageHash(hashed_img)
-        yield nn, h, pos
+        if h is not None:
+            hashed_img = create_imghash(h)
+            nn = ImageHash(hashed_img)
+            yield nn, h, pos
+    #print('done', path)
 
 
 def hash_image_folder(folder):
+    import cv2
     result = []
     all_files = []
     for root, dirs, files in os.walk(folder):
@@ -416,8 +421,9 @@ def hash_image_folder(folder):
 
             fp = os.path.join(root, f)
             all_files.append(fp)
-            h = create_imghash(fp).flatten().tolist()
-            result.append((h, 0))
+            h = ImageHash(create_imghash(fp))
+            frame = cv2.imread(fp)
+            result.append((h, frame, 0))
 
     return result, all_files
 
@@ -436,7 +442,7 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, 
                 continue
 
             for n, (needel, nframe, npos) in enumerate(needels):
-                # check this?
+                
                 if thresh and straw not in frames and straw - needel <= thresh:
                     if no_dupe_frames:
                         frames.append(straw)
