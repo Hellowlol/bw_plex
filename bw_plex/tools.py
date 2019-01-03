@@ -17,9 +17,11 @@ def visulize_intro_from_hashes(first, hashes, pause=0.2, end=500):
     for first_frame, first_pos in first_vid:
         h = ImageHash(create_imghash(first_frame))
         if h and str(h) in hashes:
+            # Convert as the colors are off for matplotlib.
+            vis_frame = cv2.cvtColor(first_frame, cv2.COLOR_BGR2RGB)
 
             ax1.set_title('Source %s' % to_time(first_pos / 1000))
-            im1.set_data(first_frame)
+            im1.set_data(vis_frame)
             plt.pause(pause)
 
     #plt.ioff() # due to infinite loop, this gets never called.
