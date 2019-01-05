@@ -17,10 +17,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits, hash_file
-from bw_plex.db import session_scope, Processed, Images
+from bw_plex.db import session_scope, Processed, Images, Reference_Frame
 import bw_plex.edl as edl
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms)
 
 
 IN_PROG = []
@@ -501,11 +501,18 @@ def create_edl_from_db(t, save_path):
 
 
 @cli.command(help='I do nothing atm')
-@click.option('fp', '--filepath')
-@click.option('-t', '--type', )
-@click.option('-id', '-tvdbid')
-def add_ref_frame(fp, type, tvdbid):
-    pass
+@click.argument('fp')
+@click.option('--type', type=click.Choice(['start', 'end']))
+@click.option('--tvdbid')
+@click.option('--timestamp')
+def add_ref_frame(fp, type, tvdbid, timestamp):
+    print(fp, type, tvdbid, timestamp)
+    import cv2
+
+    cap = cv2.VideoCapture(first)
+
+
+    Reference_Frame()
     #import cv2
     # Should we support both movies and video input.
     # may create a gui with a slider that we can movie to find the corret frame.

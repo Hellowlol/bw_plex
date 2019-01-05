@@ -111,6 +111,27 @@ def sec_to_hh_mm_ss(sec):
     return time.strftime('%H:%M:%S', time.gmtime(sec))
 
 
+def to_ms(ip_str): # FIX ME
+    """Convert a HH:MM:SS:MILL to milliseconds"""
+    try:
+        #ip = ip_str.split(':')
+        hh, mm, ss = ip_str.split(':')
+        hh = int(hh) * 60 * 60
+        mm = int(mm) * 60
+        ss = int(ss)
+    except ValueError:
+        hh = 0
+        try:
+            mm, ss = ip_str.split(':')
+            mm = int(mm) * 60
+            ss = int(ss)
+        except ValueError:
+            raise
+
+    sec = hh + mm + ss
+    return sec * 1000
+
+
 def analyzer():
     from bw_plex.audfprint.audfprint_analyze import Analyzer
 
