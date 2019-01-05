@@ -505,8 +505,11 @@ def create_edl_from_db(t, save_path):
 @click.option('--type', type=click.Choice(['start', 'end']))
 @click.option('--tvdbid')
 @click.option('--timestamp')
-def add_ref_frame(fp, type, tvdbid, timestamp):
-    print(fp, type, tvdbid, timestamp)
+@click.option('--gui')
+def add_ref_frame(fp, type, tvdbid, timestamp, gui):
+    if gui:
+        pass
+
     import cv2
 
     cap = cv2.VideoCapture(fp)
@@ -515,12 +518,8 @@ def add_ref_frame(fp, type, tvdbid, timestamp):
     ret, frame = cap.read(int(ms))
     frames_hash = create_imghash(frame)
     frames_hex = ''.join(hex(i) for i in frames_hash)
-    
 
-
-
-
-    Reference_Frame()
+    #Reference_Frame()
     #import cv2
     # Should we support both movies and video input.
     # may create a gui with a slider that we can movie to find the corret frame.
