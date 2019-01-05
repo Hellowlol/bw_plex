@@ -509,7 +509,15 @@ def add_ref_frame(fp, type, tvdbid, timestamp):
     print(fp, type, tvdbid, timestamp)
     import cv2
 
-    cap = cv2.VideoCapture(first)
+    cap = cv2.VideoCapture(fp)
+    ms = to_ms(timestamp)
+    #cap.set()
+    ret, frame = cap.read(int(ms))
+    frames_hash = create_imghash(frame)
+    frames_hex = ''.join(hex(i) for i in frames_hash)
+    
+
+
 
 
     Reference_Frame()
