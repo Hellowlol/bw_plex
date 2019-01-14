@@ -22,6 +22,7 @@ binge watching for plex
 ## Install
 You should install this from github as this project isnt stable.
 ```pip install -e git+https://github.com/Hellowlol/bw_plex.git#egg=bw_plex```
+or using a docker ```docker pull hellowlol/bw_plex```
 
 
 ## Usage
