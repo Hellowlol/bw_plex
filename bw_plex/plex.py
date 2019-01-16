@@ -501,17 +501,19 @@ def create_edl_from_db(t, save_path):
                 LOG.exception('Failed to write edl.')
 
 
-@cli.command(help='I do nothing atm')
+@cli.command()
 @click.argument('fp')
 @click.option('-t', type=click.Choice(['start', 'end']))
 @click.option('--tvdbid')
 @click.option('--timestamp', default=None)
-@click.option('--gui', default=False)
+@click.option('--gui', default=True)
 def add_ref_frame(fp, t, tvdbid, timestamp, gui):
     import cv2
 
-    if gui:  # TODO got some half finished stuff in tools. just need the db part.
-        pass
+    if gui:
+        from bw_plex.tools import play
+        play(fp, key=tvdbid)
+        return 
 
     if fp.endswith(('.mp4', '.mkv', '.avi')) and timestamp:
 
@@ -520,6 +522,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):
         cap.set(cv2.CAP_PROP_POS_MSEC, ms)
         ret, frame = cap.read()
     else:
+        # So its a image...
         frame = fp
 
     frames_hash = create_imghash(frame)

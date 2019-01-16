@@ -1,8 +1,11 @@
 import os
+import math
 import numpy as np
 
+from bw_plex import LOG
 from bw_plex.credits import create_imghash, video_frame_by_frame
 from bw_plex.hashing import ImageHash
+from bw_plex.db import session_scope, Reference_Frame
 
 
 def visulize_intro_from_hashes(first, hashes, pause=0.2, end=500):
@@ -29,28 +32,47 @@ def visulize_intro_from_hashes(first, hashes, pause=0.2, end=500):
     plt.show()
 
 
-def play(first, hashes, pause=0.02, end=500):
+def play(first, pause=0.02, end=500, key=None):
     """This is intended to be a player where the user add the video manually select what
        type reframe we should add to the db
+
+       Args:
+            first(str): path to file
+            pause(float): how long should we pause playback between the frames.
+            end(int): seconds intro the file we should stop playback.
+            key(None, int): If to fill out shit. Not in use atm but will be used when called 
+                            from bw_plex cli.
     """
-    global GOGO, cap, CURR_FRAME_NR, CURR_MS
-    
+    global GOGO, cap, CURR_FRAME_NR, CURR_MS, KEY
+
     import matplotlib.pyplot as plt
-    from matplotlib.widgets import Button, Slider, RadioButtons
+    from matplotlib.widgets import Button, Slider, RadioButtons, TextBox
     import cv2
 
-    # Peek on the video first, we might need details to set the
     CURR_FRAME = None
     CURR_FRAME_NR = None
     CURR_MS = None
     POS = 0
     CN = 0
     GOGO = True
+    KEY = None
+
+    # remove later..
+    def to_hhmmss(sec):
+        min, sec = divmod(sec, 60)
+        hr, min = divmod(min, 60)
+        return "%02d:%02d:%02.2f" % (hr, min, sec)
+
+    if key is None:
+        KEY = ''
+    else:
+        KEY = key
 
     cap = cv2.VideoCapture(first)
     FPS = cap.get(cv2.CAP_PROP_FPS)
     TOTAL_FRAMES = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    dur_ms = TOTAL_FRAMES * FPS
+    dur_sec = TOTAL_FRAMES / FPS
+    dur_ms = dur_sec * 1000
 
     fig, ax = plt.subplots()
     ax.set_axis_off()
@@ -62,10 +84,23 @@ def play(first, hashes, pause=0.02, end=500):
 
     axcolor = 'lightgoldenrodyellow'
     axfreq = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+    axbox = plt.axes([0.6, 0.025, 0.1, 0.04])
     sfreq = Slider(axfreq, 'T', 0, dur_ms, valinit=0)
+    text_box = TextBox(axbox, 'id', initial=KEY)
 
+    def event_tb(event):
+        global KEY
+        if KEY and key != KEY:
+            KEY = event
+        else:
+            KEY = event
+        # Do some shit here.
+        print('KEY', KEY)
+
+    text_box.on_submit(event_tb)
 
     def update(val):
+        """update slider on click this will also change set CURR_MS so cv reads the correct frame"""
         global CURR_MS
         CURR_MS = int(math.floor(val))
 
@@ -90,6 +125,7 @@ def play(first, hashes, pause=0.02, end=500):
     def pause_event(event):
         global GOGO
         GOGO = not GOGO
+        LOG.debug('set pause to %s', GOGO)
     pause_button.on_clicked(pause_event)
 
     def close_event(event):
@@ -99,24 +135,26 @@ def play(first, hashes, pause=0.02, end=500):
         GOGO = False
     fig.canvas.mpl_connect('close_event', close_event)
 
-    def reset(event):
-        print('i do nothing add match code here.')
-        #sfreq.reset()
-    match_button.on_clicked(reset)
-
     rax = plt.axes([0.025, 0.5, 0.15, 0.15], facecolor=axcolor)
     radio = RadioButtons(rax, ('start', 'end'), active=0)
 
     # Change me
-    def colorfunc(label):
+    def radio_event(label):
+        LOG.debug('Changed label %s', label)
         fig.canvas.draw_idle()
-    radio.on_clicked(colorfunc)
+    radio.on_clicked(radio_event)
 
-    # remove later..
-    def to_hhmmss(sec):
-        min, sec = divmod(sec,60)
-        hr, min = divmod(min,60)
-        return "%02d:%02d:%02.2f" % (hr,min,sec)
+    def match_event(event):
+        val = radio.value_selected
+
+        h = ImageHash(create_imghash(CURR_FRAME))
+
+        with session_scope() as se:
+            rf = Reference_Frame(hex=str(h), type=val, tvdbid=KEY)
+            LOG.debug('Added %s %s from %s in %s', str(h), val, POS, first)
+            se.add(rf)
+
+    match_button.on_clicked(match_event)
 
 
     while cap.isOpened():
@@ -133,8 +171,14 @@ def play(first, hashes, pause=0.02, end=500):
 
             if ret:
                 POS = cap.get(cv2.CAP_PROP_POS_MSEC)
-                # Lets just copy this for now.
-                # Maybe we need it later.
+
+                # Remove this?
+                # if POS / 1000 > end:
+                #    GOGO = None
+                #    #print('end')
+                #    break
+
+                # This is needed for the hex of the frame.
                 CURR_FRAME = frame.copy()
                 # Resize the frame using cv as mathplotlib is slow if not.
                 frame = cv2.resize(frame, (300, 400))
@@ -156,5 +200,4 @@ def play(first, hashes, pause=0.02, end=500):
             plt.pause(0.1)
 
     cap.release()
-    print('Done')
     plt.show()
