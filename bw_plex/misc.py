@@ -49,6 +49,7 @@ def get_pms(url=None, token=None, username=None,
     servername = servername or CONFIG['server'].get('name')
 
     if url and token:
+        url = url.rstrip('/')
         sess = requests.Session()
         if not verify_ssl:
             sess.verify = False
