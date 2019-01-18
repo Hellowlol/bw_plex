@@ -696,7 +696,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
         def inner():
             try:
                 func()
-            except plexapi.exceptions.BadRequest:
+            except (plexapi.exceptions.BadRequest, requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout, requests.exceptions.TooManyRedirects,
+                    requests.exceptions.HTTPError):
                 try:
                     LOG.info('Failed to reach the client directly, trying via server.')
                     correct_client.proxyThroughServer()
