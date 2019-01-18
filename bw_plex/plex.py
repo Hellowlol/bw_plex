@@ -749,6 +749,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         c._baseurl = c._baseurl.replace('127.0.0.1', client.address)
                     correct_client = c
                     break
+            else:
+                LOG.debug('We couldnt match the client. Trying a hail marry.')
+                correct_client = client
 
             if correct_client:
                 try:
