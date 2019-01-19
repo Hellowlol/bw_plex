@@ -227,7 +227,12 @@ def locate_text(image, debug=False):
     # they will be joined by this function call
     rectangles = []
     contours = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    for contour in contours[1]:
+    if cv2.__version__.startswith('4'):
+        contours = contours[0]
+    else:
+        contours = contours[1]
+
+    for contour in contours:
         # This is disabled since we are not after the text but the text area.
         # Only preserve "squarish" features
         #peri = cv2.arcLength(contour, True)
