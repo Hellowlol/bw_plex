@@ -52,7 +52,7 @@ def test_download_theme_and_get_offset_end(media, HT, intro_file):
     assert len(new_files)
 
     start, end = misc.get_offset_end(intro_file, HT)
-    assert math.floor(start) == 116
+    assert math.floor(start) in (115, 116, 117)
     assert math.floor(end) == 208
 
 
