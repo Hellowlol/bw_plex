@@ -53,7 +53,7 @@ def test_download_theme_and_get_offset_end(media, HT, intro_file):
 
     start, end = misc.get_offset_end(intro_file, HT)
     assert math.floor(start) in (115, 116, 117)
-    assert math.floor(end) == 208
+    assert math.floor(end) in (208, 209)
 
 
 def test_has_recap_subtitle(episode, monkeypatch, mocker):
