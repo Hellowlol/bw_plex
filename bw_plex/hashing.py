@@ -1,7 +1,7 @@
 import hashlib
 from collections import OrderedDict
 from itertools import chain
-from profilehooks import profile
+#from profilehooks import profile
 #from scipy.spatial import KDTree
 
 
@@ -77,7 +77,7 @@ class ImageHash(object):
 
 
 
-class Hash:
+class Hash(object):
     """Hash and where the hash was found.""" # derp
     __slots__ = ('name', 'pos')
 
@@ -141,7 +141,7 @@ def hex_to_hash(hexstr):
     return ImageHash(np.array(l).reshape((16, 16)))
 
 
-class Hashlist():
+class Hashlist(object):
     """Wrapper class for the hashes."""
     _kek = OrderedDict()
     _needel = []
@@ -257,7 +257,6 @@ class Hashlist():
         hammingdiff = binarydiff.sum(axis=1)
         closestdbHash = np.where(hammingdiff < 5)
         return stuff[closestdbHash], closestdbHash
-
 
     @property
     def size(cls):
