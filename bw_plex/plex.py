@@ -766,7 +766,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
         def inner():
             try:
                 func()
-            except plexapi.exceptions.BadRequest:
+            except (plexapi.exceptions.BadRequest, requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout, requests.exceptions.TooManyRedirects,
+                    requests.exceptions.HTTPError):
                 try:
                     LOG.info('Failed to reach the client directly, trying via server.')
                     correct_client.proxyThroughServer()
@@ -817,6 +819,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         c._baseurl = c._baseurl.replace('127.0.0.1', client.address)
                     correct_client = c
                     break
+            else:
+                LOG.debug('We couldnt match the client. Trying a hail marry.')
+                correct_client = client
 
             if correct_client:
                 try:
@@ -1027,7 +1032,7 @@ def check(data):
             # theme.
             if (metadata_type == 1 and not CONFIG['movie'].get('process_recently_added') or
                 metadata_state == 4 and not CONFIG['tv'].get('process_recently_added')):
-                LOG.debug("Didnt start to process %s is process_recently_added is disabled")
+                LOG.debug("Didn't start to process %s is process_recently_added is disabled", title)
                 return
 
             if ratingkey not in IN_PROG:
@@ -1041,7 +1046,7 @@ def check(data):
 
             if (metadata_type == 1 and not CONFIG['movie'].get('process_deleted') or
                 metadata_state == 4 and not CONFIG['tv'].get('process_deleted')):
-                LOG.debug("Didnt start to process %s is process_deleted is disabled for")
+                LOG.debug("Didn't start to process %s is process_deleted is disabled for", title)
                 return
 
             with session_scope() as se:

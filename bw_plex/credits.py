@@ -233,7 +233,12 @@ def locate_text(image, debug=False):
     # they will be joined by this function call
     rectangles = []
     contours = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    for contour in contours[1]:
+    if cv2.__version__.startswith('4'):
+        contours = contours[0]
+    else:
+        contours = contours[1]
+
+    for contour in contours:
         # This is disabled since we are not after the text but the text area.
         # Only preserve "squarish" features
         #peri = cv2.arcLength(contour, True)
@@ -317,30 +322,38 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
     end = -1
     LOG.debug('Trying to find the credits for %s', path)
 
-    if fps is None:
-        # we can just grab the fps from plex.
-        cap = cv2.VideoCapture(path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cap.release()
 
-    for i, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
-                                                               step=step, frame_range=frame_range)):
-        # LOG.debug('progress %s', millisec / 1000)
-        if frame is not None:
-            recs = locate_text(frame, debug=False)
+    try:
 
-            if recs:
-                frames.append(millisec)
+        if fps is None:
+            # we can just grab the fps from plex.
+            cap = cv2.VideoCapture(path)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            cap.release()
 
-            if check != -1 and len(frames) >= check:
-                break
+        for i, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
+                                                                   step=step, frame_range=frame_range)):
+            # LOG.debug('progress %s', millisec / 1000)
+            if frame is not None:
+                recs = locate_text(frame, debug=False)
 
-    if frames:
-        LOG.debug(frames)
-        start = min(frames) / 1000
-        end = max(frames) / 1000
+                if recs:
+                    frames.append(millisec)
 
-    LOG.debug('credits_start %s, credits_end %s', start, end)
+                if check != -1 and len(frames) >= check:
+                    break
+
+        if frames:
+            LOG.debug(frames)
+            start = min(frames) / 1000
+            end = max(frames) / 1000
+
+        LOG.debug('credits_start %s, credits_end %s', start, end)
+
+    except:  # pragma: no cover
+        # We just want to log the exception not halt the entire process to db.
+        LOG.exception('There was a error in find_credits')
+
     return start, end
 
 
