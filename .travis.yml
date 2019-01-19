@@ -10,7 +10,7 @@ before_install:
     - sudo apt-get -y install libasound2-dev
     - sudo apt-get -y install pandoc
     - sudo apt-get -y install ffmpeg
-    - sudo apt-get -y install ffprobe # why the fuck is this suddenly needed?
+    #- sudo apt-get -y install ffprobe # why the fuck is this suddenly needed?
     - sudo apt-get install -y tesseract-ocr
     - pip install --upgrade pip
     - pip install --upgrade pytest
