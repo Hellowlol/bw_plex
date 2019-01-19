@@ -29,7 +29,7 @@ class ImageHash(object):
     """
     Hash encapsulation. Can be used for dictionary keys and comparisons.
     """
-    __slots__ = ('name', 'pos', 'size', 'add_pos', 'hash')
+    #__slots__ = ('name', 'pos', 'size', 'add_pos', 'hash')
 
     def __init__(self, binary_array):
         self.hash = binary_array.flatten()
@@ -79,7 +79,7 @@ class ImageHash(object):
 
 class Hash(object):
     """Hash and where the hash was found.""" # derp
-    __slots__ = ('name', 'pos')
+    #__slots__ = ('name', 'pos')
 
     def __init__(self, binary_array):
         self.hash = binary_array.flatten()
