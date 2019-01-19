@@ -81,19 +81,64 @@ class Hash:
     """Hash and where the hash was found.""" # derp
     __slots__ = ('name', 'pos')
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, binary_array):
+        self.hash = binary_array.flatten()
         self.pos = []
 
     def add_pos(self, pos):
         self.pos.append(pos)
 
+    def __str__(self):
+        return ''.join(hex(i) for i in self.hash)
+
+    def __repr__(self):
+        return repr(self.hash)
+
+    def __sub__(self, other):
+        if other is None:
+            raise TypeError('Other hash must not be None.')
+        if self.hash.size != other.hash.size:
+            raise TypeError('ImageHashes must be of the same shape.', self.hash.shape, other.hash.shape)
+        return np.count_nonzero(self.hash != other.hash)
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return np.array_equal(self.hash, other.hash)
+
+    def __ne__(self, other):
+        if other is None:
+            return False
+        return not np.array_equal(self.hash, other.hash)
+
+    def __hash__(self):
+        return sum([2 ** i for i, v in enumerate(self.hash) if v])
+
+    def __iter__(self):
+        yield self
+
     @property
     def size(self):
         return len(self.pos)
 
-    def __str__(self):
-        return r'<Hash %s>' % self.name
+    def reshape(self, *args):
+        # for lazy compat
+        return self.hash.reshape(*args)
+
+
+def hex_to_hash(hexstr):
+    """
+    Convert a stored hash (hex, as retrieved from str(Imagehash))
+    back to a Imagehash object.
+    """ # check if this is compat with my way
+    l = []
+    if len(hexstr) != 2 * (16 * 16) / 8:
+        raise ValueError('The hex string has the wrong length')
+    for i in range(16 * 16 / 8):
+        h = hexstr[i * 2: i * 2 + 2]
+        v = int("0x" + h, 16)
+        l.append([v & 2 ** i > 0 for i in range(8)])
+    return ImageHash(np.array(l).reshape((16, 16)))
 
 
 class Hashlist():

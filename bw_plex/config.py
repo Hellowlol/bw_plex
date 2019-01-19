@@ -53,6 +53,16 @@ process_deleted = boolean(default=False)
 create_edl = boolean(default=False)
 edl_action_type = integer(default=3)
 
+[hashing]
+check_frames = boolean(default=False)
+#every_n = not in use atm.
+
+
+# remaps can use used to location set a partial location
+# this is usefull if bw_plex si running on another computer. 
+[remaps]
+
+
 
 """.splitlines()
 

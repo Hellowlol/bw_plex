@@ -135,6 +135,9 @@ def video_frame_by_frame(path, offset=0, frame_range=None, step=1, end=None):
             else:
                 break
 
+            if end and pos / 1000 > end:
+                break
+
     cap.release()
 
     if hasattr(cv2, 'destroyAllWindows'):
@@ -393,13 +396,14 @@ def create_imghash_avg(img):
 
 
 def hash_file(path, step=1, frame_range=False, end=None):
+#def hash_file(path, step=9, frame_range=True, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
         yield create_imghash(path), 0
         return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
-        hashed_img = create_imghash(h)
+            hashed_img = create_imghash(h)
         #hashed_img = dhash(h)
         nn = ImageHash(hashed_img)
         #hashed_img = hashed_img#.flatten().tolist()
@@ -410,6 +414,7 @@ def hash_file(path, step=1, frame_range=False, end=None):
 
 
 def hash_image_folder(folder):
+    import cv2
     result = []
     all_files = []
     for root, dirs, files in os.walk(folder):
@@ -419,14 +424,15 @@ def hash_image_folder(folder):
 
             fp = os.path.join(root, f)
             all_files.append(fp)
-            h = create_imghash(fp).flatten().tolist()
-            result.append((h, 0))
+            h = ImageHash(create_imghash(fp))
+            frame = cv2.imread(fp)
+            result.append((h, frame, 0))
 
     return result, all_files
 
 
 def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
-    """ This can be used to fin a image in a video or a part of a video.
+    """ This can be used to find a image in a video or a part of a video.
 
     stack should be i [([hash], pos)] sames goes for the needels.]"""
     frames = []
@@ -434,15 +440,19 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, 
         stacks = [stacks]
 
     for tt, stack in enumerate(stacks):
-        for i, (straw, pos) in enumerate(stack):
+        for i, (straw, frame, pos) in enumerate(stack):
             if ignore_black_frames and not sum(straw.hash):
                 continue
 
-            for n, (needel, npos) in enumerate(needels):
+            for n, (needel, nframe, npos) in enumerate(needels):
                 # check this?
                 if thresh and straw not in frames and straw - needel <= thresh:
                     if no_dupe_frames:
                         frames.append(straw)
+                
+                    yield straw, pos, i, npos, n, tt
+
+                elif straw == needel and straw not in frames:
 
                     yield straw, pos, i, npos, n, tt
 

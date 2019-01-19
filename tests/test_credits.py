@@ -40,10 +40,9 @@ def test_find_credits(outro_file):
 def test_find_hash(outro_file):
     hashes = list(credits.hash_file(outro_file))
     img_file = os.path.join(TEST_DATA, 'out8.jpg')
-    img_hash, _ = next(credits.hash_file(img_file))
+    img_hash, frame, pos = next(credits.hash_file(img_file))
 
     needels, files = credits.hash_image_folder(TEST_DATA)
-
     for stack_hash, stack_ms, stacknr, needel_ms, needelnr, stacknr in credits.find_hashes(needels, hashes):
         assert stack_hash == img_hash and files[needelnr]
 
@@ -51,11 +50,11 @@ def test_find_hash(outro_file):
 def test_find_where_a_img_is_in_video(outro_file):
     img_file = os.path.join(TEST_DATA, 'out8.jpg')
 
-    h, t = next(credits.hash_file(img_file))
+    h, f, t = next(credits.hash_file(img_file))
 
     v_hashes = list(credits.hash_file(outro_file))
 
-    for vh, i in v_hashes:
+    for vh, v_frames, i in v_hashes:
         if vh == h:
             # Check that the image if between 47 sec and 49 sec.
             assert i > 47464 and i < 49425
@@ -86,7 +85,7 @@ def test_most_common(intro_file):
     def mc():
 
         l = []
-        for hash_, t in intro_hashes:
+        for hash_, frame, t in intro_hashes:
             d = {}
             h = tuple(hash_)
             if h not in d:

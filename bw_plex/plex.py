@@ -16,11 +16,11 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
 from bw_plex.config import read_or_make
-from bw_plex.credits import find_credits
-from bw_plex.db import session_scope, Processed
+from bw_plex.credits import find_credits, hash_file, create_imghash
+from bw_plex.db import session_scope, Processed, Images, Reference_Frame
 import bw_plex.edl as edl
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms)
 
 
 IN_PROG = []
@@ -93,6 +93,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     """
     global HT
+    add_images = False
 
     # Disable for now.
     # if media.TYPE == 'movie':
@@ -197,12 +198,34 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             se.add(p)
             LOG.debug('Added %s to media.db', name)
 
-
             if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
                 edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
 
             elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
-                edl.write_edl(location,edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
+                edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
+
+        if media.TYPE == 'episode':
+            try:
+                # since it will check every ep if will download hashes from every ep. We might get
+                # away with just checking 2-4 eps. Should this be a config option?
+                # we could checkfor grandparentkey and see if we have the required amount
+                n = se.query(Images).filter_by(ratingKey=media.ratingKey).one()
+            except NoResultFound:
+                add_images = True
+
+    if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') and add_images:
+        img_hashes = []
+        for imghash, frame, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
+            img = Images(ratingKey=media.ratingKey,
+                         hex=str(imghash),
+                         hash=imghash.hash.tostring(),
+                         grandparentRatingKey=media.grandparentRatingKey,
+                         offset=pos,
+                         time=to_time(pos))
+            img_hashes.append(img)
+
+        with session_scope() as ssee:
+            ssee.add_all(img_hashes)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
@@ -469,13 +492,53 @@ def create_edl_from_db(t, save_path):
             if save_path:
                 loc = edl.create_edl_path(os.path.join(save_path, os.path.basename(item.location)))
             else:
-                loc = item.location
+                loc = item.location  # handle remapping?
 
             try:
                 t = edl.write_edl(loc, edl.db_to_edl(item, edl.TYPES[t]))
                 click.echo('Wrote %s' % t)
             except:
                 LOG.exception('Failed to write edl.')
+
+
+@cli.command()
+@click.argument('fp')
+@click.option('-t', type=click.Choice(['start', 'end']))
+@click.option('--tvdbid')
+@click.option('--timestamp', default=None)
+@click.option('--gui', default=True)
+def add_ref_frame(fp, t, tvdbid, timestamp, gui):
+    import cv2
+
+    if gui:
+        from bw_plex.tools import play
+        play(fp, key=tvdbid)
+        return 
+
+    if fp.endswith(('.mp4', '.mkv', '.avi')) and timestamp:
+
+        cap = cv2.VideoCapture(fp)
+        ms = to_ms(timestamp)
+        cap.set(cv2.CAP_PROP_POS_MSEC, ms)
+        ret, frame = cap.read()
+    else:
+        # So its a image...
+        frame = fp
+
+    frames_hash = create_imghash(frame)
+    frames_hex = ''.join(hex(i) for i in frames_hash.flatten())
+
+    with session_scope() as se:
+        try:
+            se.query(Reference_Frame).filter_by(hex=frames_hex).one()
+            click.echo('This frame already exist in the db')
+        except NoResultFound:
+
+            frm = Reference_Frame(hex=frames_hex,
+                                  type=t,
+                                  tvdbid=tvdbid)
+            se.add(frm)
+            LOG.debug('Added %s to Reference_Frame table hex %s tvdbid %s', fp, frames_hex, tvdbid)
 
 
 @cli.command()
@@ -663,9 +726,16 @@ def check_file_access(m):
     # And the use case is rather slim, you should never have dupes.
     # If the user has they can remove them using plex-cli.
     for file in files:
+
         if os.path.exists(file.file):
             LOG.debug('Found %s', file.file)
             return file.file
+        elif CONFIG.get('remaps', []):
+            for key, value in CONFIG.get('remaps'):
+                fp = file.file.replace(key, value)
+                if os.path.exists(fp):
+                    LOG.debug('Found %s', fp)
+                    return fp
         else:
             LOG.warning('Downloading from pms..')
             try:

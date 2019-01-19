@@ -26,7 +26,7 @@ POOL = None
 
 subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
                'ffmpeg_process', 'manually_correct_theme', 'process', 'match',
-               'set_manual_theme_time', 'test_a_movie', 'create_edl_from_db']
+               'set_manual_theme_time', 'test_a_movie', 'create_edl_from_db', 'add_ref_frame']
 
 
 def trim_argv(args=None):  # pragma: no cover
@@ -111,8 +111,9 @@ def init(folder=None, debug=False, config=None):
     global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL
 
     DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
+    print('default folder set to %s', DEFAULT_FOLDER)
 
-    if os.path.isdir(DEFAULT_FOLDER) and not os.access(DEFAULT_FOLDER, os.W_OK):
+    if os.path.isdir(DEFAULT_FOLDER) and not os.access(DEFAULT_FOLDER, os.W_OK):    
         print('You default folder is not writeable')
         sys.exit()
 
