@@ -177,8 +177,7 @@ def get_offset_end(vid, hashtable, check_if_missing=False):
             start_time = min_time * t_hop
             confidence = nhashaligned / nhashraw
             LOG.debug('Match %s rank %s aligntime %s theme song %s started at %s (%s) in ended at %s (%s) match length %s in the video. Video was found in theme %s ended at %s confidence %s' % (tophitid, rank,
-                      aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time), (max_time - min_time) * t_hop, (min_time + aligntime) * t_hop, (max_time + aligntime) * t_hop, confidence))
-                      aligntime, nhashaligned, nhashraw, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time)))
+                       aligntime, hashtable.names[tophitid], start_time, to_time(start_time), end_time, to_time(end_time), (max_time - min_time) * t_hop, (min_time + aligntime) * t_hop, (max_time + aligntime) * t_hop, confidence))
 
     if len(rslts):
         best = rslts[0]
@@ -481,7 +480,8 @@ def search_tunes(name, rk, url=None):
                         title = ''
 
                     # Many of the themes is just listed with the theme names, atm we are rather strict by checking
-                    # if a valid word is in the title, this is omitted many times, but we could check the read url and see if it was listed in
+                    # if a valid word is in the title, this is omitted many times, 
+                    # but we could check the read url and see if it was listed in
                     # the id #ffx in baseurl + sr['href']
                     if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
                         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
