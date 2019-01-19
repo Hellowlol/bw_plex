@@ -185,7 +185,7 @@ def locate_text(image, debug=False):
     # Pull out grahically overlayed text from a video image
     blur = cv2.GaussianBlur(grey, (3, 3), 0)
     # test media blur
-    #blur = cv2.medianBlur(grey, 1)
+    # blur = cv2.medianBlur(grey, 1)
 
     if debug:
         cv2.imshow('blur', blur)
@@ -202,7 +202,7 @@ def locate_text(image, debug=False):
         [x, y, w, h] = cv2.boundingRect(contour)
 
         # Remove small rects
-        if w < 5 or h < 5: # 2
+        if w < 5 or h < 5:  # 2
             continue
 
         # Throw away rectangles which don't match a character aspect ratio
@@ -241,12 +241,12 @@ def locate_text(image, debug=False):
     for contour in contours:
         # This is disabled since we are not after the text but the text area.
         # Only preserve "squarish" features
-        #peri = cv2.arcLength(contour, True)
-        #approx = cv2.approxPolyDP(contour, 0.01 * peri, True)
+        # peri = cv2.arcLength(contour, True)
+        # approx = cv2.approxPolyDP(contour, 0.01 * peri, True)
 
         # the contour is 'bad' if it is not a rectangluarish
         # This doesnt have to be bad, since we match more then one char.
-        #if len(approx) > 8:
+        # if len(approx) > 8:
         #    cv2.drawContours(image, [contour], -1, color['lime'])
         #    if debug:
         #        cv2.imshow("bad Rectangles check lime", image)
@@ -257,7 +257,7 @@ def locate_text(image, debug=False):
         x, y, w, h = rect
         cv2.rectangle(image, (x, y), (x + w, y + h), color['blue'], 2)
 
-        #Remove small areas and areas that don't have text like features
+        # Remove small areas and areas that don't have text like features
         # such as a long width.
         if ((float(w * h) / (width * height)) < 0.006):
             # remove small areas
@@ -276,7 +276,7 @@ def locate_text(image, debug=False):
             # a text width profile
             # and it does not fit for jap letters.
 
-            #if float(w) / h < 1.8:
+            # if float(w) / h < 1.8:
             #    continue
 
         rectangles.append(rect)
@@ -322,9 +322,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
     end = -1
     LOG.debug('Trying to find the credits for %s', path)
 
-
     try:
-
         if fps is None:
             # we can just grab the fps from plex.
             cap = cv2.VideoCapture(path)
@@ -397,7 +395,6 @@ def create_imghash(img):
     return cv2.img_hash.pHash(img)
 
 
-
 def create_imghash_avg(img):
     """Create a phash"""
     import cv2
@@ -409,20 +406,14 @@ def create_imghash_avg(img):
 
 
 def hash_file(path, step=1, frame_range=False, end=None):
-#def hash_file(path, step=9, frame_range=True, end=None):
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
         yield create_imghash(path), 0
         return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
-            hashed_img = create_imghash(h)
-        #hashed_img = dhash(h)
+        hashed_img = create_imghash(h)
         nn = ImageHash(hashed_img)
-        #hashed_img = hashed_img#.flatten().tolist()
-        #t = dhash(h)
-        #print(t)
-        #yield t, pos
         yield nn, h, pos
 
 
@@ -462,7 +453,7 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, 
                 if thresh and straw not in frames and straw - needel <= thresh:
                     if no_dupe_frames:
                         frames.append(straw)
-                
+
                     yield straw, pos, i, npos, n, tt
 
                 elif straw == needel and straw not in frames:
