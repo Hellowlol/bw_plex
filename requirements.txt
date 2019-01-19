@@ -2,7 +2,8 @@
 librosa
 # lets pin websocket-client until the bugs are fixed
 websocket-client==0.47
-plexapi>=3.0.6
+# Lets install from source
+git+git://github.com/pkkid/python-plexapi@master#egg=plexapi
 joblib
 numpy
 docopt
