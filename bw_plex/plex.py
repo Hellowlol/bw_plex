@@ -948,7 +948,7 @@ def check(data):
         timeline = data.get('TimelineEntry')[0]
         state = timeline.get('state')
         ratingkey = timeline.get('itemID')
-        grandparentTitle = timeline.get('title')
+        title = timeline.get('title')
         metadata_type = timeline.get('type')
         identifier = timeline.get('identifier')
         metadata_state = timeline.get('metadataState')
