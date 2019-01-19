@@ -409,7 +409,7 @@ def hash_file(path, step=1, frame_range=False, end=None):
     import cv2
     # dont think this is need. Lets keep it for now.
     if isinstance(path, _str) and path.endswith(image_type):
-        yield create_imghash(path), cv2.imread(path), 0
+        yield ImageHash(create_imghash(path)), cv2.imread(path, 0), 0
         return
 
     for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
