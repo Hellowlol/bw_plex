@@ -948,7 +948,7 @@ def check(data):
         timeline = data.get('TimelineEntry')[0]
         state = timeline.get('state')
         ratingkey = timeline.get('itemID')
-        title = timeline.get('title')
+        grandparentTitle = timeline.get('title')
         metadata_type = timeline.get('type')
         identifier = timeline.get('identifier')
         metadata_state = timeline.get('metadataState')
@@ -962,7 +962,7 @@ def check(data):
             # theme.
             if (metadata_type == 1 and not CONFIG['movie'].get('process_recently_added') or
                 metadata_state == 4 and not CONFIG['tv'].get('process_recently_added')):
-                LOG.debug("Didnt start to process %s is process_recently_added is disabled")
+                LOG.debug("Didn't start to process %s is process_recently_added is disabled", title)
                 return
 
             if ratingkey not in IN_PROG:
@@ -976,7 +976,7 @@ def check(data):
 
             if (metadata_type == 1 and not CONFIG['movie'].get('process_deleted') or
                 metadata_state == 4 and not CONFIG['tv'].get('process_deleted')):
-                LOG.debug("Didnt start to process %s is process_deleted is disabled for")
+                LOG.debug("Didn't start to process %s is process_deleted is disabled for", title)
                 return
 
             with session_scope() as se:
