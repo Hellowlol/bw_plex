@@ -61,6 +61,14 @@ def dir_has_edl(path):
 
 def create_edl_path(path):
     """Convert a file with a ext to .edl ext."""
+    from bw_plex import CONFIG
+    if not os.path.exists(path):
+        for key, value in CONFIG.get('remaps'):
+                fp = path.replace(key, value)
+                if os.path.exists(fp):
+                    path = fp
+                    break
+
     f_without_ext = os.path.splitext(path)[0]
     edl_path = f_without_ext + '.edl'
     return edl_path
@@ -68,13 +76,6 @@ def create_edl_path(path):
 
 def has_edl(path):
     """Check if we have a edl with the same name as the file."""
-
-    # check that we has access to the file incase bw_plex doesnt use the same
-    # source mapping as bw_plex (running in a docker or what evs)
-    if not os.path.exists(path):
-        pass
-        # do remapping here
-        # TODO
     # Check the the video file exist.
     if os.path.isfile(path):
         edl_path = create_edl_path(path)

@@ -198,8 +198,12 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             se.add(p)
             LOG.debug('Added %s to media.db', name)
 
-            if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
+            if media.TYPE == 'movie':
+              if CONFIG['movie']['create_edl']:
                 edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
+              if CONFIG['movie']['create_chapters']:
+                pass
+
 
             elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
                 edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
@@ -513,7 +517,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):
     if gui:
         from bw_plex.tools import play
         play(fp, key=tvdbid)
-        return 
+        return
 
     if fp.endswith(('.mp4', '.mkv', '.avi')) and timestamp:
 
