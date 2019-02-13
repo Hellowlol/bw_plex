@@ -832,6 +832,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     LOG.exception('Cant connect to %s', client.title)
                     # Lets just skip this for now and some "clients"
                     # might be controllable but not support the /resources endpoint
+                    # https://github.com/Hellowlol/bw_plex/issues/74
                     # return
 
                 if action != 'stop':
