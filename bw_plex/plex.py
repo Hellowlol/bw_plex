@@ -513,7 +513,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):
     if gui:
         from bw_plex.tools import play
         play(fp, key=tvdbid)
-        return 
+        return
 
     if fp.endswith(('.mp4', '.mkv', '.avi')) and timestamp:
 
@@ -827,9 +827,12 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 try:
                     LOG.info('Connectiong to %s', correct_client.title)
                     correct_client.connect()
-                except requests.exceptions.ConnectionError:
+                except (requests.exceptions.ConnectionError,
+                        requests.exceptions.ConnectionRefusedError):
                     LOG.exception('Cant connect to %s', client.title)
-                    return
+                    # Lets just skip this for now and some "clients"
+                    # might be controllable but not support the /resources endpoint
+                    # return
 
                 if action != 'stop':
                     if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
