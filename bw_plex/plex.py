@@ -230,9 +230,9 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
     if edl_file:
         if CONFIG['movie']['create_chapters'] and media.TYPE == 'movie':
-            edl.write_chapters_to_file(edl_file)
+            edl.write_chapters_to_file(check_file_access(media), edl_file)
         elif CONFIG['tv']['create_chapters'] and media.TYPE == 'episode':
-            edl.write_chapters_to_file(edl_file)
+            edl.write_chapters_to_file(check_file_access(media), edl_file)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')
