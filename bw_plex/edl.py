@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import time
 
@@ -61,6 +62,14 @@ def dir_has_edl(path):
 
 def create_edl_path(path):
     """Convert a file with a ext to .edl ext."""
+    from bw_plex import CONFIG
+    if not os.path.exists(path):
+        for key, value in CONFIG.get('remaps'):
+                fp = path.replace(key, value)
+                if os.path.exists(fp):
+                    path = fp
+                    break
+
     f_without_ext = os.path.splitext(path)[0]
     edl_path = f_without_ext + '.edl'
     return edl_path
@@ -68,26 +77,18 @@ def create_edl_path(path):
 
 def has_edl(path):
     """Check if we have a edl with the same name as the file."""
-
-    # check that we has access to the file incase bw_plex doesnt use the same
-    # source mapping as bw_plex (running in a docker or what evs)
-    if not os.path.exists(path):
-        pass
-        # do remapping here
-        # TODO
     # Check the the video file exist.
     if os.path.isfile(path):
         edl_path = create_edl_path(path)
 
         # Lets check if the edl exists if does we should edit it.
-
         if os.path.isfile(edl_path):
             # edit the damn edl
-            return True
+            return edl_path
         else:
-            return False
+            return ''
 
-    return False
+    return ''
 
 
 def write_edl(path, lines):
@@ -111,48 +112,6 @@ def write_edl(path, lines):
     return path
 
 
-def write_chapters_to_file(path, cleanup=False):
-    """Use ffmpeg to add chapters to a videofile.mf_file
-
-
-       Args:
-            path(str): path to the video file we should add chapters to
-            cleanup(bool): Default False, remote the .metadatafile
-                           after chapters has been added.
-
-       Return:
-            path
-
-
-    """
-
-    edl = has_edl(path)
-    if edl:
-        mf_file = edl_to_metadata_file(path)
-
-    outfile, ext = os.path.splitex(path)
-    outfile = outfile + '__bw_plex_meta' + ext
-
-    cmd = ['ffmpeg', '-i', path, '-i', mf_file, '-map_metadata', '1', '-copy', 'copy', outfile]
-
-    proc = subprocess.Popen(cmd)
-    code = proc.wait()
-    if code != 0:
-        print(code)
-
-    for i in range(3):
-        try:
-            os.rename(path, path.replace('__bw_plex_meta', ''))
-            break
-        except OSError:
-            time.sleep(1)
-
-    if cleanup:
-        os.remove(mf_file)
-
-    return path
-
-
 def edl_to_metadata_file(path):
     """Convert a .edl file to a ffmepg metadata file.
        This way we can add chapters to shows as this isnt suppored by plex
@@ -165,18 +124,19 @@ def edl_to_metadata_file(path):
     """
     # Should we check if this file has metadata/chapters so we dont overwrite it
     # Lets come back to this later.
-    if not os.path.isfile(path) and path.endswith('.edl'):
-        return
-
+    #if not os.path.isfile(path) and path.endswith('.edl'):
+    #    return
     header = ';FFMETADATA1\ntitle=%s\nartist=Made by bw_plex\n\n' % os.path.splitext(os.path.basename(path))[0]
 
     chapter_template = """[CHAPTER]\nTIMEBASE=1/1000\nSTART=%s\nEND=%s\ntitle=%s\n\n"""
 
     meta_name = os.path.splitext(path)[0] + '.metadata'
 
-    with open(path) as e:
+    with open(path, 'rb') as e:
         lines = e.readlines()
         lines = [i.split() for i in lines if i]
+
+    print(lines)
 
     with open(meta_name, 'w') as mf:
         last_en = len(lines) - 1
@@ -192,6 +152,54 @@ def edl_to_metadata_file(path):
             mf.write(chapter_template % (int(l[0]) * 1000, int(l[1]) * 1000, title))
 
     return meta_name
+
+
+def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
+    """Use ffmpeg to add chapters to a videofile.mf_file
+
+
+       Args:
+            path(str): path to the video file we should add chapters to
+            input_edl (str): path the the edl.
+            replace (bool): Default True
+            cleanup(bool): Default False, remove the .metadatafile
+                           after chapters has been added.
+
+       Return:
+            path
+
+
+    """
+    if input_edl is None:
+        input_edl = has_edl(path)
+
+    mf_file = edl_to_metadata_file(input_edl)
+    mf_file = str(mf_file)
+
+    outfile, ext = os.path.splitext(path)
+    outfile = outfile + '__bw_plex_meta' + ext
+
+    cmd = ['ffmpeg', '-i', path, '-i', mf_file, '-map_metadata', '1', '-codec', 'copy', outfile]
+
+    proc = subprocess.Popen(cmd)
+    code = proc.wait()
+    if code != 0:
+        print(code)
+
+    # Try to replace the orginal with the one with have added
+    # chapters too.
+    if replace:
+        for i in range(3):
+            try:
+                shutil.move(outfile, path)
+                break
+            except OSError:
+                time.sleep(1)
+
+    if cleanup:
+        os.remove(mf_file)
+
+    return path
 
 
 if __name__ == '__main__':

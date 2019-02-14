@@ -94,6 +94,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     """
     global HT
     add_images = False
+    edl_file = None
 
     # Disable for now.
     # if media.TYPE == 'movie':
@@ -197,12 +198,12 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
             se.add(p)
             LOG.debug('Added %s to media.db', name)
-
             if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
-                edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['movie']['edl_action_type']))
+                    edl_file = edl.write_edl(location, edl.db_to_edl(p,
+                                                                     type=CONFIG['movie']['edl_action_type']))
 
             elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
-                edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
+                edl_file = edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
 
         if media.TYPE == 'episode':
             try:
@@ -226,6 +227,12 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
         with session_scope() as ssee:
             ssee.add_all(img_hashes)
+
+    if edl_file:
+        if CONFIG['movie']['create_chapters'] and media.TYPE == 'movie':
+            edl.write_chapters_to_file(check_file_access(media), edl_file)
+        elif CONFIG['tv']['create_chapters'] and media.TYPE == 'episode':
+            edl.write_chapters_to_file(check_file_access(media), edl_file)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')

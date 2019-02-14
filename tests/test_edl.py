@@ -1,4 +1,7 @@
+import json
 import os
+import shutil
+import subprocess
 from conftest import edl
 
 
@@ -6,7 +9,6 @@ def test_write_edl(tmpdir, monkeypatch, mock):
     root = str(tmpdir)
     mock.patch('edl.os.path.isfile', lambda k: True)
     monkeypatch.setattr(edl, 'create_edl_path', lambda k: os.path.join(root, 'hello.edl'))
-
 
     edl_file = edl.write_edl('hello.mkv', [[1,2,3]])
 
@@ -34,3 +36,27 @@ def test_edl_path(tmpdir):
     f = 'zomg.mkv'
     edl_file = edl.create_edl_path(f)
     assert edl_file == 'zomg.edl'
+
+
+def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch, mock):
+    def check_chapter(cmd):
+        text = subprocess.check_output(cmd)
+        chapter_info = json.loads(text)
+        if chapter_info.get('chapters'):
+            return True
+        return False
+
+    # Confirm that no chapters exists in that file.
+    cmd = 'ffprobe -i %s -print_format json -show_chapters -loglevel error'
+    assert check_chapter(cmd % str(intro_file)) is False
+
+    f = tmpdir.join('hello.mkv')
+    shutil.copyfile(intro_file, f)
+    root = str(tmpdir)
+    mock.patch('edl.os.path.isfile', lambda k: True)
+    monkeypatch.setattr(edl, 'create_edl_path', lambda k: os.path.join(root, 'hello.edl'))
+
+    edl_file = edl.write_edl('hello.mkv', [[1, 2, 3]])
+    modified_file = edl.write_chapters_to_file(str(f), input_edl=edl_file)
+
+    assert check_chapter(cmd % str(modified_file))
