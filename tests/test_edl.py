@@ -19,7 +19,7 @@ def test_write_edl(tmpdir, monkeypatch, mock):
 
 def test_has_edl(tmpdir, mock):
     mock.patch('edl.os.path.isfile', side_effect=[True, True])
-    assert edl.has_edl('hello.mkv') is True
+    assert edl.has_edl('hello.mkv')
 
 
 def test_dir_has_edl(tmpdir):
