@@ -47,7 +47,7 @@ def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch, mock):
         return False
 
     # Confirm that no chapters exists in that file.
-    cmd = 'ffprobe -i %s -print_format json -show_chapters -loglevel error'
+    cmd = 'ffprobe -i "%s" -print_format json -show_chapters -loglevel error'
     assert check_chapter(cmd % str(intro_file)) is False
 
     f = tmpdir.join('hello.mkv')
