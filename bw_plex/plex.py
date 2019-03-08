@@ -834,8 +834,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 try:
                     LOG.info('Connectiong to %s', correct_client.title)
                     correct_client.connect()
-                except (requests.exceptions.ConnectionError,
-                        requests.exceptions.ConnectionRefusedError):
+                except (requests.exceptions.ConnectionError):
                     LOG.exception('Cant connect to %s', client.title)
                     # Lets just skip this for now and some "clients"
                     # might be controllable but not support the /resources endpoint
