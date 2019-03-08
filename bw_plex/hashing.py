@@ -1,3 +1,4 @@
+import binascii
 import hashlib
 from collections import OrderedDict
 from itertools import chain
@@ -14,15 +15,8 @@ def string_hash(stack):
     return hashlib.md5(h.encode('utf-8')).hexdigest()
 
 
-# fix me
 def _binary_array_to_hex(arr):
-    """
-    internal function to make a hex string out of a binary array.
-    """
-    bit_string = ''.join(str(b) for b in 1 * arr.flatten())
-    width = int(np.ceil(len(bit_string) / 4))
-    return '{:0>{width}x}'.format(int(bit_string, 2), width=width)
-
+    return binascii.hexlify(arr.flatten()).decode('ascii')
 
 
 class ImageHash(object):
@@ -190,7 +184,7 @@ class Hashlist(object):
         stuff = []
         #N = None
         _kek = {}
- 
+
         #x = sorted(cls._kek.values(), key=lambda f: f.size, reverse=True)
         # We sort on size but remove all black frames. As they pretty common.
         x = sorted((i for i in cls._kek.values() if np.sum(i.hash)), key=lambda f: f.size, reverse=True)
@@ -209,7 +203,7 @@ class Hashlist(object):
 
 
 # http://cs231n.github.io/python-numpy-tutorial/#numpyhttp://cs231n.github.io/python-numpy-tutorial/#numpy
-        
+
 
     #@profile(immediate=True)
     def find_similar(cls, value, thresh=4):
