@@ -358,6 +358,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
 
     tmp_name = tmp.name
     tmp.close()
+    tmp_name = "%s" % tmp_name
 
     if os.name == 'nt' and '://' not in afile:
         q_file = '"%s"' % afile
@@ -410,6 +411,7 @@ def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):  # pragma:
         tmp_name = tmp.name
         tmp.close()
         outfile = tmp_name
+        outfile = "%s" % outfile
 
     if os.name == 'nt' and '://' not in afile:
         q_file = '"%s"' % afile
@@ -480,7 +482,7 @@ def search_tunes(name, rk, url=None):
                         title = ''
 
                     # Many of the themes is just listed with the theme names, atm we are rather strict by checking
-                    # if a valid word is in the title, this is omitted many times, 
+                    # if a valid word is in the title, this is omitted many times,
                     # but we could check the read url and see if it was listed in
                     # the id #ffx in baseurl + sr['href']
                     if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
