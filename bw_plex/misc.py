@@ -558,6 +558,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
 
         except:  # pragma: no cover
             LOG.exception('Failed to download theme song %s' % name)
+            return
 
     LOG.debug('Done downloading theme for %s', name)
 
@@ -607,9 +608,11 @@ def download_theme(media, ht, theme_source=None, url=None):
         if _theme is not None:
             theme.append(pms.url(_theme, includeToken=True))
 
-        theme.append(search_for_theme_youtube(name, rk, THEMES, url=url))
+        yt_theme = search_for_theme_youtube(name, rk, THEMES, url=url)
+        if yt_theme:
+            theme.append(yt_theme)
 
-    if not isinstance(theme, list):
+    if not isinstance(theme, list) and theme is not None:
         theme = [theme]
 
     final = []
