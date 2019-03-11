@@ -11,6 +11,8 @@ import webbrowser
 from functools import wraps
 
 import click
+import plexapi
+
 import requests
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -533,7 +535,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):
         frame = fp
 
     frames_hash = create_imghash(frame)
-    frames_hex = ''.join(hex(i) for i in frames_hash.flatten())
+    frames_hex = ''.join(hex(i) for i in frames_hash.flatten()) # fixme?
 
     with session_scope() as se:
         try:
@@ -766,7 +768,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
     LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
 
     def proxy_on_fail(func):
-        import plexapi
 
         @wraps(func)
         def inner():
