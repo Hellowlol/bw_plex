@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import itertools
 import logging
 import os
 import tempfile
@@ -508,6 +508,59 @@ def create_edl_from_db(t, save_path):
                 click.echo('Wrote %s' % t)
             except:
                 LOG.exception('Failed to write edl.')
+
+
+@cli.command()
+@click.option('--name', default=None)
+@click.option('--dur', default=600)
+def add_hash_frame(name, dur):
+    """This will hash the episodes. We can later use this info to extract intro etc."""
+    all_items = []
+    p = Pool(4)
+    result = []
+
+    def to_db(media):
+        """ Just we can do the processing in a thread pool"""
+        imgz = []
+        for imghash, frame, pos in hash_file(check_file_access(media), frame_range=False, end=dur):
+            img = Images(ratingKey=media.ratingKey,
+                         hex=str(imghash),
+                         hash=imghash.hash.tostring(),
+                         grandparentRatingKey=media.grandparentRatingKey,
+                         offset=pos,
+                         time=to_time(pos))
+            imgz.append(img)
+        return imgz
+
+    medias = find_all_movies_shows()
+    if name:
+        medias = [s for s in medias if s.title.lower().startswith(name.lower())]
+    else:
+        medias = [s for s in medias if s.TYPE == 'show']
+
+    medias = choose('Select what item to process', medias, 'title')
+
+    for media in medias:
+        if media.TYPE == 'show':
+            eps = media.episodes()
+            eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
+            all_items += eps
+        if media.TYPE == 'movie':
+            continue
+        else:
+            all_items.append(media)
+
+    try:
+        # This might take a while so lets make it easy to interupt.
+        result = p.map(to_db, all_items, 1)
+    except KeyboardInterrupt:
+        pass
+
+    # Flatten the list.
+    result = list(itertools.chain(*result))
+
+    with session_scope() as ssee:
+        ssee.add_all(result)
 
 
 @cli.command()
