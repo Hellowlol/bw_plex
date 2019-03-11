@@ -733,7 +733,6 @@ def check_file_access(m):
     # And the use case is rather slim, you should never have dupes.
     # If the user has they can remove them using plex-cli.
     for file in files:
-
         if os.path.exists(file.file):
             LOG.debug('Found %s', file.file)
             return file.file
@@ -818,9 +817,9 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             # if offset <= media.viewOffset / 1000:
             #    LOG.debug('Didnt jump because of offset')
             #    return
-
+            LOG.info('Checking if we cant find the correct client')
             for c in clients:
-                LOG.info('%s %s' % (c.machineIdentifier, client.machineIdentifier))
+                LOG.info('%s %s', c.machineIdentifier, client.machineIdentifier)
                 # So we got the correct client..
                 if c.machineIdentifier == client.machineIdentifier:
                     # Plex web sometimes add loopback..
