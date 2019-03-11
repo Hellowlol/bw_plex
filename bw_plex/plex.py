@@ -772,17 +772,19 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
         @wraps(func)
         def inner():
             try:
-                func()
+                return func()
             except (plexapi.exceptions.BadRequest, requests.exceptions.ConnectionError,
                     requests.exceptions.Timeout, requests.exceptions.TooManyRedirects,
                     requests.exceptions.HTTPError):
                 try:
                     LOG.info('Failed to reach the client directly, trying via server.')
                     correct_client.proxyThroughServer()
-                    func()
-                except:  # pragma: no cover
+                    return func()
+                except: # pragma: no cover
                     correct_client.proxyThroughServer(value=False)
                     raise
+
+        return inner
 
     if offset == -1:
         return
