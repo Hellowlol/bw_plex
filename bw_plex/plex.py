@@ -545,10 +545,6 @@ def add_hash_frame(name, dur):
             eps = media.episodes()
             eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
             all_items += eps
-        if media.TYPE == 'movie':
-            continue
-        else:
-            all_items.append(media)
 
     try:
         # This might take a while so lets make it easy to interupt.
