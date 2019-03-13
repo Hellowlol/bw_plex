@@ -562,6 +562,42 @@ def add_hash_frame(name, dur):
 
 
 @cli.command()
+@click.option('--name', default=None)
+def test_hashing_visual(name):
+    medias = find_all_movies_shows()
+    all_items = []
+    if name:
+        medias = [s for s in medias if s.title.lower().startswith(name.lower())]
+    else:
+        medias = [s for s in medias if s.TYPE == 'show']
+
+    medias = choose('Select what item to process', medias, 'title')
+
+    for media in medias:
+        if media.TYPE == 'show':
+            eps = media.episodes()
+            eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
+            all_items += eps
+
+
+    assert len(all_items) == 1, 'play only works on one at the time'
+    from bw_plex.tools import play
+    with session_scope() as se:
+        # such ghetto...
+        item = all_items[0]
+        eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
+        eps = list(eps)[0][0]
+        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = 4111 order by offset' % (float(eps) * 1)) # add config option
+        items = list(items)
+
+        hexes = [i.hex for i in items]
+
+        play(check_file_access(item), hexes)
+
+
+
+
+@cli.command()
 @click.argument('fp')
 @click.option('-t', type=click.Choice(['start', 'end']))
 @click.option('--tvdbid')
