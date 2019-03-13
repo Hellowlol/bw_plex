@@ -789,7 +789,7 @@ def check_file_access(m):
             LOG.debug('Found %s', file.file)
             return file.file
         elif CONFIG.get('remaps', []):
-            for key, value in CONFIG.get('remaps'):
+            for key, value in CONFIG.get('remaps').items():
                 fp = file.file.replace(key, value)
                 if os.path.exists(fp):
                     LOG.debug('Found %s', fp)
