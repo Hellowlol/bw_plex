@@ -519,6 +519,7 @@ def add_hash_frame(name, dur):
     p = Pool(4)
     result = []
 
+    @log_exception
     def to_db(media):
         """ Just we can do the processing in a thread pool"""
         imgz = []
