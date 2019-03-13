@@ -528,6 +528,7 @@ def add_hash_frame(name, dur):
                          hex=str(imghash),
                          hash=imghash.hash.tostring(),
                          grandparentRatingKey=media.grandparentRatingKey,
+                         parentRatingKey=media.parentRatingKey,
                          offset=pos,
                          time=to_time(pos))
             imgz.append(img)
