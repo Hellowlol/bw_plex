@@ -563,7 +563,8 @@ def add_hash_frame(name, dur):
 
 @cli.command()
 @click.option('--name', default=None)
-def test_hashing_visual(name):
+@clik.option('--conf', default=1)
+def test_hashing_visual(name, conf):
     from bw_plex.tools import visulize_intro_from_hashes
     medias = find_all_movies_shows()
     all_items = []
@@ -587,10 +588,12 @@ def test_hashing_visual(name):
         item = all_items[0]
         eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
         eps = list(eps)[0][0]
-        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = %s order by offset' % (float(eps) * 1, item.parentRatingKey)) # add config option
+        LOG.debug('%s season %s has %s episodes', item.grandparentTitle, item.parentIndex, eps)
+        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = %s order by offset' % (float(eps) * conf, item.parentRatingKey)) # add config option
         items = list(items)
 
         hexes = [i.hex for i in items]
+        LOG.debug('Found %s hashes that are in the episodes (%s) in this season using conf %s', len(hexes), eps, conf)
 
         visulize_intro_from_hashes(check_file_access(item), hexes)
 
