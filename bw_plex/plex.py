@@ -226,7 +226,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                          hash=imghash.hash.tostring(),
                          grandparentRatingKey=media.grandparentRatingKey,
                          offset=pos,
-                         time=to_time(pos))
+                         time=to_time(pos / 1000))
             img_hashes.append(img)
 
         with session_scope() as ssee:
@@ -515,7 +515,8 @@ def create_edl_from_db(t, save_path):
 @cli.command()
 @click.option('--name', default=None)
 @click.option('--dur', default=600)
-def add_hash_frame(name, dur):
+@click.option('--sample', default=None, type=int)
+def add_hash_frame(name, dur, sample):
     """This will hash the episodes. We can later use this info to extract intro etc."""
     all_items = []
     p = Pool(4)
@@ -537,21 +538,29 @@ def add_hash_frame(name, dur):
         return imgz
 
     medias = find_all_movies_shows()
-    if name:
-        medias = [s for s in medias if s.title.lower().startswith(name.lower())]
+    if sample is None:
+        if name:
+            medias = [s for s in medias if s.title.lower().startswith(name.lower())]
+        else:
+            medias = [s for s in medias if s.TYPE == 'show']
+
+        medias = choose('Select what item to process', medias, 'title')
+
+        for media in medias:
+            if media.TYPE == 'show':
+                eps = media.episodes()
+                eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
+                all_items += eps
     else:
-        medias = [s for s in medias if s.TYPE == 'show']
-
-    medias = choose('Select what item to process', medias, 'title')
-
-    for media in medias:
-        if media.TYPE == 'show':
-            eps = media.episodes()
-            eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
-            all_items += eps
-
+        for show in [s for s in medias if s.TYPE == 'show']:
+            for season in show.seasons():
+                try:
+                    all_items.extend(season.episodes()[:sample])
+                except: # pragma: no cover
+                    pass
     try:
         # This might take a while so lets make it easy to interupt.
+        LOG.debug('Started to process %s items to the images table', len(all_items))
         result = p.map(to_db, all_items, 1)
     except KeyboardInterrupt:
         pass
@@ -584,8 +593,9 @@ def test_hashing_visual(name, conf):
             eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
             all_items += eps
 
-    assert len(all_items) == 1, 'play only works on one at the time'
-
+    assert len(all_items) == 1, 'visulize_intro_from_hashes only works on one file at the time'
+    #from profilehooks import profile
+    #@profile(immediate=True)
     def find_intro_from_hexes_in_db(item):
         d = defaultdict(set)
         new_hex = []
