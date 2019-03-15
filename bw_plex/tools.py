@@ -5,18 +5,19 @@ import numpy as np
 from bw_plex import LOG
 from bw_plex.credits import create_imghash, video_frame_by_frame
 from bw_plex.hashing import ImageHash
+from bw_plex.misc import to_time
 from bw_plex.db import session_scope, Reference_Frame
 
 
-def visulize_intro_from_hashes(first, hashes, pause=0.2, end=500):
+def visulize_intro_from_hashes(videofile, hashes, pause=0.2, end=600):
     """Play the frames that maches the hashes."""
     import matplotlib.pyplot as plt
     import cv2
 
-    first_vid = video_frame_by_frame(first, frame_range=False, end=end)
+    first_vid = video_frame_by_frame(videofile, frame_range=False, end=end)
     ax1 = plt.subplot(1, 2, 1)
     im1 = ax1.imshow(np.zeros([150, 150, 3], dtype=np.uint8))
-    ax1.set_xlabel(os.path.basename(first))
+    ax1.set_xlabel(os.path.basename(videofile))
 
     for first_frame, first_pos in first_vid:
         h = ImageHash(create_imghash(first_frame))
@@ -32,7 +33,7 @@ def visulize_intro_from_hashes(first, hashes, pause=0.2, end=500):
     plt.show()
 
 
-def play(first, pause=0.02, end=500, key=None):
+def play(first, pause=0.02, end=600, key=None):
     """This is intended to be a player where the user add the video manually select what
        type reframe we should add to the db
 
@@ -40,7 +41,7 @@ def play(first, pause=0.02, end=500, key=None):
             first(str): path to file
             pause(float): how long should we pause playback between the frames.
             end(int): seconds intro the file we should stop playback.
-            key(None, int): If to fill out shit. Not in use atm but will be used when called 
+            key(None, int): If to fill out shit. Not in use atm but will be used when called
                             from bw_plex cli.
     """
     global GOGO, cap, CURR_FRAME_NR, CURR_MS, KEY

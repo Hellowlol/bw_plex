@@ -564,6 +564,7 @@ def add_hash_frame(name, dur):
 @cli.command()
 @click.option('--name', default=None)
 def test_hashing_visual(name):
+    from bw_plex.tools import visulize_intro_from_hashes
     medias = find_all_movies_shows()
     all_items = []
     if name:
@@ -579,20 +580,19 @@ def test_hashing_visual(name):
             eps = choose('Select episodes', eps, lambda x: '%s %s' % (x._prettyfilename(), x.title))
             all_items += eps
 
-
     assert len(all_items) == 1, 'play only works on one at the time'
-    from bw_plex.tools import play
+
     with session_scope() as se:
         # such ghetto...
         item = all_items[0]
         eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
         eps = list(eps)[0][0]
-        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = 4111 order by offset' % (float(eps) * 1)) # add config option
+        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = %s order by offset' % (float(eps) * 1), item.parentRatingKey) # add config option
         items = list(items)
 
         hexes = [i.hex for i in items]
 
-        play(check_file_access(item), hexes)
+        visulize_intro_from_hashes(check_file_access(item), hexes)
 
 
 
