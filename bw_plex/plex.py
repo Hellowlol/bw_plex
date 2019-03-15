@@ -587,7 +587,7 @@ def test_hashing_visual(name):
         item = all_items[0]
         eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
         eps = list(eps)[0][0]
-        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = %s order by offset' % (float(eps) * 1), item.parentRatingKey) # add config option
+        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = %s order by offset' % (float(eps) * 1, item.parentRatingKey)) # add config option
         items = list(items)
 
         hexes = [i.hex for i in items]
