@@ -563,7 +563,7 @@ def add_hash_frame(name, dur):
 
 @cli.command()
 @click.option('--name', default=None)
-@clik.option('--conf', default=1)
+@click.option('--conf', default=1, type=float)
 def test_hashing_visual(name, conf):
     from bw_plex.tools import visulize_intro_from_hashes
     medias = find_all_movies_shows()
