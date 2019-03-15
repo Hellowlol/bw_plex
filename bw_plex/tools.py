@@ -9,7 +9,7 @@ from bw_plex.misc import to_time
 from bw_plex.db import session_scope, Reference_Frame
 
 
-def visulize_intro_from_hashes(videofile, hashes, pause=0.2, end=600):
+def visulize_intro_from_hashes(videofile, hashes, pause=0.01, end=600):
     """Play the frames that maches the hashes."""
     import matplotlib.pyplot as plt
     import cv2
@@ -21,11 +21,12 @@ def visulize_intro_from_hashes(videofile, hashes, pause=0.2, end=600):
 
     for first_frame, first_pos in first_vid:
         h = ImageHash(create_imghash(first_frame))
-        if h and str(h) in hashes:
+        H = str(h)
+        if h and H in hashes:
             # Convert as the colors are off for matplotlib.
             vis_frame = cv2.cvtColor(first_frame, cv2.COLOR_BGR2RGB)
 
-            ax1.set_title('Source %s' % to_time(first_pos / 1000))
+            ax1.set_title('Source %s | %s' % (to_time(first_pos / 1000), H))
             im1.set_data(vis_frame)
             plt.pause(pause)
 

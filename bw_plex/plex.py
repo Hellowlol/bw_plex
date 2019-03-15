@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import itertools
 import logging
 import os
@@ -8,6 +9,7 @@ import struct
 import time
 import webbrowser
 
+from collections import defaultdict
 from functools import wraps
 
 import click
@@ -530,7 +532,7 @@ def add_hash_frame(name, dur):
                          grandparentRatingKey=media.grandparentRatingKey,
                          parentRatingKey=media.parentRatingKey,
                          offset=pos,
-                         time=to_time(pos))
+                         time=to_time(pos / 1000))
             imgz.append(img)
         return imgz
 
@@ -563,11 +565,13 @@ def add_hash_frame(name, dur):
 
 @cli.command()
 @click.option('--name', default=None)
-@click.option('--conf', default=1, type=float)
+@click.option('--conf', default=0.7, type=float)
 def test_hashing_visual(name, conf):
     from bw_plex.tools import visulize_intro_from_hashes
+
     medias = find_all_movies_shows()
     all_items = []
+    new_hex = []
     if name:
         medias = [s for s in medias if s.title.lower().startswith(name.lower())]
     else:
@@ -584,20 +588,28 @@ def test_hashing_visual(name, conf):
     assert len(all_items) == 1, 'play only works on one at the time'
 
     with session_scope() as se:
-        # such ghetto...
+        # such ghetto... fix this with sql later.
+        # The sql method seems to be including hashes that are 2 times in the same ep. that not what we want.
         item = all_items[0]
         eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
         eps = list(eps)[0][0]
         LOG.debug('%s season %s has %s episodes', item.grandparentTitle, item.parentIndex, eps)
-        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) > %s and parentRatingKey = %s order by offset' % (float(eps) * conf, item.parentRatingKey)) # add config option
+        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) >= %s and parentRatingKey = %s order by offset' % (float(eps) * conf, item.parentRatingKey))
         items = list(items)
+        d = defaultdict(set)
+        # grab all hashes from this season
+        stuff = se.execute('select * from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
+        for s in stuff:
+            d[s.hex].add(s.ratingKey)
 
-        hexes = [i.hex for i in items]
-        LOG.debug('Found %s hashes that are in the episodes (%s) in this season using conf %s', len(hexes), eps, conf)
+        for k, v in d.items():
+            if len(v) >= float(eps * float(conf)):
+                new_hex.append(k)
 
-        visulize_intro_from_hashes(check_file_access(item), hexes)
+        LOG.debug('Found %s hashes that are in the episodes (%s) in this season using conf %s', len(new_hex), eps, conf)
+        LOG.debug('sql Found %s hashes that are in the episodes (%s) in this season using conf %s', len(items), eps, conf)
 
-
+        visulize_intro_from_hashes(check_file_access(item), new_hex)
 
 
 @cli.command()
