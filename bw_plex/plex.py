@@ -571,7 +571,6 @@ def test_hashing_visual(name, conf):
 
     medias = find_all_movies_shows()
     all_items = []
-    new_hex = []
     if name:
         medias = [s for s in medias if s.title.lower().startswith(name.lower())]
     else:
@@ -587,18 +586,17 @@ def test_hashing_visual(name, conf):
 
     assert len(all_items) == 1, 'play only works on one at the time'
 
-    with session_scope() as se:
-        # such ghetto... fix this with sql later.
-        # The sql method seems to be including hashes that are 2 times in the same ep. that not what we want.
-        item = all_items[0]
-        eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
-        eps = list(eps)[0][0]
-        LOG.debug('%s season %s has %s episodes', item.grandparentTitle, item.parentIndex, eps)
-        items = se.execute('SELECT *, count(hex) FROM "images" GROUP BY hex HAVING count(hex) >= %s and parentRatingKey = %s order by offset' % (float(eps) * conf, item.parentRatingKey))
-        items = list(items)
+    def find_intro_from_hexes_in_db(item):
         d = defaultdict(set)
-        # grab all hashes from this season
-        stuff = se.execute('select * from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
+        new_hex = []
+        stuff = []
+        with session_scope() as se:
+            eps = se.execute('select count(distinct ratingKey) from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
+            eps = list(eps)[0][0]
+            LOG.debug('%s season %s has %s episodes', item.grandparentTitle, item.parentIndex, eps)
+            stuff = se.execute('select * from images where grandparentRatingKey = %s and parentRatingKey = %s' % (item.grandparentRatingKey, item.parentRatingKey))
+            stuff = list(stuff)
+
         for s in stuff:
             d[s.hex].add(s.ratingKey)
 
@@ -606,10 +604,12 @@ def test_hashing_visual(name, conf):
             if len(v) >= float(eps * float(conf)):
                 new_hex.append(k)
 
-        LOG.debug('Found %s hashes that are in the episodes (%s) in this season using conf %s', len(new_hex), eps, conf)
-        LOG.debug('sql Found %s hashes that are in the episodes (%s) in this season using conf %s', len(items), eps, conf)
+        LOG.debug('Found %s hashes that are in %s percent of the episodes (%s) in this season', len(new_hex), eps, 100 * conf)
+        return new_hex
 
-        visulize_intro_from_hashes(check_file_access(item), new_hex)
+    hexes = find_intro_from_hexes_in_db(all_items[0])
+
+    visulize_intro_from_hashes(check_file_access(all_items[0]), hexes)
 
 
 @cli.command()
