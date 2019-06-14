@@ -886,6 +886,27 @@ def edl_line(start, end, type='scene'):
     return s
 
 
+def get_chromecast_player(name):
+    """ remember to time this function so we send the correct seek time.""" 
+    try:
+        import pychromecast
+    except ImportError:
+        return
+    cast = None
+    chromecasts = pychromecast.get_chromecasts()
+
+    chromecasts = list(pychromecast.get_chromecasts())
+
+    if len(chromecasts) > 1:
+        cast = next(cc for cc in chromecasts if cc.device.friendly_name == name)
+    else:
+        cast = chromecasts[0]
+
+    cast.wait()
+    cast.mc = cast.media_controller
+    return cast
+
+
 if __name__ == '__main__':
     # print(search_tunes('Dexter', 1))
     print(find_offset_ffmpeg(r'X:\Breaking bad\Season 05\breaking.bad.s05e02.720p.hdtv.x264-orenji.mkv'))

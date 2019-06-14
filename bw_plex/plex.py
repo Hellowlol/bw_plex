@@ -24,7 +24,8 @@ from bw_plex.credits import find_credits, hash_file, create_imghash
 from bw_plex.db import session_scope, Processed, Images, Reference_Frame
 import bw_plex.edl as edl
 from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms)
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms,
+                          get_chromecast_player)
 
 
 IN_PROG = []
@@ -877,6 +878,10 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             None
     """
     global JUMP_LIST
+    # Some of this stuff take so time.
+    # so we use this to try fix the offset 
+    # as this is given to client_action as a parameter.
+    called = time.time()
     LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
 
     def proxy_on_fail(func):
@@ -930,60 +935,83 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             # if offset <= media.viewOffset / 1000:
             #    LOG.debug('Didnt jump because of offset')
             #    return
-            LOG.info('Checking if we cant find the correct client')
-            for c in clients:
-                LOG.info('%s %s', c.machineIdentifier, client.machineIdentifier)
-                # So we got the correct client..
-                if c.machineIdentifier == client.machineIdentifier:
-                    # Plex web sometimes add loopback..
-                    if '127.0.0.1' in c._baseurl:
-                        c._baseurl = c._baseurl.replace('127.0.0.1', client.address)
-                    correct_client = c
-                    break
-            else:
-                LOG.debug('We couldnt match the client. Trying a hail marry.')
+            if client.platform == 'Chromecast':
                 correct_client = client
+                # getting the player can take some time, in my shallow tests
+                # it takes like 5 sec.
+                cc = get_chromecast_player('Chromecast')
+                correct_client.cc = cc
+            else:
+                LOG.info('Checking if we cant find the correct client')
+                for c in clients:
+                    LOG.info('%s %s', c.machineIdentifier, client.machineIdentifier)
+                    # So we got the correct client..
+                    if c.machineIdentifier == client.machineIdentifier:
+                        # Plex web sometimes add loopback..
+                        if '127.0.0.1' in c._baseurl:
+                            c._baseurl = c._baseurl.replace('127.0.0.1', client.address)
+                        correct_client = c
+                        break
+                else:
+                    LOG.debug('We couldnt match the client. Trying a hail marry.')
+                    correct_client = client
 
-            if correct_client:
+            if correct_client and correct_client.platform != 'Chromecast':
                 try:
                     LOG.info('Connectiong to %s', correct_client.title)
                     correct_client.connect()
                 except (requests.exceptions.ConnectionError):
-                    LOG.exception('Cant connect to %s', client.title)
                     # Lets just skip this for now and some "clients"
                     # might be controllable but not support the /resources endpoint
                     # https://github.com/Hellowlol/bw_plex/issues/74
                     # return
+                    LOG.exception('Cant connect to %s', client.title)
 
-                if action != 'stop':
-                    if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
-                        LOG.info('Didnt send seek command this show, season or episode is ignored')
-                        return
+            if action != 'stop':
+                if ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
+                    LOG.info('Didnt send seek command this show, season or episode is ignored')
+                    return
 
-                    # PMP seems to be really picky about timeline calls, if we dont
-                    # it returns 406 errors after 90 sec.
-                    if correct_client.product == 'Plex Media Player':
-                        correct_client.sendCommand('timeline/poll', wait=0)
+              # PMP seems to be really picky about timeline calls, if we dont
+              # it returns 406 errors after 90 sec.
+                if correct_client.product == 'Plex Media Player':
+                    correct_client.sendCommand('timeline/poll', wait=0)
 
-                    proxy_on_fail(correct_client.seekTo(int(offset * 1000)))
+                now = time.time()
+
+                if correct_client.platform != 'Chromecast':
+                    proxy_on_fail(correct_client.seekTo(int(now - called + offset * 1000)))
                     LOG.info('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
                 else:
-                    if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
+                    correct_client.cc.mc.seek(int(now - called + offset * 1000))
+
+            else:
+                if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
+                    if client.product != 'Chromecast':
                         proxy_on_fail(correct_client.stop())
+                    else:
+                        correct_client.cc.mc.stop()
                         # We might need to login on pms as the user..
                         # urs_pms = users_pms(PMS, user)
                         # new_media = urs_pms.fetchItem(int(media.ratingkey))
                         # new_media.markWatched()
-                        # LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
+                    LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
 
-                        # Check if we just start the next ep instantly.
-                        if CONFIG['tv'].get('check_credits_start_next_ep') is True:
-                            nxt = find_next(media) # This is always false for movies.
-                            if nxt:
+                    # Check if we just start the next ep instantly.
+                    if CONFIG['tv'].get('check_credits_start_next_ep') is True:
+                        nxt = find_next(media)  # This is always false for movies.
+                        if nxt:
+                            if correct_client.platform != 'Chromecast':
                                 LOG.info('Start playback on %s with %s', user, nxt._prettyfilename())
                                 proxy_on_fail(correct_client.playMedia(nxt))
-            else:
-                LOG.info('Didnt find the correct client.')
+                            else:
+                                # this does not work the playback does not start, need to figure 
+                                # out that shit.
+                                pass
+                                # correct_client.cc.play(nxt.getStreamURL(), 'video/mp4')
+                                # correntclient.cc.block_until_active()
+        else:
+            LOG.info('Didnt find the correct client.')
 
             # Some clients needs some time..
             # time.sleep(0.2)
