@@ -886,21 +886,27 @@ def edl_line(start, end, type='scene'):
     return s
 
 
-def get_chromecast_player(name):
-    """ remember to time this function so we send the correct seek time.""" 
+def get_chromecast_player(host=None, name=None):
+    """ Get a chromecast preferable using host direcly, if not we will use the name and mnds (slow),
+        if that dont work we will grab the first one.
+
+    """
     try:
         import pychromecast
     except ImportError:
         return
+
     cast = None
-    chromecasts = pychromecast.get_chromecasts()
 
-    chromecasts = list(pychromecast.get_chromecasts())
+    try:
+        cast = pychromecast.PyChromecast(host=host)
+    except pychromecast.ChromecastConnectionError:
+        chromecasts = pychromecast.get_chromecasts()
 
-    if len(chromecasts) > 1:
-        cast = next(cc for cc in chromecasts if cc.device.friendly_name == name)
-    else:
-        cast = chromecasts[0]
+        if len(chromecasts) > 1:
+            cast = next(cc for cc in chromecasts if cc.device.friendly_name == name)
+        else:
+            cast = chromecasts[0]
 
     cast.wait()
     cast.mc = cast.media_controller

@@ -879,7 +879,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
     """
     global JUMP_LIST
     # Some of this stuff take so time.
-    # so we use this to try fix the offset 
+    # so we use this to try fix the offset
     # as this is given to client_action as a parameter.
     called = time.time()
     LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
@@ -897,7 +897,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     LOG.info('Failed to reach the client directly, trying via server.')
                     correct_client.proxyThroughServer()
                     return func()
-                except: # pragma: no cover
+                except:  # pragma: no cover
                     correct_client.proxyThroughServer(value=False)
                     raise
 
@@ -915,6 +915,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
         # Find the client.. This client does not have the correct address
         # or 'protocolCapabilities' so we have to get the correct one.
         # or we can proxy thru the server..
+        LOG.info('sessionkey %s media_sessionkey %s', sessionkey, media.sessionKey)
         if sessionkey and int(sessionkey) == media.sessionKey:
             client = media.players[0]
             user = media.usernames[0]
@@ -935,11 +936,11 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             # if offset <= media.viewOffset / 1000:
             #    LOG.debug('Didnt jump because of offset')
             #    return
-            if client.platform == 'Chromecast':
+            if client.platform == 'Chromecast' and client.local:
                 correct_client = client
                 # getting the player can take some time, in my shallow tests
                 # it takes like 5 sec.
-                cc = get_chromecast_player('Chromecast')
+                cc = get_chromecast_player(client.address, 'Chromecast')
                 correct_client.cc = cc
             else:
                 LOG.info('Checking if we cant find the correct client')
@@ -972,8 +973,8 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     LOG.info('Didnt send seek command this show, season or episode is ignored')
                     return
 
-              # PMP seems to be really picky about timeline calls, if we dont
-              # it returns 406 errors after 90 sec.
+                # PMP seems to be really picky about timeline calls, if we dont
+                # it returns 406 errors after 90 sec.
                 if correct_client.product == 'Plex Media Player':
                     correct_client.sendCommand('timeline/poll', wait=0)
 
@@ -991,10 +992,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         proxy_on_fail(correct_client.stop())
                     else:
                         correct_client.cc.mc.stop()
-                        # We might need to login on pms as the user..
-                        # urs_pms = users_pms(PMS, user)
-                        # new_media = urs_pms.fetchItem(int(media.ratingkey))
-                        # new_media.markWatched()
+
                     LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
 
                     # Check if we just start the next ep instantly.
@@ -1005,21 +1003,18 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                                 LOG.info('Start playback on %s with %s', user, nxt._prettyfilename())
                                 proxy_on_fail(correct_client.playMedia(nxt))
                             else:
-                                # this does not work the playback does not start, need to figure 
-                                # out that shit.
                                 pass
-                                # correct_client.cc.play(nxt.getStreamURL(), 'video/mp4')
-                                # correntclient.cc.block_until_active()
+                                # this does not work the playback does not start, need to figure
+                                # out that shit.
+                                # so the shit is figured out, needs a new chromecast controller.
+                                # See the chromecast branch.
+
         else:
             LOG.info('Didnt find the correct client.')
 
-            # Some clients needs some time..
-            # time.sleep(0.2)
-            # client.play()
-            # JUMP_LIST.remove(sessionkey)
-            # time.sleep(1)
-
-            return
+    # Do we need to remove this
+    # cant rememember, lets leave it for now.
+    JUMP_LIST.remove(sessionkey)
 
 
 @log_exception
@@ -1080,7 +1075,7 @@ def check(data):
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
-        no_wait_tick = CONFIG['general'].get('no_wait_tick', 0)
+        no_wait_tick = CONFIG['general'].get('no_wait_tick', 5)
 
         def best_time(item):
             """Find the best time in the db."""
