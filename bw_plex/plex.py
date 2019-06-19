@@ -937,11 +937,12 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             #    LOG.debug('Didnt jump because of offset')
             #    return
             if client.platform == 'Chromecast' and client.local:
+                LOG.debug('The client is a chromecast and on the local network.')
                 correct_client = client
                 # getting the player can take some time, in my shallow tests
                 # it takes like 5 sec.
                 cc = get_chromecast_player(client.address, 'Chromecast')
-                correct_client.cc = cc
+                correct_client.pc = cc
             else:
                 LOG.info('Checking if we cant find the correct client')
                 for c in clients:
@@ -979,19 +980,26 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     correct_client.sendCommand('timeline/poll', wait=0)
 
                 now = time.time()
+                calculated_offset = int(now - called + offset)
+                LOG.debug('calculated_offset %s %s' % (calculated_offset, calculated_offset / 1000))
 
                 if correct_client.platform != 'Chromecast':
-                    proxy_on_fail(correct_client.seekTo(int(now - called + offset * 1000)))
-                    LOG.info('Jumped %s %s to %s %s', user, client.title, offset, media._prettyfilename())
+                    proxy_on_fail(correct_client.seekTo(calculated_offset * 1000))
                 else:
-                    correct_client.cc.mc.seek(int(now - called + offset * 1000))
+                    correct_client.pc.seek(calculated_offset)
+
+                LOG.info('Jumped %s %s to %s %s', user, client.title, calculated_offset, media._prettyfilename())
+
+                # We are done, disconnect
+                if correct_client.platform == 'Chromecast':
+                    correct_client.pc.disconnect(timeout=10)
 
             else:
                 if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
                     if client.product != 'Chromecast':
                         proxy_on_fail(correct_client.stop())
                     else:
-                        correct_client.cc.mc.stop()
+                        correct_client.pc.stop()
 
                     LOG.debug('Stopped playback on %s and marked %s as watched.', client.title, media._prettyfilename())
 
@@ -1003,18 +1011,24 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                                 LOG.info('Start playback on %s with %s', user, nxt._prettyfilename())
                                 proxy_on_fail(correct_client.playMedia(nxt))
                             else:
-                                pass
+                                correct_client.pc.play_media(nxt)
                                 # this does not work the playback does not start, need to figure
                                 # out that shit.
                                 # so the shit is figured out, needs a new chromecast controller.
                                 # See the chromecast branch.
 
-        else:
-            LOG.info('Didnt find the correct client.')
+                    # We are done, disconnect
+                    if correct_client.platform == 'Chromecast':
+                        correct_client.pc.disconnect(timeout=10)
 
-    # Do we need to remove this
-    # cant rememember, lets leave it for now.
-    JUMP_LIST.remove(sessionkey)
+        #else:
+        #    LOG.info('Didnt find the correct client.')
+
+    # The jump list is comment out because if it
+    # wasnt the user cant jump back if we miss.
+    # bw_plex will just keep jumping at best time to end
+    # over and over again.
+    # JUMP_LIST.remove(sessionkey)
 
 
 @log_exception
