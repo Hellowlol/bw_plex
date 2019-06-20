@@ -1349,7 +1349,7 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
 
 if os.name != 'nt':
     signal.signal(signal.SIGTERM, shutdown_handler)
-    signal.signal(signal.SIGUP, shutdown_handler)
+    signal.signal(signal.SIGHUP, shutdown_handler)
     signal.signal(signal.SIGINT, shutdown_handler)
 
 else:
