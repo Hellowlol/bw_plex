@@ -15,7 +15,7 @@ mode = option('skip_only_theme', 'skip_if_recap', default='skip_only_theme')
 ignore_intro_ratingkeys = list(default=list())
 ignore_outro_ratingkeys = list(default=list())
 # this is used add to the progress we we can start skip faster.
-no_wait_tick = integer(default=0, min=0, max=10)
+no_wait_tick = integer(default=10, min=0, max=20)
 
 # Clients and users are a whitelist! empty allows all.
 clients = list(default=list())
