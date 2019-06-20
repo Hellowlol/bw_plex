@@ -6,7 +6,9 @@ import logging
 import os
 import tempfile
 import struct
+import signal
 import time
+import threading
 import webbrowser
 
 from collections import defaultdict
@@ -14,6 +16,8 @@ from functools import wraps
 
 import click
 import plexapi
+from lomond import WebSocket
+from lomond.persist import persist
 
 import requests
 from sqlalchemy.orm.exc import NoResultFound
@@ -32,10 +36,35 @@ IN_PROG = []
 JUMP_LIST = []
 SHOWS = {}
 HT = None
+# Just we can kill the watch
+# gracefully on the docker.
+EVENT = threading.Event()
 
 is_64bit = struct.calcsize('P') * 8
 if not is_64bit:  # pragma: no cover
     LOG.info('You not using a python 64 bit version.')
+
+
+def shutdown_handler(sig, stack):
+    LOG.debug('Got a singal %s doing some '
+              'cleanup before shutting down', sig)
+    # Setting the event shutsdown
+    # the ws connection to pms
+    EVENT.set()
+    LOG.debug('Shutting down ws connection')
+
+    # Make sure we save the hashtable.
+    global HT
+    if HT and HT.dirty:
+        LOG.debug('Saving the hashtable')
+        HT.save()
+
+    # We just terminate the damn pool as
+    # some of the stuff we are doing can take a really long time,
+    # might be ffmpeg that is hugging it or something. dunno, idk.
+    POOL.terminate()
+    LOG.debug('Shutting down the POOL')
+    raise SystemExit('Goodbye')
 
 
 def log_exception(func):
@@ -1231,20 +1260,26 @@ def match(f):  # pragma: no cover
 
 
 @cli.command()
-def watch(): # # pragma: no cover
+def watch():  # pragma: no cover
     """Start watching the server for stuff to do."""
     global HT
     HT = get_hashtable()
     click.echo('Watching for media on %s' % PMS.friendlyName)
-    ffs = PMS.startAlertListener(check)
 
-    try:
-        while True:
-            time.sleep(0.2)
-    except KeyboardInterrupt:
-        click.echo('Aborting')
-        ffs.stop()
-        POOL.terminate()
+    ws_url = PMS.url('/:/websockets/notifications', includeToken=True).replace('http', 'ws').replace('https', 'wss')
+    ws = WebSocket(ws_url)
+    for event in persist(ws, ping_rate=0, exit_event=EVENT):
+        try:
+            if event.name == 'text':
+                data = event.json
+                if 'NotificationContainer' in data:
+                    check(data['NotificationContainer'])
+
+            elif event.name not in ('text', 'binary', 'poll', 'ping', 'pong', 'connecting', 'connected'):
+                LOG.debug('ws event %s', event)
+
+        except KeyboardInterrupt:
+            click.echo('Aborting')
 
 
 @cli.command()
@@ -1312,15 +1347,25 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
                           type, ep._prettyfilename(), start, end)
 
 
+if os.name != 'nt':
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGUP, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+
+else:
+    signal.signal(signal.SIGINT, shutdown_handler)
+
+
 def real_main():
     try:
         cli()
     except: # pragma: no cover
         raise
     finally:
+        pass
         # Make sure we save if we need it.
-        if HT and HT.dirty:
-            HT.save()
+        #if HT and HT.dirty:
+        #    HT.save()
 
 
 if __name__ == '__main__':
