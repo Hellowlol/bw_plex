@@ -38,6 +38,10 @@ def test_edl_path(tmpdir):
     assert edl_file == 'zomg.edl'
 
 
+def test_ffprobe():
+    assert subprocess.check_call(['ffprobe', '-h']) == 0
+
+
 def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch, mock):
     def check_chapter(cmd):
         text = subprocess.check_output(cmd)
@@ -46,9 +50,13 @@ def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch, mock):
             return True
         return False
 
+    if os.name == 'nt':
+        fn = '"%s"' % str(intro_file)
+    else:
+        fn = str(intro_file)
     # Confirm that no chapters exists in that file.
-    cmd = 'ffprobe -i "%s" -print_format json -show_chapters -loglevel error'
-    assert check_chapter(cmd % str(intro_file)) is False
+    cmd = ['ffprobe', '-i', fn, '-print_format', 'json', '-show_chapters', '-loglevel', 'error']
+    assert check_chapter(cmd) is False
 
     f = tmpdir.join('hello.mkv')
     shutil.copyfile(intro_file, f)
@@ -59,4 +67,13 @@ def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch, mock):
     edl_file = edl.write_edl('hello.mkv', [[1, 2, 3]])
     modified_file = edl.write_chapters_to_file(str(f), input_edl=edl_file)
 
-    assert check_chapter(cmd % str(modified_file))
+    new_cmd = list(cmd)
+
+    if os.name == 'nt':
+        fn_mod = '"%s"' % str(modified_file)
+    else:
+        fn_mod = str(modified_file)
+
+    new_cmd[2] = fn_mod
+
+    assert check_chapter(new_cmd)
