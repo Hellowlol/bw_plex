@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 
 
-from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
+from bw_plex import THEMES, CONFIG, LOG
 
 # Try to import the optional package.
 try:
@@ -48,7 +48,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
         cmd = '%s' % ' '.join(cmd)
 
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-    o, e = psox.communicate()
+    _, e = psox.communicate()
 
     if not psox.returncode == 0:  # pragma: no cover
         LOG.exception(e)

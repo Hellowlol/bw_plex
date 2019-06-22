@@ -100,7 +100,7 @@ def locate_text(image, debug=False):
     if debug:
         cv2.imshow('original image', image)
 
-    height, width, depth = image.shape
+    height, width, _ = image.shape
     mser = cv2.MSER_create(4, 10, 8000, 0.8, 0.2, 200, 1.01, 0.003, 5)
     # Convert to gray.
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -255,7 +255,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
             fps = cap.get(cv2.CAP_PROP_FPS)
             cap.release()
 
-        for i, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
+        for _, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
                                                                    step=step, frame_range=frame_range)):
             # LOG.debug('progress %s', millisec / 1000)
             if frame is not None:
@@ -324,7 +324,9 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
             t = find_credits(f, offset=offset)
 
         if c:
-            t = calc_success(t, c)
+            img = cv2.read_img(f, cv2.IMREAD_UNCHANGED)
+            height, width, _ = img.shape
+            t = calc_success(t, height, width)
 
     if d:
         click.echo('Image report')

@@ -610,7 +610,7 @@ def get_hashtable():
                 rk = os.path.basename(n).split('__')[1]
                 d[int(rk)].append(n)
             except (IndexError, TypeError):
-                LOG.exception('Some crap happend with', n)
+                LOG.exception('Some crap happend with %s', n)
         return d
 
     HashTable.save = save

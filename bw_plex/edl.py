@@ -53,7 +53,7 @@ def dir_has_edl(path):
     """reuse all folders in root to check if edl exists returns
        a list off all edls or a empty list"""
     edls = []
-    for root, dirs, files in os.walk(path):
+    for root, _, files in os.walk(path):
         for fil in files:
             if fil.endswith('.edl'):
                 fp = os.path.join(root, fil)
@@ -191,7 +191,7 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
     # Try to replace the orginal with the one with have added
     # chapters too.
     if replace:
-        for i in range(3):
+        for _ in range(3):
             try:
                 shutil.move(outfile, path)
                 break
@@ -201,7 +201,6 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
     if cleanup:
         os.remove(mf_file)
         LOG.debug('Deleted %s', mf_file)
-
 
     return path
 
