@@ -1,34 +1,27 @@
 language: python
-python:
- # - "2.7"
-  - "3.6"
-  #- "3.7"
-
-before_install:
-    - sudo add-apt-repository -y ppa:mc3man/trusty-media
-    - sudo apt-get -y update
-    - sudo apt-get -y install libasound2-dev
-    - sudo apt-get -y install pandoc
-    - sudo apt-get -y install ffmpeg
-    #- sudo apt-get -y install ffprobe # why the fuck is this suddenly needed?
-    - sudo apt-get install -y tesseract-ocr
-    - pip install --upgrade pip
-    - pip install --upgrade pytest
-    - pip install codecov
-    - pip install pypandoc
-    - pip install pytest-cov pytest-mock pytest_click
 
 addons:
   apt:
+    sources:
+    - sourceline: 'ppa:mc3man/trusty-media'
+    update: true
     packages:
-    - swig
+    - ffmpeg
     - libpulse-dev
+    - libasound2-dev
+    - pandoc
+    - swig
+    - tesseract-ocr
+
+before_install:
+    - pip install --upgrade pip
+    - pip install --upgrade codecov pypandoc pytest pytest-cov pytest-mock pytest_click
 
 # command to install dependencies
 install: "pip install --no-cache-dir -e .[all]"
 script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/bw_plex/ --cov-report term-missing
-after_success:
-  - codecov
+after_success: codecov
+
 deploy:
   provider: pypi
   user: Hellowlol
