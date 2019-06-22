@@ -50,8 +50,9 @@ if not is_64bit:  # pragma: no cover
 def shutdown_handler(sig, stack):  # pragma: no cover
     LOG.debug('Got a singal %s doing some '
               'cleanup before shutting down', sig)
-    # Setting the event shutsdown
-    # the ws connection to pms
+
+    # The events sets method shutsdown
+    # the ws connection.
     EVENT.set()
     LOG.debug('Shutting down ws connection')
 
@@ -282,7 +283,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--config', '-c', default=None, help='Path to config file.')
 @click.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
 @click.option('--default_folder', '-df', default=None, help='Override for the default folder, typically used by dockers.')
-def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder):
+@click.option('--nice', '-n', default=None, type=int, help='Set niceness of the process.')
+def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder, nice):
     """ Entry point for the CLI."""
     global PMS
     global CONFIG
@@ -291,6 +293,21 @@ def cli(debug, username, password, servername, url, token, config, verify_ssl, d
     # Default folder is handled in fake_main as we need to modify
     # the variables before import plex.py, its just listed here for the help
     # message etc.
+
+    if nice:
+        try:
+            os.nice(nice)
+        except AttributeError:
+            try:
+                import psutil
+                # Lets keep this for now as this shit keeps
+                # hogging my gaming rig.
+                p = psutil.Process(os.getpid())
+                p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+            except ImportError:
+                LOG.debug('psutil is required to set nice on windows')
+        except OSError:
+            pass
 
     if config and os.path.isfile(config):
         CONFIG = read_or_make(config)
