@@ -87,8 +87,9 @@ def arg_extract(keys=None):
                    'verify_ssl': ('-vs', '--verify_ssl'),
                    'default_folder': ('-df', '--default_folder'),
                    'url': ('-u', '--username'),
-                   'debug': ('-d', '--debug')
-           }
+                   'debug': ('-d', '--debug'),
+                   'nice': ('-n', '--nice')
+                   }
 
     d = {}
     trimmed_args = trim_argv()
