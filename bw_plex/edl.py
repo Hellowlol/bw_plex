@@ -3,6 +3,8 @@ import shutil
 import subprocess
 import time
 
+from bw_plex import LOG
+
 
 TYPES = {'cut': '0',
          'mute': '1',
@@ -136,8 +138,6 @@ def edl_to_metadata_file(path):
         lines = e.readlines()
         lines = [i.split() for i in lines if i]
 
-    print(lines)
-
     with open(meta_name, 'w') as mf:
         last_en = len(lines) - 1
         mf.write(header)
@@ -150,6 +150,8 @@ def edl_to_metadata_file(path):
                 title = ''
 
             mf.write(chapter_template % (int(l[0]) * 1000, int(l[1]) * 1000, title))
+
+    LOG.debug('Created a metadatafile %s', meta_name)
 
     return meta_name
 
@@ -184,7 +186,7 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
     proc = subprocess.Popen(cmd)
     code = proc.wait()
     if code != 0:
-        print(code)
+        LOG.debug('Failed to write_chapters_to_file %s', code)
 
     # Try to replace the orginal with the one with have added
     # chapters too.
@@ -198,6 +200,8 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
 
     if cleanup:
         os.remove(mf_file)
+        LOG.debug('Deleted %s', mf_file)
+
 
     return path
 

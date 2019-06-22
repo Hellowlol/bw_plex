@@ -4,14 +4,13 @@ import glob
 import os
 import subprocess
 import re
-import sys
 
 import click
 import numpy as np
 
 from bw_plex import LOG
+from bw_plex.video import video_frame_by_frame
 from bw_plex.misc import sec_to_hh_mm_ss
-from bw_plex.hashing import ImageHash
 
 try:
     import cv2
@@ -40,15 +39,7 @@ color = {'yellow': (255, 255, 0),
          'white': (255, 255, 255),
          'fuchsia': (255, 0, 255),
          'black': (0, 0, 0)
-        }
-
-image_type = ('.png', '.jpeg', '.jpg')
-
-
-if sys.version_info > (3, 0):
-    _str = str
-else:
-    _str = (unicode, str)
+         }
 
 
 def make_imgz(afile, start=600, dest=None, fps=1):
@@ -73,78 +64,10 @@ def extract_text(img, lang='eng', encoding='utf-8'):
     if pytesseract is None:
         return
 
-    if isinstance(img, _str):
+    if isinstance(img, str):
         img = Image.open(img)
 
     return pytesseract.image_to_string(img, lang=lang).encode(encoding, 'ignore')
-
-
-def video_frame_by_frame(path, offset=0, frame_range=None, step=1, end=None):
-    """ Returns a video files frame by frame.by
-
-        Args:
-            path (str): path to the video file
-            offset (int): Should we start from offset inside vid
-            frame_range (list, None): List of frames numbers we should grab.
-            step(int): check every n, note this is ignored if frame_range is False
-            end (int, None):
-
-        Returns:
-            numpy.ndarray
-
-    """
-
-    import cv2
-
-    cap = cv2.VideoCapture(path)
-
-    if frame_range:
-        fps = cap.get(cv2.CAP_PROP_FPS)
-
-        duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
-        duration = int(duration)
-        if end is None:
-            end = duration
-        start = int(offset)
-
-        # Just yield very step frame and currect time.
-        frame_range = (i * fps for i in range(start, end, step))
-        for fr in frame_range:
-            # Set the correct frame number to read.
-            cap.set(cv2.CAP_PROP_POS_FRAMES, fr)
-            ret, frame = cap.read()
-            if ret:
-                yield frame, cap.get(cv2.CAP_PROP_POS_MSEC)
-            else:
-                yield None, cap.get(cv2.CAP_PROP_POS_MSEC)
-
-    else:
-        if offset:
-            # Set the correct offset point so we
-            # dont read shit we dont need.
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            fn = offset * fps
-            cap.set(cv2.CAP_PROP_POS_FRAMES, fn)
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            pos = cap.get(cv2.CAP_PROP_POS_MSEC)
-
-            if ret:
-                yield frame, pos
-            else:
-                break
-
-            if end and pos / 1000 > end:
-                LOG.debug('Stopped reading the file because of %s', end)
-                break
-
-    cap.release()
-
-    # Keeping it for now, i cant remember if its needed but seems to be a issue
-    # for opencv 4 with the contrib version.
-    # if hasattr(cv2, 'destroyAllWindows'):
-    #    cv2.destroyAllWindows()
 
 
 def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no cover
@@ -171,7 +94,7 @@ def locate_text(image, debug=False):
     import cv2
 
     # Compat so we can use a frame and img file..
-    if isinstance(image, _str) and os.path.isfile(image):
+    if isinstance(image, str) and os.path.isfile(image):
         image = cv2.imread(image)
 
     if debug:
@@ -220,8 +143,8 @@ def locate_text(image, debug=False):
     # Add knobs?
     # lets scale this alot so we get mostly one big square
     # todo when/if detect motion.
-    xscaleFactor = 14 # 14
-    yscaleFactor = 4 # 4
+    xscaleFactor = 14  # 14
+    yscaleFactor = 4  # 4
     for box in rects:
         [x, y, w, h] = box
         # Draw filled bounding boxes on mask
@@ -373,110 +296,6 @@ def fill_rects(image, rects):
     return image
 
 
-def dhash(image, hashSize=8):
-    import cv2
-    # resize the input image, adding a single column (width) so we
-    # can compute the horizontal gradient
-    resized = cv2.resize(image, (hashSize + 1, hashSize))
-
-    # compute the (relative) horizontal gradient between adjacent
-    # column pixels
-    diff = resized[:, 1:] > resized[:, :-1]
-    return diff
-
-    # convert the difference image to a hash
-    return sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
-
-
-def create_imghash(img):
-    """Create a phash"""
-    import cv2
-
-    if isinstance(img, _str):
-        img = cv2.imread(img, 0)
-
-    return cv2.img_hash.pHash(img)
-
-
-def create_imghash_avg(img):
-    """Create a phash"""
-    import cv2
-
-    if isinstance(img, _str):
-        img = cv2.imread(img, 0)
-
-    return cv2.img_hash.averageHash(img)
-
-
-def hash_file(path, step=1, frame_range=False, end=None):
-    import cv2
-    # dont think this is need. Lets keep it for now.
-    if isinstance(path, _str) and path.endswith(image_type):
-        yield ImageHash(create_imghash(path)), cv2.imread(path, 0), 0
-        return
-
-    for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
-        hashed_img = create_imghash(h)
-        nn = ImageHash(hashed_img)
-        yield nn, h, pos
-
-
-def hash_image_folder(folder):
-    import cv2
-    result = []
-    all_files = []
-    for root, dirs, files in os.walk(folder):
-        for f in files:
-            if not f.endswith(image_type):
-                continue
-
-            fp = os.path.join(root, f)
-            all_files.append(fp)
-            h = ImageHash(create_imghash(fp))
-            frame = cv2.imread(fp)
-            result.append((h, frame, 0))
-
-    return result, all_files
-
-
-def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
-    """ This can be used to find a image in a video or a part of a video.
-
-    stack should be i [([hash], pos)] sames goes for the needels.]"""
-    frames = []
-    if isinstance(stacks[0], tuple):
-        stacks = [stacks]
-
-    for tt, stack in enumerate(stacks):
-        for i, (straw, frame, pos) in enumerate(stack):
-            if ignore_black_frames and not sum(straw.hash):
-                continue
-
-            for n, (needel, nframe, npos) in enumerate(needels):
-                # check this?
-                if thresh and straw not in frames and straw - needel <= thresh:
-                    if no_dupe_frames:
-                        frames.append(straw)
-
-                    yield straw, pos, i, npos, n, tt
-
-                elif straw == needel and straw not in frames:
-
-                    yield straw, pos, i, npos, n, tt
-
-                elif straw == needel and straw not in frames:
-                    if no_dupe_frames:
-                        frames.append(straw)
-
-                    # staw is the hash,
-                    # pos is pos in ms in stackfile,
-                    # number in stack,
-                    # npos in ms in needels file,
-                    # number in needels.
-                    # number in stack.
-                    yield straw, pos, i, npos, n, tt
-
-
 @click.command()
 @click.argument('path')
 @click.option('-c', type=float, default=0.0)
@@ -491,10 +310,9 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
         files = glob.glob(path)
 
     d = {}
-    print(files)
 
     for f in files:
-        if f.endswith(image_type):
+        if f.endswith(('.png', '.jpeg', '.jpg')):
             filename = os.path.basename(f)
             hit = re.search(r'(\d+)', filename)
 
@@ -519,7 +337,7 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
 
 
 if __name__ == '__main__':
-    #cmd()
+    # cmd()
     def test():
         import cv2
         i = r"C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
@@ -533,7 +351,4 @@ if __name__ == '__main__':
         cv2.imshow('ass', f)
         cv2.waitKey(0)
 
-    test()
-
-
-    #make_imgz(r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\out.mkv', start=45, fps=1, dest=r'C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\del')
+    # test()

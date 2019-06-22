@@ -1,4 +1,3 @@
-import os
 import math
 import pytest
 from conftest import misc
@@ -43,7 +42,7 @@ def test_find_offset_ffmpeg(intro_file):
     # failes as find_offset_ffmpeg selects the intro, not the end of the intro..
 
 
-def test_download_theme_and_get_offset_end(media, HT, intro_file):
+def test_download_theme_and_find_theme_start_end(media, HT, intro_file):
     files = misc.download_theme(media, HT, theme_source='youtube', url='https://www.youtube.com/watch?v=BIqBQWB7IUM')
     assert len(files)
     assert HT.has_theme(media)
@@ -51,7 +50,7 @@ def test_download_theme_and_get_offset_end(media, HT, intro_file):
     new_files = misc.download_theme(media, HT, theme_source='tvtunes')
     assert len(new_files)
 
-    start, end = misc.get_offset_end(intro_file, HT)
+    start, end = misc.find_theme_start_end(intro_file, HT)
     assert math.floor(start) in (115, 116, 117)
     assert math.floor(end) in (208, 209)
 
@@ -68,12 +67,6 @@ def test_has_recap_subtitle(episode, monkeypatch, mocker):
 
     monkeypatch.setattr(misc, 'download_subtitle', download_subtitle2)
     assert misc.has_recap_subtitle(episode, ['dog'])
-
-
-# Disabled as this is tested in test_cli.py::test_process_to_db
-def _test_has_recap_audio(intro_file):
-    audio = misc.convert_and_trim(intro_file)
-    assert misc.has_recap_audio(audio, phrase=['previously on'])
 
 
 def test_search_tunes():
@@ -110,16 +103,3 @@ def test_choose(monkeypatch, mocker):
 
 def test_to_time():
     assert misc.to_time(-1) == '00:00'
-
-
-def test_edl_line():
-    assert '1    2    0' == misc.edl_line(1, 2, 0)
-
-
-def tests_edl_stuff(tmpdir):
-    line = misc.edl_line(1, 2, 0)
-    fp = os.path.join(str(tmpdir), 'sn.s13e37.avi')
-    f = misc.edl(fp, [line])
-    with open(f, 'r') as fh:
-        x = fh.read()
-        assert x.strip() ==  '1    2    0'

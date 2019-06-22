@@ -3,8 +3,8 @@ import math
 import numpy as np
 
 from bw_plex import LOG
-from bw_plex.credits import create_imghash, video_frame_by_frame
-from bw_plex.hashing import ImageHash
+from bw_plex.video import video_frame_by_frame
+from bw_plex.hashing import ImageHash, create_imghash
 from bw_plex.misc import to_time
 from bw_plex.db import session_scope, Reference_Frame
 

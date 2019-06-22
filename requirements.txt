@@ -19,7 +19,8 @@ youtube-dl
 beautifulsoup4
 html5lib
 tablib
-lomond==0.3.3
+lomond>=0.3.3
+PyChromecast>=3.2.2
 
 
 

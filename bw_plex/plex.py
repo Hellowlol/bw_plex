@@ -23,13 +23,15 @@ import requests
 from sqlalchemy.orm.exc import NoResultFound
 
 from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
+from bw_plex.audio import convert_and_trim
 from bw_plex.config import read_or_make
-from bw_plex.credits import find_credits, hash_file, create_imghash
+from bw_plex.credits import find_credits
+from bw_plex.chromecast import get_chromecast_player
 from bw_plex.db import session_scope, Processed, Images, Reference_Frame
 import bw_plex.edl as edl
-from bw_plex.misc import (analyzer, convert_and_trim, choose, find_next, find_offset_ffmpeg, get_offset_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms,
-                          get_chromecast_player)
+from bw_plex.misc import (analyzer, choose, find_next, find_offset_ffmpeg, find_theme_start_end,
+                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms)
+from bw_plex.hashing import hash_file, create_imghash
 
 
 IN_PROG = []
@@ -45,7 +47,7 @@ if not is_64bit:  # pragma: no cover
     LOG.info('You not using a python 64 bit version.')
 
 
-def shutdown_handler(sig, stack):
+def shutdown_handler(sig, stack):  # pragma: no cover
     LOG.debug('Got a singal %s doing some '
               'cleanup before shutting down', sig)
     # Setting the event shutsdown
@@ -144,13 +146,14 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     name = media._prettyfilename()
     LOG.debug('Started to process %s', name)
 
+    # vid is aud ffs.
     if vid is None and media.TYPE == 'episode':
         vid = convert_and_trim(check_file_access(media), fs=11025,
                                trim=CONFIG['tv'].get('check_for_theme_sec', 600))
 
     # Find the start and the end of the theme in the episode file.
     if end is None and media.TYPE == 'episode':
-        start, end = get_offset_end(vid, HT)
+        start, end = find_theme_start_end(vid, HT)
 
     # Guess when the intro ended using blackframes and audio silence.
     if ffmpeg_end is None:
@@ -546,7 +549,7 @@ def create_edl_from_db(t, save_path):
 @click.option('--name', default=None)
 @click.option('--dur', default=600)
 @click.option('--sample', default=None, type=int)
-def add_hash_frame(name, dur, sample):
+def add_hash_frame(name, dur, sample):  # pragma: no cover
     """This will hash the episodes. We can later use this info to extract intro etc."""
     all_items = []
     p = Pool(4)
@@ -605,7 +608,7 @@ def add_hash_frame(name, dur, sample):
 @cli.command()
 @click.option('--name', default=None)
 @click.option('--conf', default=0.7, type=float)
-def test_hashing_visual(name, conf):
+def test_hashing_visual(name, conf):  # pragma: no cover
     from bw_plex.tools import visulize_intro_from_hashes
 
     medias = find_all_movies_shows()
@@ -624,8 +627,7 @@ def test_hashing_visual(name, conf):
             all_items += eps
 
     assert len(all_items) == 1, 'visulize_intro_from_hashes only works on one file at the time'
-    #from profilehooks import profile
-    #@profile(immediate=True)
+
     def find_intro_from_hexes_in_db(item):
         d = defaultdict(set)
         new_hex = []
@@ -658,7 +660,7 @@ def test_hashing_visual(name, conf):
 @click.option('--tvdbid')
 @click.option('--timestamp', default=None)
 @click.option('--gui', default=True)
-def add_ref_frame(fp, t, tvdbid, timestamp, gui):
+def add_ref_frame(fp, t, tvdbid, timestamp, gui):  # pragma: no cover
     import cv2
 
     if gui:
@@ -677,6 +679,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):
         frame = fp
 
     frames_hash = create_imghash(frame)
+    # DUnno if this still is correct. using frames would be better.
     frames_hex = ''.join(hex(i) for i in frames_hash.flatten()) # fixme?
 
     with session_scope() as se:
@@ -694,7 +697,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):
 
 @cli.command()
 @click.option('-fp', default=None, help='where to create the config file.')
-def create_config(fp=None):
+def create_config(fp=None):  # pragma: no cover
     """Create a config file.
 
        Args:
@@ -970,8 +973,15 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 correct_client = client
                 # getting the player can take some time, in my shallow tests
                 # it takes like 5 sec.
-                cc = get_chromecast_player(client.address, 'Chromecast')
-                correct_client.pc = cc
+                pc, cast = log_exception(get_chromecast_player(client.address, 'Chromecast'))
+                if pc and cast:
+                    # Block until the cromecast is ready.
+                    cast.wait()
+                    correct_client.pc = pc
+                else:
+                    LOG.debug('The client was a chromecast but we could get a plex controller '
+                              'and or the chromecast.')
+                    return
             else:
                 LOG.info('Checking if we cant find the correct client')
                 for c in clients:
@@ -1055,7 +1065,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
 
     # The jump list is comment out because if it
     # wasnt the user cant jump back if we miss.
-    # bw_plex will just keep jumping at best time to end
+    # bw_plex will just keep jumping to best time
     # over and over again.
     # JUMP_LIST.remove(sessionkey)
 
@@ -1255,7 +1265,7 @@ def match(f):  # pragma: no cover
        end time."""
     global HT
     HT = get_hashtable()
-    x = get_offset_end(f, HT)
+    x = find_theme_start_end(f, HT)
     click.echo(x)
 
 

@@ -5,14 +5,13 @@ from __future__ import division
 import os
 import re
 import subprocess
-import tempfile
-import shutil
 import time
 import itertools
 import unicodedata
 
 from collections import defaultdict
 
+import click
 import requests
 from bs4 import BeautifulSoup
 
@@ -20,14 +19,7 @@ from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
 
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
-
-# Try to import the optional package.
-try:
-    import speech_recognition
-except ImportError:
-    speech_recognition = None
-    LOG.warning('Failed to import speech_recognition this is required to check for recaps in audio. '
-                'Install the package using pip install bw_plex[audio] or bw_plex[all]')
+from bw_plex.audio import convert_and_trim, has_recap_audio
 
 
 def ignore_ratingkey(item, key):
@@ -162,14 +154,14 @@ def matcher():
     return m
 
 
-def get_offset_end(vid, hashtable, check_if_missing=False):
+def find_theme_start_end(wav, hashtable, check_if_missing=False):
     an = analyzer()
     match = matcher()
     start_time = -1
     end_time = -1
 
     t_hop = an.n_hop / float(an.target_sr)
-    rslts, dur, nhash = match.match_file(an, hashtable, vid, 1)  # The number does not matter...
+    rslts, dur, nhash = match.match_file(an, hashtable, wav, 1)  # The number does not matter...
 
     for (tophitid, nhashaligned, aligntime,
          nhashraw, rank, min_time, max_time) in rslts:
@@ -349,91 +341,6 @@ def get_valid_filename(s):
         return os.path.join(head, u'%s' % clean_tail)
     else:
         return clean_tail
-
-
-def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
-    tmp = tempfile.NamedTemporaryFile(mode='r+b',
-                                      prefix='offset_',
-                                      suffix='.wav')
-
-    tmp_name = tmp.name
-    tmp.close()
-    tmp_name = "%s" % tmp_name
-
-    if os.name == 'nt' and '://' not in afile:
-        q_file = '"%s"' % afile
-    else:
-        q_file = afile
-
-    if trim is None:
-        cmd = [
-            'ffmpeg', '-i', q_file, '-ac', '1', '-ar',
-            str(fs), '-acodec', 'pcm_s16le', tmp_name
-        ]
-
-    else:
-        cmd = [
-            'ffmpeg', '-i', q_file, '-ac', '1', '-ar',
-            str(fs), '-ss', '0', '-t', str(trim), '-acodec', 'pcm_s16le',
-            tmp_name
-        ]
-
-    LOG.debug('calling ffmpeg with %s' % ' '.join(cmd))
-
-    if os.name == 'nt':
-        cmd = '%s' % ' '.join(cmd)
-
-    psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-    o, e = psox.communicate()
-
-    if not psox.returncode == 0:  # pragma: no cover
-        LOG.exception(e)
-        raise Exception("FFMpeg failed")
-
-    # Check if we passed a url.
-    if '://' in afile and filename:
-        filename = filename + '.wav'
-        afile = os.path.join(THEMES, filename)
-
-    if theme:
-        shutil.move(tmp_name, afile)
-        LOG.debug('Done converted and moved %s to %s' % (afile, THEMES))
-        return afile
-    else:
-        LOG.debug('Done converting %s', tmp_name)
-        return tmp_name
-
-
-def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):  # pragma: no cover
-    if outfile is None:
-        tmp = tempfile.NamedTemporaryFile(mode='r+b', prefix='offset_',
-                                          suffix='.mp3')
-        tmp_name = tmp.name
-        tmp.close()
-        outfile = tmp_name
-        outfile = "%s" % outfile
-
-    if os.name == 'nt' and '://' not in afile:
-        q_file = '"%s"' % afile
-    else:
-        q_file = afile
-
-    cmd = ['ffmpeg', '-i', q_file, '-ss', '0', '-t',
-           str(trim), '-codec:a', 'libmp3lame', '-qscale:a', '6', outfile]
-
-    LOG.debug('calling ffmepg with %s' % ' '.join(cmd))
-
-    if os.name == 'nt':
-        cmd = '%s' % ' '.join(cmd)
-
-    psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-
-    o, e = psox.communicate()
-    if not psox.returncode == 0:
-        print(e)
-        raise Exception("FFMpeg failed")
-
-    return outfile
 
 
 def search_tunes(name, rk, url=None):
@@ -762,29 +669,6 @@ def to_sec(t):
         return int(t)
 
 
-def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
-    """ audio is wave in 16k sample rate."""
-    if speech_recognition is None:
-        return False
-
-    if phrase is None:
-        phrase = CONFIG['tv'].get('words', [])
-
-    try:
-        r = speech_recognition.Recognizer()
-        with speech_recognition.AudioFile(audio) as source:
-            r.adjust_for_ambient_noise(source)
-            audio = r.record(source, duration=duration)
-            result = r.recognize_sphinx(audio, keyword_entries=[(i, thresh) for i in phrase])
-            LOG.debug('Found %s in audio', result)
-            return result.strip()
-
-    except speech_recognition.UnknownValueError:
-        pass
-
-    return False
-
-
 def has_recap_subtitle(episode, phrase):
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
@@ -820,7 +704,6 @@ def has_recap(episode, phrase, audio=None):
 
 
 def choose(msg, items, attr):
-    import click
     result = []
 
     if not len(items):
@@ -856,299 +739,6 @@ def choose(msg, items, attr):
         result = [result]
 
     return result
-
-
-def edl(path, lines=None):
-    if lines is None:
-        lines = []
-
-    pattern = '(.mkv|.mp4|.avi)'
-    re.sub(pattern, '', path)
-    edl_path = path + '.edl'
-    with open(edl_path, 'w+') as f:
-        f.seek(0, 2)
-        for line in lines:
-            f.write(line)
-            f.write('\n')
-
-    return edl_path
-
-
-def edl_line(start, end, type='scene'):
-    types = {'cut': 0,
-             'mute': 1,
-             'scene': 2,
-             'commercial': 3}
-    t = types.get(type)
-    if t is None:
-        t = type
-    s = '%s    %s    %s' % (start, end, t)
-    return s
-
-
-
-def media_to_chromecast_command(media, **kw):
-    """Create the message that chromecast requires."""
-    # py3 only with cba ws pychromecast is 3.4
-    from urllib.parse import urlparse
-
-    server_url = urlparse(media._server._baseurl)
-    content_type = ('video/mp4') if media.TYPE in ('movie', 'episode') else ('audio/mp3')
-    g = kw.get
-
-    plq = media._server.createPlayQueue(media).playQueueID
-
-    d = {
-        'type': g('type', 'LOAD'),
-        'requestId': g('requestid', 1),
-        'media': {
-            'contentId': media.key,
-            'streamType': 'BUFFERED',
-            'contentType': content_type,
-            'customData': {
-                'offset': g('offset', 0),
-                'directPlay': g('directplay', True),
-                'directStream': g('directstream', True),
-                'subtitleSize': g('subtitlesize', 100),
-                'audioBoost': g('audioboost', 100),
-                'server': {
-                    'machineIdentifier': media._server.machineIdentifier,
-                    'transcoderVideo': g('transcodervideo', True),
-                    'transcoderVideoRemuxOnly': g('transcodervideovemuxonly', False),
-                    'transcoderAudio': g('transcoderAudio', True),
-                    'version': '1.4.3.3433',  # media._server.version
-                    'myPlexSubscription': media._server.myPlexSubscription,
-                    'isVerifiedHostname': g('isVerifiedHostname', True),
-                    'protocol': server_url.scheme,
-                    'address': server_url.hostname,
-                    'port': server_url.port,
-                    'accessToken': media._server._token,  # Create a server.transit-token() method.
-                    'user': {
-                        'username': media._server.myPlexUsername
-                    }
-                },
-                'containerKey': '/playQueues/{}?own=1&window=200'.format(plq)
-            },
-            'autoplay': g('autoplay', True),
-            'currentTime': g('currenttime', 0)
-        }
-    }
-
-    return d
-
-
-
-def get_chromecast_player(host=None, name=None):
-    """ Get a chromecast preferable using host direcly, if not we will use the name and mnds (slow),
-        if that dont work we will grab the first one.
-
-    """
-    try:
-        import pychromecast
-    except ImportError:
-        return
-
-    # All isnt used atm, lets keep it and
-    # ill fix it later then i create a pr
-    # for plexapi or pychromecast.
-    MESSAGE_TYPE = 'type'
-    TYPE_PLAY = 'PLAY'
-    TYPE_PAUSE = 'PAUSE'
-    TYPE_STOP = 'STOP'
-    TYPE_STEPFORWARD = 'STEPFORWARD'
-    TYPE_STEPBACKWARD = 'STEPBACK'
-    TYPE_PREVIOUS = 'PREVIOUS'
-    TYPE_NEXT = 'NEXT'
-    TYPE_LOAD = 'LOAD'
-    TYPE_DETAILS = 'SHOWDETAILS'
-    TYPE_SEEK = 'SEEK'
-    TYPE_MEDIA_STATUS = 'MEDIA_STATUS'
-    TYPE_GET_STATUS = 'GET_STATUS'
-    TYPE_EDIT_TRACKS_INFO = 'EDIT_TRACKS_INFO'
-
-
-    from pychromecast.controllers import BaseController
-
-
-    class PlexController(BaseController):
-        """ Controller to interact with Plex namespace. """
-
-        def __init__(self):
-            super(PlexController, self).__init__('urn:x-cast:plex', '9AC194DC')
-            self.app_id = '9AC194DC'
-            self.namespace = 'urn:x-cast:plex'
-            self.request_id = 0
-
-        def _send_cmd(self, msg, namespace=None, inc_session_id=False,
-                      callback_function=None, inc=True):
-            """Wrapper the commands."""
-            self.logger.debug('Sending msg %r %s %s %s %s',
-                              msg, namespace, inc_session_id, callback_function, inc)
-
-            if inc:
-                self._inc_request()
-
-            if namespace:
-                old = self.namespace
-                try:
-                    self.namespace = namespace
-                    self.send_message(msg, inc_session_id=inc_session_id, callback_function=callback_function)
-                finally:
-                    self.namespace = old
-            else:
-                self.send_message(msg, inc_session_id=inc_session_id,
-                                  callback_function=callback_function)
-
-        def _inc_request(self):
-            self.request_id += 1
-            return self.request_id
-
-        def receive_message(self, message, data):
-            """ Called when a messag from plex to our controller is received.
-
-                I havnt seen any message for ut but lets keep for for now, the
-                tests i have done is minimal.
-            """
-
-            self.logger.debug('Plex media receive function called.')
-            if data[MESSAGE_TYPE] == TYPE_MEDIA_STATUS:
-                self.logger.debug('(PlexController) MESSAGE RECEIVED: ' + data)
-                return True
-
-            return False
-
-        def stop(self):
-            """Send stop command."""
-            self._send_cmd({MESSAGE_TYPE: TYPE_STOP})
-
-        def pause(self):
-            """Send pause command."""
-            self._send_cmd({MESSAGE_TYPE: TYPE_PAUSE})
-
-        def play(self):
-            """Send play command."""
-            self._send_cmd({MESSAGE_TYPE: TYPE_PLAY})
-
-        def previous(self):
-            """Send previous command."""
-            self._send_cmd({MESSAGE_TYPE: TYPE_PREVIOUS})
-
-        def next(self):
-            self._send_cmd({MESSAGE_TYPE: TYPE_NEXT})
-
-        def seek(self, position, resume_state='PLAYBACK_START'):
-            """Send seek command"""
-            self._send_cmd({MESSAGE_TYPE: TYPE_SEEK,
-                            'currentTime': position,
-                            'resumeState': resume_state})
-
-        def rewind(self):
-            """Rewind back to the start"""
-            self.seek(0)
-
-        def set_volume(self, percent):
-            # Feels dirty..
-            self._socket_client.receiver_controller.set_volume(float(percent / 100))
-
-        def volume_up(self, delta=0.1):
-            """ Increment volume by 0.1 (or delta) unless it is already maxed.
-            Returns the new volume.
-            """
-            if delta <= 0:
-                raise ValueError(
-                    "volume delta must be greater than zero, not {}".format(delta))
-            return self.set_volume(self.status.volume_level + delta)
-
-        def volume_down(self, delta=0.1):
-            """ Decrement the volume by 0.1 (or delta) unless it is already 0.
-            Returns the new volume.
-            """
-            if delta <= 0:
-                raise ValueError(
-                    "volume delta must be greater than zero, not {}".format(delta))
-            return self.set_volume(self.status.volume_level - delta)
-
-        def mute(self, status=None):
-            """ mute the sound.
-                status is just a override.
-            """
-            if status is not None:
-                st = status
-            else:
-                st = not status.volume_muted
-
-            self._socket_client.receiver_controller.set_volume_muted(st)
-
-        def show_media(self, media):
-            """Show the media on the screen, but don't start it."""
-            msg = media_to_chromecast_command(media, type=TYPE_DETAILS, requestid=self._inc_request())
-
-            def cb():
-                self._send_cmd(msg, inc_session_id=True, inc=False)
-
-            self.launch(cb)
-
-        def quit_app(self):
-            """Quit the plex app"""
-            self._socket_client.receiver_controller.stop_app()
-
-        @property
-        def status(self):
-            # So to get this we could add a listener and update the data ourself
-            # or get can just use socket_clients
-            # status should get a own pr so we can grab the subtitle (episode title.)
-            # Lets just patch this for now..
-            def episode_title(self):
-                return self.media_metadata.get('subtitle')
-            mc = self._socket_client.media_controller.status
-            mc.episode_title = property(episode_title)
-            return self._socket_client.media_controller.status
-
-        def disable_subtitle(self):  # Shit does not work.
-            """Disable subtitle."""
-            self._send_cmd({
-                MESSAGE_TYPE: TYPE_EDIT_TRACKS_INFO,
-                "activeTrackIds": []
-            }, namespace='urn:x-cast:com.google.cast.media')
-
-        def _send_start_play(self, media):
-            msg = media_to_chromecast_command(media, requestid=self._inc_request())
-            self._send_cmd(msg, namespace='urn:x-cast:com.google.cast.media',
-                           inc_session_id=True, inc=False)
-
-        def play_media(self, item):
-            """Start playback in the chromecast using the
-               selected media.
-            """
-            def app_launched_callback():
-                self._send_start_play(item)
-
-            self.launch(app_launched_callback)
-
-        def join(self, timeout=None):
-            self._socket_client.join(timeout=timeout)
-
-        def disconnect(self, timeout=None, blocking=True):
-            self._socket_client.disconnect()
-            if blocking:
-                self.join(timeout=timeout)
-
-    cast = None
-
-    try:
-        cast = pychromecast.Chromecast(host=host)
-    except pychromecast.ChromecastConnectionError:
-        chromecasts = pychromecast.get_chromecasts()
-
-        if len(chromecasts) > 1:
-            cast = next(cc for cc in chromecasts if cc.device.friendly_name == name)
-        else:
-            cast = chromecasts[0]
-
-    pc = PlexController()
-    cast.register_handler(pc)
-    cast.wait()
-    return pc
 
 
 if __name__ == '__main__':
