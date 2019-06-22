@@ -247,13 +247,13 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                 # since it will check every ep if will download hashes from every ep. We might get
                 # away with just checking 2-4 eps. Should this be a config option?
                 # we could checkfor grandparentkey and see if we have the required amount
-                n = se.query(Images).filter_by(ratingKey=media.ratingKey).one()
+                se.query(Images).filter_by(ratingKey=media.ratingKey).one()
             except NoResultFound:
                 add_images = True
 
     if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') and add_images:
         img_hashes = []
-        for imghash, frame, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
+        for imghash, _, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
             img = Images(ratingKey=media.ratingKey,
                          hex=str(imghash),
                          hash=imghash.hash.tostring(),
@@ -559,7 +559,7 @@ def add_hash_frame(name, dur, sample):  # pragma: no cover
     def to_db(media):
         """ Just we can do the processing in a thread pool"""
         imgz = []
-        for imghash, frame, pos in hash_file(check_file_access(media), frame_range=False, end=dur):
+        for imghash, _, pos in hash_file(check_file_access(media), frame_range=False, end=dur):
             img = Images(ratingKey=media.ratingKey,
                          hex=str(imghash),
                          hash=imghash.hash.tostring(),
@@ -673,7 +673,7 @@ def add_ref_frame(fp, t, tvdbid, timestamp, gui):  # pragma: no cover
         cap = cv2.VideoCapture(fp)
         ms = to_ms(timestamp)
         cap.set(cv2.CAP_PROP_POS_MSEC, ms)
-        ret, frame = cap.read()
+        _, frame = cap.read()
     else:
         # So its a image...
         frame = fp

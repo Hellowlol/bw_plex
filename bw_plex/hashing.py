@@ -98,7 +98,7 @@ def hash_image_folder(folder):
     import cv2
     result = []
     all_files = []
-    for root, dirs, files in os.walk(folder):
+    for root, _, files in os.walk(folder):
         for f in files:
             if not f.endswith(image_type):
                 continue
