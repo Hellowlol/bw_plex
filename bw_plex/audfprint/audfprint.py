@@ -404,20 +404,19 @@ def main(argv):
         args["--maxtimebits"] = hash_table._bitsfor(int(args["--maxtime"]))
 
     # Setup the analyzer if we're using one (i.e., unless "merge")
-    analyzer = setup_analyzer(args) if not (
-            cmd is "merge" or cmd is "newmerge"
-            or cmd is "list" or cmd is "remove") else None
+    analyzer = setup_analyzer(args) if cmd not in (
+            "merge", "newmerge", "list", "remove") else None
 
     precomp_type = 'hashes'
 
     # Set up the hash table, if we're using one (i.e., unless "precompute")
-    if cmd is not "precompute":
+    if cmd != "precompute":
         # For everything other than precompute, we need a database name
         # Check we have one
         dbasename = args['--dbase']
         if not dbasename:
             raise ValueError("dbase name must be provided if not precompute")
-        if cmd == "new" or cmd == "newmerge":
+        if cmd in ("new", "newmerge"):
             # Check that the output directory can be created before we start
             ensure_dir(os.path.split(dbasename)[0])
             # Create a new hash table
