@@ -15,10 +15,11 @@ addons:
 
 before_install:
     - pip install --upgrade pip
-    - pip install --upgrade codecov pypandoc pytest pytest-cov pytest-mock pytest_click
+    - pip install --upgrade codecov flake8 pypandoc pytest pytest-cov pytest-mock pytest_click
 
 # command to install dependencies
 install: "pip install --no-cache-dir -e .[all]"
+before_script: flake8 . --count --select=E9,F63,F72,F82 --show-source --statistics
 script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/bw_plex/ --cov-report term-missing
 after_success: codecov
 
