@@ -1,4 +1,5 @@
 # bw_plex
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4c2a18e04d3d45648224b4be4c45e20b)](https://app.codacy.com/app/Hellowlol/bw_plex?utm_source=github.com&utm_medium=referral&utm_content=Hellowlol/bw_plex&utm_campaign=Badge_Grade_Dashboard)
 [![Travis Status](https://travis-ci.org/Hellowlol/bw_plex.svg?branch=master)](https://travis-ci.org/Hellowlol/bw_plex)
 [![Cov](https://codecov.io/gh/hellowlol/bw_plex/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
