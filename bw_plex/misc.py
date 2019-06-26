@@ -18,6 +18,10 @@ from bs4 import BeautifulSoup
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
 
+import pysubs2
+from pysubs2.ssafile import SSAFile
+from pysubs2.formats import FILE_EXTENSION_TO_FORMAT_IDENTIFIER
+
 from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 from bw_plex.audio import convert_and_trim, has_recap_audio
 
@@ -635,7 +639,7 @@ def get_hashtable():
 
 
 def download_subtitle(episode):
-    import srt
+
     episode.reload()
     LOG.debug('Downloading subtitle from PMS')
     pms = episode._server
@@ -645,7 +649,7 @@ def download_subtitle(episode):
     for part in episode.iterParts():
         if part.subtitleStreams():
             for sub in part.subtitleStreams():
-                if sub.key and sub.codec == 'srt':
+                if sub.key and sub.codec in FILE_EXTENSION_TO_FORMAT_IDENTIFIER.values():
                     to_dl.append(pms.url('%s?download=1' % sub.key, includeToken=True))
 
     for dl_url in to_dl:
@@ -653,9 +657,11 @@ def download_subtitle(episode):
         r.raise_for_status()
         if r:
             try:
-                a_sub = list(srt.parse(r.text))
-                all_subs.append(a_sub)
-            except ValueError:
+                subt = [sub.text for sub in SSAFile.from_string(r.text, encoding=r.encoding)]
+                all_subs.append(subt)
+            except (IOError, pysubs2.exceptions.UnknownFPSError,
+                    pysubs2.exceptions.UnknownFormatIdentifierError,
+                    pysubs2.exceptions.FormatAutodetectionError):
                 LOG.exception('Failed to parse subtitle')
 
     return all_subs
