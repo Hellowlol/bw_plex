@@ -1,9 +1,8 @@
 language: python
-
 addons:
   apt:
     sources:
-    - sourceline: 'ppa:mc3man/trusty-media'
+    - sourceline: "ppa:mc3man/trusty-media"
     update: true
     packages:
     - ffmpeg
@@ -12,21 +11,17 @@ addons:
     - pandoc
     - swig
     - tesseract-ocr
-
 before_install:
     - pip install --upgrade pip
     - pip install --upgrade codecov pypandoc pytest pytest-cov pytest-mock pytest_click
-
-# command to install dependencies
 install: "pip install --no-cache-dir -e .[all]"
 script: py.test -vv -s --cov=$TRAVIS_BUILD_DIR/bw_plex/ --cov-report term-missing
 after_success: codecov
-
 deploy:
   provider: pypi
   user: Hellowlol
   password:
-    secure: e6r9hGA/CAtNyGuuhC3ziGBC9b0vVgWzihchqOAEOCqvTZmdpKsIViu8/co2joVpcgSN+HqZmI1hbJ5JG9rN3qc4OBldbsa8J2rGW6NdJHPWAeuBV8rTEqdVIki6Rp9dD+A8oviwL01oDYlCQlAAwigOXRtmoUv4mpK0EXZpaVGzpjpvMVmY0ITy6wJ5hQ7g1P5otbq3mexgpEM7v0tUMYR2emHJJWHV5UVdkFzEIyyv+hb5DvjxBbJ+8FJe88rNMTrcEq83iec6vTq+CH59OlCgTI1kgpJ57QHK3ntaVggKVEMImW8MugY+fscnMy05KQECJ50COwc8/sp7eE9SdVM8GnOQdOJJQ7zX4IJe8inS469nJMByfMTEM2YyJCSQC77gRhpZdrgwL4kQbnSMoBf2daMluR+1vxfWDUF7vdE4rOZPpu1J5Tqwz/bpr0fE55G89ObIVuX+gJ6VrSxwcAY4tyTzf8cmWEG4p/IqkRfNzPVMCI+3hHX0CUB258vVPgPcp/4Izsuqnu68/ymY2BdJyQKzjApc7hKVr+aKIlpahUWdGKaWbZ+wu6RLUSU8NVkv76O+ELvyatQaUFBpigGEQmNdSBCngwb3kslHoIZ98XPWnsZumfzP4HylcVrCYnPk30q7dQnaEYSbs8oLvtX3VDIRiKpvDyRip/g3bTI=
+    secure: Tul6JZvDg3m3GkHcN89gAG1e5P246mC/v/BDzRswfiIBh4b2yJ/Cr+DgJcgmLYqz00nIwmRBm/JW/olygVCzQ6AbA9WuLh4SnfHJmO5V3xhxxEW9b2RH4bA3vL60TVtPGSXcJkHQ3KmF7G36xZMRfydvzQKnY116XzTe9SyVLNTHi2D7Kwf6bhVmOug7Mtaazt9k7ao67hEZEezW/zp2eSBXyhSY/vK5g30ZzZbgkTp/2csEXDcBxa6FDKbyZ0/zKlHc6BOD+Ibz4V3nMpKcgzBncgWP0i5M1tAfGG0WbF1wb7PrCq4Ly6QKGZhN4rnC3YaaCl9YHLWtu/VdPZD0tvE1mfXUon8FYjBLZgTUSXcnc9LNvLlMIbIeaqGLoi0q3L/RBQWBR5DiVJoX06FS8oNzY8ijDeX6dPdpI8zQBceKIq7uhSvhw3Y6l+c6HpCahc4Tg+HfTkkZ216QwdzC1UnqQzM5eCTDBViGOcV9zSzfetN6MS9mdydQ2lMaNCcf8uctVpafULMIEj+A3Cfzmld7qVJJORnBB5UHd3Hi0e6ig4rYvEA48Y0n2wvicVQ9B5XUEEFa7+RmpQw/ptkSKSgskBsxMklfKOvw2pgWbYLvDDdhfNL0K55XzCpxFJrKvXIR5Y0JpPRl8Q02DCE+PTnvf7b7pOl37fLlUil3lMY=
   on:
     tags: true
     branch: master
