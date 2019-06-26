@@ -4,7 +4,7 @@
 [![Cov](https://codecov.io/gh/hellowlol/bw_plex/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
 [![PyPI version](https://badge.fury.io/py/bw_plex.svg)](https://pypi.python.org/pypi/bw_plex)
-[![GitHub last commit](https://img.shields.io/github/last-commit/hellowlol/bw_plex.svg)
+![GitHub last commit](https://img.shields.io/github/last-commit/hellowlol/bw_plex.svg)
 
 
 A tool for skipping intro and outro for plex.
