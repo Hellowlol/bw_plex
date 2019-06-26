@@ -4,17 +4,16 @@
 [![Cov](https://codecov.io/gh/hellowlol/bw_plex/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
 [![PyPI version](https://badge.fury.io/py/bw_plex.svg)](https://pypi.python.org/pypi/bw_plex)
-[![Code Health](https://landscape.io/github/Hellowlol/bw_plex/master/landscape.svg?style=flat)](https://landscape.io/github/Hellowlol/bw_plex/master)
-[![Github commits (since latest release)](https://img.shields.io/github/commits-since/Hellowlol/bw_plex/latest.svg)](https://github.com/Hellowlol/bw_plex/compare)
+[![GitHub last commit](https://img.shields.io/github/last-commit/hellowlol/bw_plex.svg)
 
 
-binge watching for plex
+A tool for skipping intro and outro for plex.
 
 ## Features
-- download theme songs.
 - identify outro start and end scanning the video for credits text.
 - identify intro start and end using themes song or blackframes and audio silence.
 - identify if the video has a recap using subtitles and audio.
+- download theme songs.
 - process on playback start.
 - process on recently added.
 - control the client to skip intro/outro.
@@ -73,9 +72,7 @@ Bw_plex listens for playing events using websocket. We download the first 10 min
 
 We then create a audio print from the theme song that we match against the audio of the 10 minutes of the episode. (There’s a backup method that uses audio silence in combination with black frames too).
 
-We then check if this episode has a recap using subtitles and audio where we look for clues like last season, previously on (add you own words in the config).
-
-Download the last part of the episode an and indentify the start and end of the outro.
+We then check if this episode has a recap using subtitles and audio where we look for clues like last season, previously on (add you own words in the config), then we download last part of the episode an and indentify the start and end of the outro.
 
 Depending on your settings we will then allow playback until the theme start or just jump straight to intro end if we also should skip recaps.
 

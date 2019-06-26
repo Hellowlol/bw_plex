@@ -1,2 +1,2 @@
 ignore:
-  - "tools.py"
+  - "bw_plex/tools.py"
