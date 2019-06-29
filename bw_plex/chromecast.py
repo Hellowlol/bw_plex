@@ -1,4 +1,5 @@
 from urllib.parse import urlparse
+import threading
 
 from bw_plex import LOG
 
@@ -94,6 +95,7 @@ def get_chromecast_player(host=None, name=None):  # pragma: no cover
             self.app_id = '9AC194DC'
             self.namespace = 'urn:x-cast:plex'
             self.request_id = 0
+            self.play_media_event = threading.Event()
 
         def _send_cmd(self, msg, namespace=None, inc_session_id=False,
                       callback_function=None, inc=True):
@@ -232,12 +234,23 @@ def get_chromecast_player(host=None, name=None):  # pragma: no cover
             self._send_cmd(msg, namespace='urn:x-cast:com.google.cast.media',
                            inc_session_id=True, inc=False)
 
+        def block_until_playing(self, item, timeout=None):
+            """Helper just incase this is running as a script."""
+            self.play_media(item)
+            self.play_media_event.wait(timeout)
+
         def play_media(self, item):
             """Start playback in the chromecast using the
                selected media.
             """
+            self.play_media_event.clear()
+
             def app_launched_callback():
-                self._send_start_play(item)
+                try:
+                    self._send_start_play(item)
+                    self.play_media_event.set()
+                finally:
+                    self.play_media_event.clear()
 
             self.launch(app_launched_callback)
 
