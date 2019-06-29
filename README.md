@@ -64,7 +64,7 @@ You can read the help for the subcommands using --help:
 ```bw_plex export_db --help```
 
 The most common will be:
-```bw_plex watch```
+```bw_plex watch --url "http://....." -t "aaabb" ``` you can skip the url and token flags if you edit the config
 
 ## How it works:
 
