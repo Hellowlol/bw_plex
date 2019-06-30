@@ -236,8 +236,11 @@ def get_chromecast_player(host=None, name=None):  # pragma: no cover
 
         def block_until_playing(self, item, timeout=None):
             """Helper just incase this is running as a script."""
+            self.play_media_event.clear()
             self.play_media(item)
             self.play_media_event.wait(timeout)
+            self.play_media_event.clear()
+
 
         def play_media(self, item):
             """Start playback in the chromecast using the
@@ -248,9 +251,8 @@ def get_chromecast_player(host=None, name=None):  # pragma: no cover
             def app_launched_callback():
                 try:
                     self._send_start_play(item)
-                    self.play_media_event.set()
                 finally:
-                    self.play_media_event.clear()
+                    self.play_media_event.set()
 
             self.launch(app_launched_callback)
 
