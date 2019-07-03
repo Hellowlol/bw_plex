@@ -6,13 +6,13 @@ import time
 from bw_plex import LOG
 
 
-TYPES = {'cut': '0',
-         'mute': '1',
-         'scene marker': '2',
-         'commercial break': '3'}
+TYPES = {'cut': 0,
+         'mute': 1,
+         'scene marker': 2,
+         'commercial break': 3}
 
 
-TYPES.update(dict((v,k) for (k,v) in TYPES.items()))
+TYPES.update(dict((v, k) for (k, v) in TYPES.items()))
 
 
 def db_to_edl(item, type=3):

@@ -59,7 +59,7 @@ check_frames = boolean(default=False)
 
 
 # remaps can use used to location set a partial location
-# this is usefull if bw_plex si running on another computer. 
+# this is usefull if bw_plex is running on another computer.
 [remaps]
 
 
