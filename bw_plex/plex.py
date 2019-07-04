@@ -281,7 +281,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--url', default=None, help='url to the server you want to monitor')
 @click.option('--token', '-t', default=None, help='plex-x-token')
 @click.option('--config', '-c', default=None, help='Path to config file.')
-@click.option('--verify_ssl', '-vs', default=None, help='Enable this to allow insecure connections to PMS')
+@click.option('--verify_ssl', '-vs', default=False, is_flag=True, help='Enable this to allow insecure connections to PMS')
 @click.option('--default_folder', '-df', default=None, help='Override for the default folder, typically used by dockers.')
 @click.option('--nice', '-n', default=None, type=int, help='Set niceness of the process.')
 def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder, nice):
@@ -729,6 +729,9 @@ def create_config(fp=None):  # pragma: no cover
         fp = INI_FILE
 
     conf_file = read_or_make(fp).filename
+    conf = read_or_make(fp)
+    from pprint import pprint
+    click.echo(pprint(conf, indent=4))
     click.echo('Wrote configfile to %s' % conf_file)
     return conf_file
 

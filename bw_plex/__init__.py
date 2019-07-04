@@ -94,10 +94,13 @@ def arg_extract(keys=None):
         for k, v in possible_kw.items():
             if arg in v:
                 # Just set the flags.
-                if k in ('debug', 'verify_ssl'):
+                if k == 'debug':
                     d[k] = True
                 else:
                     d[k] = trimmed_args[i + 1]
+
+    if 'debug' not in d:
+        d['debug'] = None
 
     if keys:
         return dict((key, value) for key, value in d.items() if key in keys)
@@ -132,14 +135,7 @@ def init(folder=None, debug=False, config=None):
     from bw_plex.db import db_init
     db_init()
 
-    # Setup some logging.
-    if debug or CONFIG['general']['level'] == 'debug':
-        LOG.setLevel(logging.DEBUG)
-    else:
-        LOG.setLevel(logging.INFO)
-
     handle = logging.NullHandler()
-
     frmt = logging.Formatter(CONFIG.get('logformat', '%(asctime)s :: %(name)s :: %(levelname)s :: %(filename)s:%(lineno)d :: %(message)s'))
     handle.setFormatter(frmt)
     LOG.addHandler(handle)
@@ -156,6 +152,20 @@ def init(folder=None, debug=False, config=None):
     rfh.setFormatter(frmt)
     LOG.addHandler(rfh)
 
+    log_to_lvl = {'debug': logging.DEBUG,
+                  'info': logging.INFO,
+                  'warning': logging.WARNING}
+
+    if debug is True:
+        LOG.setLevel(logging.DEBUG)
+    else:
+        try:
+            lvl = log_to_lvl[CONFIG['general']['loglevel']]
+            LOG.setLevel(lvl)
+        except KeyError:
+            LOG.error('Invalid option for loglevel in fonfig file, defualting to level to debug')
+            LOG.setLevel(logging.DEBUG)
+
     # This import is slow
     import pkg_resources
 
@@ -168,7 +178,10 @@ def init(folder=None, debug=False, config=None):
     for arg in secret_args:
         FILTER.add_secret(arg)
 
-    if not CONFIG['general']['debug'] and debug is False:
+    if debug is None:
+        if CONFIG['general']['debug'] is False:
+            LOG.addFilter(FILTER)
+    elif debug is False:
         LOG.addFilter(FILTER)
     else:
         LOG.info('Log is not sanitized!')

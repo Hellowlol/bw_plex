@@ -8,9 +8,10 @@ vtor = Validator()
 spec = """
 [general]
 thread_pool_number = integer(default=10, min=10, max=50)
+# Setting debug to True will show your username/password/tokn in logs!
 debug = boolean(default=False)
 logformat = ''
-level = option('debug', 'info', default='debug')
+loglevel = option('debug', 'info', default='debug')
 mode = option('skip_only_theme', 'skip_if_recap', default='skip_only_theme')
 ignore_intro_ratingkeys = list(default=list())
 ignore_outro_ratingkeys = list(default=list())
@@ -68,6 +69,14 @@ check_frames = boolean(default=False)
 
 
 def migrate(conf):
+    """ Used to clean up change config options."""
+
+    if 'level' in conf['general']:
+        if conf['general']['level'] != conf['general']['loglevel']:
+            conf['general']['loglevel'] = conf['general']['level']
+
+        del conf['general']['level']
+
     return conf
 
 
