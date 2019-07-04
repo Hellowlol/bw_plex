@@ -3,12 +3,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 
-try:
-    from multiprocessing.pool import ThreadPool as Pool
-except ImportError:
-    from multiprocessing.dummy import ThreadPool as Pool
+from multiprocessing.pool import ThreadPool as Pool
 
-from plexapi.compat import makedirs, string_type
+from plexapi.compat import string_type
 
 
 DEFAULT_FOLDER = None
@@ -124,9 +121,9 @@ def init(folder=None, debug=False, config=None):
     INI_FILE = config or os.path.join(DEFAULT_FOLDER, 'config.ini')
     DB_PATH = os.path.join(DEFAULT_FOLDER, 'media.db')
 
-    makedirs(DEFAULT_FOLDER, exist_ok=True)
-    makedirs(THEMES, exist_ok=True)
-    makedirs(TEMP_THEMES, exist_ok=True)
+    os.makedirs(DEFAULT_FOLDER, exist_ok=True)
+    os.makedirs(THEMES, exist_ok=True)
+    os.makedirs(TEMP_THEMES, exist_ok=True)
 
     from bw_plex.config import read_or_make
     CONFIG = read_or_make(INI_FILE)
@@ -159,6 +156,10 @@ def init(folder=None, debug=False, config=None):
     rfh.setFormatter(frmt)
     LOG.addHandler(rfh)
 
+    # This import is slow
+    import pkg_resources
+
+    LOG.info('Using bw_plex version %s', pkg_resources.get_distribution("bw_plex").version)
     LOG.info('default folder set to %s', DEFAULT_FOLDER)
 
     FILTER.add_secret(CONFIG['server']['token'])
