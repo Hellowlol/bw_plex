@@ -60,7 +60,7 @@ def test_has_recap_subtitle(episode, monkeypatch, mocker):
         l = []
         for i in ['Hello you old', 'dog']:
             m = mocker.Mock()
-            m.content = i
+            m.text = i
             l.append(m)
 
         return [l]

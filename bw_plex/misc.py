@@ -661,7 +661,7 @@ def download_subtitle(episode):
         r.raise_for_status()
         if r:
             try:
-                subt = [sub.text for sub in SSAFile.from_string(r.text, encoding=r.encoding)]
+                subt = [sub for sub in SSAFile.from_string(r.text, encoding=r.encoding)]
                 all_subs.append(subt)
             except (IOError, pysubs2.exceptions.UnknownFPSError,
                     pysubs2.exceptions.UnknownFormatIdentifierError,
@@ -692,7 +692,7 @@ def has_recap_subtitle(episode, phrase):
 
     for sub in subs:
         for line in sub:
-            if re.search(pattern, line.content):
+            if re.search(pattern, line.text):
                 LOG.debug('%s matched %s in subtitles', ', '.join(phrase), line.content)
                 return True
 
