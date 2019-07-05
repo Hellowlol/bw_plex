@@ -693,7 +693,7 @@ def has_recap_subtitle(episode, phrase):
     for sub in subs:
         for line in sub:
             if re.search(pattern, line.text):
-                LOG.debug('%s matched %s in subtitles', ', '.join(phrase), line.content)
+                LOG.debug('%s matched %s in subtitles', ', '.join(phrase), line.text)
                 return True
 
     return False
