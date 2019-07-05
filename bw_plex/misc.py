@@ -48,6 +48,10 @@ def get_pms(url=None, token=None, username=None,
         url = url.rstrip('/')
         sess = requests.Session()
         if not verify_ssl:
+            # Disable the urllib3 warning as the user
+            # has choosen to not verify the http request.
+            # why the fuck isnt this default?
+            requests.packages.urllib3.disable_warnings()
             sess.verify = False
         PMS = PlexServer(url, token, sess)
 
