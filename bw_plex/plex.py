@@ -48,7 +48,7 @@ if not is_64bit:  # pragma: no cover
 
 
 def shutdown_handler(sig, stack):  # pragma: no cover
-    LOG.debug('Got a singal %s doing some '
+    LOG.debug('Got a signal %s doing some '
               'cleanup before shutting down', sig)
 
     # The events sets method shutsdown

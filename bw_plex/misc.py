@@ -653,7 +653,7 @@ def download_subtitle(episode):
                     to_dl.append(pms.url('%s?download=1' % sub.key, includeToken=True))
 
     for dl_url in to_dl:
-        r = requests.get(dl_url)
+        r = episode._server._session.get(dl_url)
         r.raise_for_status()
         if r:
             try:
