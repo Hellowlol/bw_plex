@@ -107,11 +107,14 @@ def write_edl(path, lines):
         return
 
     path = create_edl_path(path)
-    with open(path, 'w+') as f:
-        for line in lines:
-            f.write('%s\n' % '    '.join(str(i) for i in line))
+    try:
+        with open(path, 'w+') as f:
+            for line in lines:
+                f.write('%s\n' % '    '.join(str(i) for i in line))
 
-    return path
+        return path
+    except FileNotFoundError:
+        LOG.error('Failed to write edl. Try adding a adding curret path to remaps in config')
 
 
 def edl_to_metadata_file(path):
