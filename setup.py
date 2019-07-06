@@ -22,6 +22,12 @@ for line in f:
     if line and not line.startswith('#'):
         REQ.append(line)
 
+extra_audio = ['pocketsphinx', 'SpeechRecognition']
+extra_video = ['pytesseract', 'opencv-contrib-python']
+# With all i'm refering to all required packages to run the program.
+extra_all = extra_audio + extra_video
+extra_test = ['pytest', 'codecov', 'pytest-cov', 'pytest-mock', 'pytest_click', 'pypandoc']
+
 
 setup(
     name='bw_plex',
@@ -82,11 +88,11 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'audio': ['pocketsphinx', 'SpeechRecognition'],
-        'video': ['pytesseract', 'opencv-contrib-python'],
-        'all': ['pytesseract', 'opencv-contrib-python', 'pocketsphinx', 'SpeechRecognition']
+        'audio': extra_audio,
+        'video': extra_video,
+        'all': extra_all,
         #'dev': ['pypandoc']
-        #'test': ['pytest', 'codecov', 'pytest-cov'],
+        'test': extra_test
     },
 
     # To provide executable scripts, use entry points in preference to the
