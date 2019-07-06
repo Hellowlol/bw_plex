@@ -729,9 +729,6 @@ def create_config(fp=None):  # pragma: no cover
         fp = INI_FILE
 
     conf_file = read_or_make(fp).filename
-    conf = read_or_make(fp)
-    from pprint import pprint
-    click.echo(pprint(conf, indent=4))
     click.echo('Wrote configfile to %s' % conf_file)
     return conf_file
 
