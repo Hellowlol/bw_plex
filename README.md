@@ -3,7 +3,7 @@
 [![Travis Status](https://travis-ci.org/Hellowlol/bw_plex.svg?branch=master)](https://travis-ci.org/Hellowlol/bw_plex)
 [![Cov](https://codecov.io/gh/hellowlol/bw_plex/branch/master/graph/badge.svg)](https://codecov.io/gh/hellowlol/bw_plex/branch/master)
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
-[![PyPI version](https://badge.fury.io/py/bw_plex.svg)](https://pypi.python.org/pypi/bw_plex)
+[![PyPI version](https://badge.fury.io/py/bw-plex.svg)](https://badge.fury.io/py/bw-plex)
 ![GitHub last commit](https://img.shields.io/github/last-commit/hellowlol/bw_plex.svg)
 
 
