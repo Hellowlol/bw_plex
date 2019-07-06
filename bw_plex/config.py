@@ -61,6 +61,9 @@ check_frames = boolean(default=False)
 
 # remaps can use used to location set a partial location
 # this is usefull if bw_plex is running on another computer.
+# the key is the path plex user and the value is the computer running
+# bw_plex. Ex:
+# /tvseries/ = W:\\
 [remaps]
 
 
