@@ -5,6 +5,7 @@
 [![GitHub Releases](https://img.shields.io/github/tag/hellowlol/bw_plex.svg?label=github+release)](https://github.com/hellowlol/bw_plex/releases)
 [![PyPI version](https://badge.fury.io/py/bw-plex.svg)](https://badge.fury.io/py/bw-plex)
 ![GitHub last commit](https://img.shields.io/github/last-commit/hellowlol/bw_plex.svg)
+![docker build](https://img.shields.io/docker/build/hellowlol/bw_plex.svg)
 
 
 A tool for skipping intro and outro for plex.
