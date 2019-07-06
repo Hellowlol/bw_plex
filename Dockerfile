@@ -14,7 +14,7 @@ RUN apt-get update && apt-get -y install \
   git swig libpulse-dev libasound2-dev ffmpeg tesseract-ocr python3-pip pandoc python3.6-tk \
   python3-setuptools && apt-get clean \
   && rm -rf /var/lib/apt/lists/* && \
-  mpdir -p /app/bw_plex
+  mkdir -p /app/bw_plex
 
 # Python requirements from pip
 RUN pip3 install pytest pytest-cov pytest-mock pytest_click pypandoc codecov \
