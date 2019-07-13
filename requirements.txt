@@ -3,7 +3,7 @@ librosa
 # lets pin websocket-client until the bugs are fixed
 plexapi>=3.0.6
 joblib
-numpy
+numpy>=1.15.0
 docopt
 click
 scipy
