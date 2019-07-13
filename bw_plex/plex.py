@@ -252,19 +252,20 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             except NoResultFound:
                 add_images = True
 
-    if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') and add_images:
-        img_hashes = []
-        for imghash, _, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
-            img = Images(ratingKey=media.ratingKey,
-                         hex=str(imghash),
-                         hash=imghash.hash.tostring(),
-                         grandparentRatingKey=media.grandparentRatingKey,
-                         offset=pos,
-                         time=to_time(pos / 1000))
-            img_hashes.append(img)
+    #if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') is True and add_images:
+    #    img_hashes = []
+        # Check this later TODO
+        # for imghash, _, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
+        #    img = Images(ratingKey=media.ratingKey,
+        #                 hex=str(imghash),
+        #                 hash=imghash.hash.tostring(),
+        #                 grandparentRatingKey=media.grandparentRatingKey,
+        #                 offset=pos,
+        #                 time=to_time(pos / 1000))
+        #    img_hashes.append(img)
 
-        with session_scope() as ssee:
-            ssee.add_all(img_hashes)
+        #with session_scope() as ssee:
+        #    ssee.add_all(img_hashes)
 
     if edl_file:
         if CONFIG['movie']['create_chapters'] and media.TYPE == 'movie':
