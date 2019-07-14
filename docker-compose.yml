@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  bw_plex:
+    image: hellowlol/bw_plex:latest
+    container_name: bw_plex
+    restart: unless-stopped
+    network_mode: bridge
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./config:/config
+      # Replace with your Plex media path
+      - /mnt/unionfs/Media:/mnt/unionfs/Media
+    environment:
+      - url=https://YOURE_URL
+      - token:YOURE_TOKEN
+      - TZ=America/Los_Angeles
+    command: bash -c "bw_plex --url https://YOURE_URL -t YOURE_TOKEN -df /config watch"
