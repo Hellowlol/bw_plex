@@ -1017,8 +1017,14 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
 
             if correct_client and correct_client.platform != 'Chromecast':
                 try:
-                    LOG.info('Connectiong to %s', correct_client.title)
-                    correct_client.connect()
+                    if correct_client._baseurl:
+                        LOG.info('Connectiong to %s', correct_client.title)
+                        correct_client.connect()
+                    else:
+                        # Some clients might not have a _baseurl like the lg
+                        # lets try, to proxy this but i dont have a lg to test with.
+                        LOG.debug('Client hasnt a _baseurl enabling proxyThroughServer')
+                        correct_client.proxyThroughServer()
                 except (requests.exceptions.ConnectionError):
                     # Lets just skip this for now and some "clients"
                     # might be controllable but not support the /resources endpoint
