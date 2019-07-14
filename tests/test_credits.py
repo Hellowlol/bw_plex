@@ -8,14 +8,19 @@ image_type = ('.png', '.jpeg', '.jpg')
 
 
 def test_locate_text():
-    files = glob.glob('%s\*.*' % TEST_DATA)
+    files = glob.glob('%s/*.*' % TEST_DATA)
 
     for f in sorted(files):
         if f.endswith(image_type):
             if 'fail' in f:
                 assert not credits.locate_text(f)
+                if f.endswith('blackbg_greentxt_1_fail.png'):
+                    assert credits.locate_text_east(f)
+                else:
+                    assert not credits.locate_text_east(f)
             else:
                 assert credits.locate_text(f)
+                assert credits.locate_text_east(f)
 
 
 def test_extract_text():
@@ -29,7 +34,13 @@ def test_find_credits_frame_range_false(outro_file):
     assert math.floor(end) == 3
 
 
-def test_find_credits(outro_file):
+def test_find_credits_east(outro_file):
     start, end = credits.find_credits(outro_file, frame_range=True, check=9999)
+    assert math.floor(start) == 4.0
+    assert math.floor(end) == 59
+
+
+def test_find_credits(outro_file):
+    start, end = credits.find_credits(outro_file, frame_range=True, check=9999, method='normal')
     assert math.floor(start) == 4.0
     assert math.floor(end) == 58

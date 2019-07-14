@@ -348,7 +348,7 @@ def locate_text(image, debug=False):
 
 
 def find_credits(path, offset=0, fps=None, duration=None,
-                 check=7, step=1, frame_range=True, debug=False):
+                 check=7, step=1, frame_range=True, debug=False, method='east'):
     """Find the start/end of the credits and end in a videofile.
        This only check frames so if there is any silence in the video this is simply skipped as
        opencv only handles videofiles.
@@ -366,6 +366,8 @@ def find_credits(path, offset=0, fps=None, duration=None,
                         end is not correct without this!
             step(int): only use every n frame
             frame_range(bool). default true, precalc the frames and only check thous frames.
+            debug(bool): Disable the images.
+            method(str): east is better but slower.
 
        Returns:
             1, 2
@@ -380,6 +382,11 @@ def find_credits(path, offset=0, fps=None, duration=None,
     end = -1
     LOG.debug('Trying to find the credits for %s', path)
 
+    if method == 'east':
+        func = locate_text_east
+    else:
+        func = locate_text
+
     try:
         if fps is None:
             # we can just grab the fps from plex.
@@ -391,7 +398,7 @@ def find_credits(path, offset=0, fps=None, duration=None,
                                                                    step=step, frame_range=frame_range)):
             # LOG.debug('progress %s', millisec / 1000)
             if frame is not None:
-                recs = locate_text_east(frame, debug=debug)
+                recs = func(frame, debug=debug)
 
                 if recs:
                     frames.append(millisec)
