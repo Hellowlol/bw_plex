@@ -1,6 +1,7 @@
 from __future__ import division
 
 import glob
+import math
 import os
 import subprocess
 import re
@@ -42,6 +43,68 @@ color = {'yellow': (255, 255, 0),
          }
 
 
+NET = None
+
+EAST_MODEL = os.path.join(os.path.dirname(__file__), 'models', 'frozen_east_text_detection.pb')
+
+
+def decode(scores, geometry, scoreThresh=0.5):
+    # Stolen from https://github.com/opencv/opencv/blob/master/samples/dnn/text_detection.py
+    detections = []
+    confidences = []
+
+    ############ CHECK DIMENSIONS AND SHAPES OF geometry AND scores ############
+    assert len(scores.shape) == 4, "Incorrect dimensions of scores"
+    assert len(geometry.shape) == 4, "Incorrect dimensions of geometry"
+    assert scores.shape[0] == 1, "Invalid dimensions of scores"
+    assert geometry.shape[0] == 1, "Invalid dimensions of geometry"
+    assert scores.shape[1] == 1, "Invalid dimensions of scores"
+    assert geometry.shape[1] == 5, "Invalid dimensions of geometry"
+    assert scores.shape[2] == geometry.shape[2], "Invalid dimensions of scores and geometry"
+    assert scores.shape[3] == geometry.shape[3], "Invalid dimensions of scores and geometry"
+    height = scores.shape[2]
+    width = scores.shape[3]
+    for y in range(0, height):
+
+        # Extract data from scores
+        scoresData = scores[0][0][y]
+        x0_data = geometry[0][0][y]
+        x1_data = geometry[0][1][y]
+        x2_data = geometry[0][2][y]
+        x3_data = geometry[0][3][y]
+        anglesData = geometry[0][4][y]
+        for x in range(0, width):
+            score = scoresData[x]
+
+            # If score is lower than threshold score, move to next x
+            if(score < scoreThresh):
+                continue
+
+            # Calculate offset
+            offsetX = x * 4.0
+            offsetY = y * 4.0
+            angle = anglesData[x]
+
+            # Calculate cos and sin of angle
+            cosA = math.cos(angle)
+            sinA = math.sin(angle)
+            h = x0_data[x] + x2_data[x]
+            w = x1_data[x] + x3_data[x]
+
+            # Calculate offset
+            offset = ([offsetX + cosA * x1_data[x] + sinA * x2_data[x], offsetY - sinA * x1_data[x] + cosA * x2_data[x]])
+
+            # Find points for rectangle
+            p1 = (-sinA * h + offset[0], -cosA * h + offset[1])
+            p3 = (-cosA * w + offset[0], sinA * w + offset[1])
+            center = (0.5 * (p1[0] + p3[0]), 0.5 * (p1[1] + p3[1]))
+            detections.append((center, (w, h), -1 * angle * 180.0 / math.pi))
+            confidences.append(float(score))
+
+    # Return detections and confidences
+    return [detections, confidences]
+
+
 def make_imgz(afile, start=600, dest=None, fps=1):
     """Helper to generate images."""
 
@@ -75,6 +138,74 @@ def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no 
     t = sum([i[2] * i[3] for i in rectangles if i])
     p = 100 * float(t) / float(img_height * img_width)
     return p > success
+
+
+def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh=0.999, nms_treshhold=0.1):
+    import cv2
+
+    global NET
+
+    if NET is None:
+        NET = cv2.dnn.readNet(EAST_MODEL)
+
+    features = ['feature_fusion/Conv_7/Sigmoid', 'feature_fusion/concat_3']
+
+    if isinstance(image, str) and os.path.isfile(image):
+        image = cv2.imread(image)
+
+    frame = image
+    # Stole this part from
+    # the opencv example repo.
+
+    # Get frame height and width
+    height_ = frame.shape[0]
+    width_ = frame.shape[1]
+    rW = width_ / float(width)
+    rH = height_ / float(height)
+
+    # Create a 4D blob from frame.
+    blob = cv2.dnn.blobFromImage(frame, 1.0, (width, height), (123.68, 116.78, 103.94), swapRB=True, crop=False)
+
+    # Run the model
+    NET.setInput(blob)
+    kWinName = "EAST: An Efficient and Accurate Scene Text Detector"
+    # Get scores and geometry
+    scores, geometry = NET.forward(features)
+    t, _ = NET.getPerfProfile()
+    label = 'Inference time: %.2f ms' % (t * 1000.0 / cv2.getTickFrequency())
+    # dunno wtf.
+    boxes, confidences = decode(scores, geometry, confedence_tresh)
+    indices = cv2.dnn.NMSBoxesRotated(boxes, confidences, confedence_tresh, nms_treshhold)
+
+    if debug is False:
+        if isinstance(indices, tuple):
+            return False
+        else:
+            return True
+
+    for i in indices:
+        # get 4 corners of the rotated rect
+        vertices = cv2.boxPoints(boxes[i[0]])
+        # scale the bounding box coordinates based on the respective ratios
+        for j in range(4):
+            vertices[j][0] *= rW
+            vertices[j][1] *= rH
+        for j in range(4):
+            p1 = (vertices[j][0], vertices[j][1])
+            p2 = (vertices[(j + 1) % 4][0], vertices[(j + 1) % 4][1])
+            cv2.line(frame, p1, p2, (0, 255, 0), 1)
+
+    # Display the frame
+    if debug:
+        # Put efficiency information
+        cv2.putText(frame, label, (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
+        cv2.imshow(kWinName, frame)
+        cv2.waitKey(0)
+
+    if isinstance(indices, tuple):
+        return False
+    else:
+        return True
 
 
 def locate_text(image, debug=False):
@@ -216,7 +347,8 @@ def locate_text(image, debug=False):
     return rectangles
 
 
-def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame_range=True):
+def find_credits(path, offset=0, fps=None, duration=None,
+                 check=7, step=1, frame_range=True, debug=False):
     """Find the start/end of the credits and end in a videofile.
        This only check frames so if there is any silence in the video this is simply skipped as
        opencv only handles videofiles.
@@ -259,7 +391,7 @@ def find_credits(path, offset=0, fps=None, duration=None, check=7, step=1, frame
                                                                    step=step, frame_range=frame_range)):
             # LOG.debug('progress %s', millisec / 1000)
             if frame is not None:
-                recs = locate_text(frame, debug=False)
+                recs = locate_text_east(frame, debug=debug)
 
                 if recs:
                     frames.append(millisec)
@@ -341,16 +473,26 @@ def cmd(path, c, debug, profile, offset):  # pragma: no cover
 if __name__ == '__main__':
     # cmd()
     def test():
+        import logging
+        #logging.basicConfig(level=logging.DEBUG)
         import cv2
-        i = r"C:\Users\alexa\OneDrive\Dokumenter\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
-        i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
+        #i = r"C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
+        #i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
 
-        img = cv2.imread(i)
-        ffs = img.copy()
-        rects = locate_text(ffs, debug=True)
+        #img = cv2.imread(i)
+        #ffs = img.copy()
+        #rects = locate_text(ffs, debug=True)
+        #locate_text2(img, debug=True, width=320, height=320, confedence_tresh=0.8, nms_treshhold=0.1)
 
-        f = fill_rects(img, rects)
-        cv2.imshow('ass', f)
-        cv2.waitKey(0)
+        out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
+        t = find_credits(out, offset=0, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
+        print(t)
 
-    # test()
+
+
+        #f = fill_rects(img, rects)
+        #cv2.imshow('ass', f)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+
+    #test()
