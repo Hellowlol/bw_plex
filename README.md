@@ -28,7 +28,7 @@ or using a docker ```docker pull hellowlol/bw_plex```
 
 ## Usage
 CPU/Memory usage can be rather high, so use a 64 bit python install.
-Note: This tool only works on your local network.
+**Note:** This tool only works on your local network.
 
 ```
 Usage: bw_plex
@@ -64,14 +64,12 @@ Commands:
 You can read the help for the subcommands using --help:
 ```bw_plex export_db --help```
 
-The most common will be:
-```bw_plex watch --url "http://....." -t "aaabb" ``` you can skip the url and token flags if you edit the config
+The most common command is:
+```bw_plex watch --url "http://....." -t "aaabb" ``` you can skip the url and token flags if you edit the config.ini
 
 ## Configuration File
 
-bw_plex automatically generates a default configuration file located at ```~/.config/bw_plex/config.ini```. Most of the entries have notes accompanying them explaining what each one does, and what thd options are.
-
-Here, you can save the URL of the Plex Server you're wanting to use, and more.
+bw_plex automatically generates a default configuration file located at ```~/.config/bw_plex/config.ini```. Most of the entries have notes accompanying them explaining what each one does, and what the options are.
 
 ## How it works:
 
