@@ -67,6 +67,12 @@ You can read the help for the subcommands using --help:
 The most common will be:
 ```bw_plex watch --url "http://....." -t "aaabb" ``` you can skip the url and token flags if you edit the config
 
+## Configuration File
+
+bw_plex automatically generates a default configuration file located at ```~/.config/bw_plex/config.ini```. Most of the entries have notes accompanying them explaining what each one does, and what thd options are.
+
+Here, you can save the URL of the Plex Server you're wanting to use, and more.
+
 ## How it works:
 
 Bw_plex listens for playing events using websocket. We download the first 10 minutes of that episode and/or the theme music from YouTube/tvtunes/Plex.
