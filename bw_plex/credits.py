@@ -48,6 +48,24 @@ NET = None
 EAST_MODEL = os.path.join(os.path.dirname(__file__), 'models', 'frozen_east_text_detection.pb')
 
 
+class DEBUG_STOP(Exception):
+    pass
+
+
+def crop_img(i, edge=0):
+    """ crop the image edge for every corner """
+    new_img = i.copy()
+    height = new_img.shape[0]
+    width = new_img.shape[1]
+
+    sh = int(height / 100 * edge)
+    sw = int(width / 100 * edge)
+    print('sh', sh)
+    print('sw', sw)
+
+    return new_img[sh:height - sh, sw:width - sw]
+
+
 def decode(scores, geometry, scoreThresh=0.5):
     # Stolen from https://github.com/opencv/opencv/blob/master/samples/dnn/text_detection.py
     detections = []
@@ -156,6 +174,9 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     frame = image
     # Stole this part from
     # the opencv example repo.
+    # crop the image as we dont want
+    # the logo etc
+    frame = crop_img(frame, edge=15)
 
     # Get frame height and width
     height_ = frame.shape[0]
@@ -173,7 +194,6 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     scores, geometry = NET.forward(features)
     t, _ = NET.getPerfProfile()
     label = 'Inference time: %.2f ms' % (t * 1000.0 / cv2.getTickFrequency())
-    # dunno wtf.
     boxes, confidences = decode(scores, geometry, confedence_tresh)
     indices = cv2.dnn.NMSBoxesRotated(boxes, confidences, confedence_tresh, nms_treshhold)
 
@@ -193,19 +213,69 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
         for j in range(4):
             p1 = (vertices[j][0], vertices[j][1])
             p2 = (vertices[(j + 1) % 4][0], vertices[(j + 1) % 4][1])
-            cv2.line(frame, p1, p2, (0, 255, 0), 1)
+            cv2.line(frame, p1, p2, (0, 255, 0), 4)
 
     # Display the frame
     if debug:
         # Put efficiency information
         cv2.putText(frame, label, (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv2.imshow(kWinName, frame)
-        cv2.waitKey(0)
+
+        k = cv2.waitKey(0) & 0xff
+        if k == 27:
+            raise DEBUG_STOP('kek')
 
     if isinstance(indices, tuple):
-        return False
+        return 0
     else:
-        return True
+        return len(indices)
+
+
+def check_movement(path, debug=True):
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    #k = np.zeros((3,3),np.uint8)
+    #fgbg = cv2.createBackgroundSubtractorGMG()
+    #fgbg = cv2.createBackgroundSubtractorMOG2(history=1, varThreshold=2, detectShadows=False)
+    #fgbg = cv2.createBackgroundSubtractorMOG()
+    # (int history=500, double dist2Threshold=400.0, bool detectShadows=true
+    fgbg = cv2.createBackgroundSubtractorKNN(1, 200, False)
+    frame = None
+    r_size = (640, 480)
+
+    for _, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=0,
+                                                               step=0, frame_range=False)):
+        if frame is not None:
+            fgmask = fgbg.apply(frame)
+            fgmask = cv2.erode(fgmask, kernel, iterations=20)
+            fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
+            fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, kernel)
+
+            if debug:
+                # Need to add a extra channel
+                m = cv2.cvtColor(fgmask, cv2.COLOR_GRAY2BGR)
+                # Resize so it easier to see them side by side.
+                m = cv2.resize(m, r_size)
+                f = cv2.resize(frame.copy(), r_size)
+                vis = np.concatenate((m, f), axis=1)
+
+                cv2.imshow('frame', vis)
+
+            k = cv2.waitKey(0) & 0xff
+            if k == 27:
+                break
+
+    #cv2.destroyAllWindows()
+
+
+def overlap():
+    # https://stackoverflow.com/questions/48477130/find-area-of-overlapping-rectangles-in-python-cv2-with-a-raw-list-of-points
+    pass
+
+
+def mask():
+    # apply black to a part of a image.
+    pass
 
 
 def locate_text(image, debug=False):
@@ -396,15 +466,33 @@ def find_credits(path, offset=0, fps=None, duration=None,
 
         for _, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
                                                                    step=step, frame_range=frame_range)):
-            # LOG.debug('progress %s', millisec / 1000)
-            if frame is not None:
-                recs = func(frame, debug=debug)
 
-                if recs:
-                    frames.append(millisec)
+            try:
+                # LOG.debug('progress %s', millisec / 1000)
+                if frame is not None:
+                    # recs = locate_text(frame, debug=True)
+                    recs = func(frame, debug=debug)
 
-                if check != -1 and len(frames) >= check:
-                    break
+                    # If we get 1 match we should verify.
+                    # now this is pretty harsh but we really
+                    # don't want false positives.
+                    if recs == 0:
+                        continue
+                    elif recs == 1:
+                        t = extract_text(frame)
+                        print(t)
+                        if t:
+                            frames.append(millisec)
+                    else:
+                        frames.append(millisec)
+
+                    if check != -1 and len(frames) >= check:
+                        break
+
+            except DEBUG_STOP:
+                break
+                if hasattr(cv2, 'destroyAllWindows'):
+                    cv2.destroyAllWindows()
 
         if frames:
             LOG.debug(frames)
@@ -490,16 +578,21 @@ if __name__ == '__main__':
         #ffs = img.copy()
         #rects = locate_text(ffs, debug=True)
         #locate_text2(img, debug=True, width=320, height=320, confedence_tresh=0.8, nms_treshhold=0.1)
-
-        out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
-        t = find_credits(out, offset=0, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
-        print(t)
+        out = r'C:\stuff\GUNDAM BUILD FIGHTERS TRY-Episode 1 - The Boy Who Calls The Wind (ENG sub)-M7fLOQXlPmE.mkv' # 21*60
+        #out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
+        #out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv'
+        t = find_credits(out, offset=21*60, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
+        #print(t)
+        #print(out)
+        #for z in check_movement(out):
+        #    print()
 
 
 
         #f = fill_rects(img, rects)
         #cv2.imshow('ass', f)
         #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
+        cv2.destroyAllWindows()
 
-    #test()
+
+    test()
