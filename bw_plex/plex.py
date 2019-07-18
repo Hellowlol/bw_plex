@@ -1025,7 +1025,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         # lets try, to proxy this but i dont have a lg to test with.
                         LOG.debug('Client hasnt a _baseurl enabling proxyThroughServer')
                         correct_client.proxyThroughServer()
-                except (requests.exceptions.ConnectionError):
+                except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL):
                     # Lets just skip this for now and some "clients"
                     # might be controllable but not support the /resources endpoint
                     # https://github.com/Hellowlol/bw_plex/issues/74
