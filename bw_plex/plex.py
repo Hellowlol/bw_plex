@@ -899,21 +899,23 @@ def check_file_access(m):
     # If the user has they can remove them using plex-cli.
     for file in files:
         if os.path.exists(file.file):
-            LOG.debug('Found %s', file.file)
+            LOG.debug('Found %s directly', file.file)
             return file.file
         elif CONFIG.get('remaps', []):
             for key, value in CONFIG.get('remaps').items():
                 fp = file.file.replace(key, value)
                 if os.path.exists(fp):
-                    LOG.debug('Found %s', fp)
+                    LOG.debug('Found %s using path rempas', fp)
                     return fp
-        else:
-            LOG.warning('Downloading from pms..')
-            try:
-                # for plexapi 3.0.6 and above.
-                return PMS.url('%s?download=1' % file.key, includeToken=True)
-            except TypeError:
-                return PMS.url('%s?download=1' % file.key)
+    else:
+        LOG.warning('Downloading from pms..')
+        try:
+            # for plexapi 3.0.6 and above.
+            return PMS.url('%s?download=1' % files[0].key, includeToken=True)
+        except TypeError:
+            return PMS.url('%s?download=1' % files[0].key)
+
+    LOG.debug('this should not be in log')
 
 
 @log_exception
