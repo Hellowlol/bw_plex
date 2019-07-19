@@ -53,15 +53,12 @@ class DEBUG_STOP(Exception):
 
 
 def crop_img(i, edge=0):
-    """ crop the image edge for every corner """
+    """ crop the image edge % pr side."""
     new_img = i.copy()
     height = new_img.shape[0]
     width = new_img.shape[1]
-
     sh = int(height / 100 * edge)
     sw = int(width / 100 * edge)
-    print('sh', sh)
-    print('sw', sw)
 
     return new_img[sh:height - sh, sw:width - sw]
 
@@ -71,7 +68,7 @@ def decode(scores, geometry, scoreThresh=0.5):
     detections = []
     confidences = []
 
-    ############ CHECK DIMENSIONS AND SHAPES OF geometry AND scores ############
+    #CHECK DIMENSIONS AND SHAPES OF geometry AND scores #
     assert len(scores.shape) == 4, "Incorrect dimensions of scores"
     assert len(geometry.shape) == 4, "Incorrect dimensions of geometry"
     assert scores.shape[0] == 1, "Invalid dimensions of scores"
@@ -137,11 +134,16 @@ def make_imgz(afile, start=600, dest=None, fps=1):
 
     # fix me
     subprocess.call(cmd)
-    print(dest)
     return dest
 
 
 def extract_text(img, lang='eng', encoding='utf-8'):
+    """Very simple way to find the text in a image, it don't work work well for
+       natural scene images but it good enoght for clean frames like credits.
+
+       Ideally we should prop set some roi, but cba for now.
+
+    """
     if pytesseract is None:
         return
 
@@ -172,10 +174,10 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
         image = cv2.imread(image)
 
     frame = image
-    # Stole this part from
-    # the opencv example repo.
+
     # crop the image as we dont want
-    # the logo etc
+    # the logo and burnt in subs.
+    # Maybe this edge needs to be a config option # TODO
     frame = crop_img(frame, edge=15)
 
     # Get frame height and width
@@ -232,6 +234,7 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
 
 
 def check_movement(path, debug=True):
+    """Nothing usefull atm. TODO"""
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     #k = np.zeros((3,3),np.uint8)
@@ -269,12 +272,8 @@ def check_movement(path, debug=True):
 
 
 def overlap():
+    # TODO
     # https://stackoverflow.com/questions/48477130/find-area-of-overlapping-rectangles-in-python-cv2-with-a-raw-list-of-points
-    pass
-
-
-def mask():
-    # apply black to a part of a image.
     pass
 
 
@@ -480,7 +479,7 @@ def find_credits(path, offset=0, fps=None, duration=None,
                         continue
                     elif recs == 1:
                         t = extract_text(frame)
-                        print(t)
+                        #print(t)
                         if t:
                             frames.append(millisec)
                     else:
@@ -569,30 +568,30 @@ if __name__ == '__main__':
     # cmd()
     def test():
         import logging
-        #logging.basicConfig(level=logging.DEBUG)
+        # logging.basicConfig(level=logging.DEBUG)
         import cv2
-        #i = r"C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
-        #i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
+        # i = r"C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
+        # i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
 
-        #img = cv2.imread(i)
-        #ffs = img.copy()
-        #rects = locate_text(ffs, debug=True)
-        #locate_text2(img, debug=True, width=320, height=320, confedence_tresh=0.8, nms_treshhold=0.1)
+        # img = cv2.imread(i)
+        # ffs = img.copy()
+        # rects = locate_text(ffs, debug=True)
+        # locate_text2(img, debug=True, width=320, height=320, confedence_tresh=0.8, nms_treshhold=0.1)
         out = r'C:\stuff\GUNDAM BUILD FIGHTERS TRY-Episode 1 - The Boy Who Calls The Wind (ENG sub)-M7fLOQXlPmE.mkv' # 21*60
-        #out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
-        #out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv'
+        # out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
+        # out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv'
         t = find_credits(out, offset=21*60, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
-        #print(t)
-        #print(out)
-        #for z in check_movement(out):
-        #    print()
+        # print(t)
+        # print(out)
+        # for z in check_movement(out):
+        #     print()
 
 
 
-        #f = fill_rects(img, rects)
-        #cv2.imshow('ass', f)
-        #cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # f = fill_rects(img, rects)
+        # cv2.imshow('ass', f)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
 
-    test()
+    # test()
