@@ -905,7 +905,7 @@ def check_file_access(m):
             for key, value in CONFIG.get('remaps').items():
                 fp = file.file.replace(key, value)
                 if os.path.exists(fp):
-                    LOG.debug('Found %s using path rempas', fp)
+                    LOG.debug('Found %s using path remaps', fp)
                     return fp
     else:
         LOG.warning('Downloading from pms..')
