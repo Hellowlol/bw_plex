@@ -476,7 +476,6 @@ def find_credits(path, offset=0, fps=None, duration=None,
                     # recs = locate_text(frame, debug=True)
                     recs = func(frame, debug=debug)
                     len_recs = len(recs)
-                    #print(len_recs)
 
                     # If we get 1 match we should verify.
                     # now this is pretty harsh but we really
@@ -485,7 +484,6 @@ def find_credits(path, offset=0, fps=None, duration=None,
                         continue
                     elif len_recs == 1:
                         t = extract_text(frame)
-                        #print(t)
                         if t:
                             frames.append(millisec)
                     else:
@@ -533,50 +531,7 @@ def fill_rects(image, rects):
     return image
 
 
-@click.command()
-@click.argument('path')
-@click.option('-c', type=float, default=0.0)
-@click.option('-d', '--debug', is_flag=True, default=False)
-@click.option('-p', '--profile', is_flag=True, default=False)
-@click.option('-o', '--offset', default=0, type=int)
-def cmd(path, c, debug, profile, offset):  # pragma: no cover
-
-    if os.path.isfile(path):
-        files = [path]
-    else:
-        files = glob.glob(path)
-
-    d = {}
-
-    for f in files:
-        if f.endswith(('.png', '.jpeg', '.jpg')):
-            filename = os.path.basename(f)
-            hit = re.search(r'(\d+)', filename)
-
-            t = locate_text(f, debug=debug)
-
-            if hit:
-                d[int(hit.group()) + offset] = (bool(t), filename)
-        else:
-            t = find_credits(f, offset=offset)
-
-        if c:
-            img = cv2.read_img(f, cv2.IMREAD_UNCHANGED)
-            height, width, _ = img.shape
-            t = calc_success(t, height, width)
-
-    if d:
-        click.echo('Image report')
-        for k, v in sorted(d.items()):
-            if v[0] is True:
-                color = 'green'
-            else:
-                color = 'red'
-            click.secho('%s %s %s %s' % (k, sec_to_hh_mm_ss(k), v[0], v[1]), fg=color)
-
-
 if __name__ == '__main__':
-    # cmd()
     def test():
         import logging
         # logging.basicConfig(level=logging.DEBUG)
