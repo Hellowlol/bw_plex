@@ -3,7 +3,8 @@ import shutil
 import subprocess
 import time
 
-from bw_plex import LOG
+from bw_plex import LOG, CONFIG
+from bw_plex.misc import check_real_file_access
 
 
 TYPES = {'cut': 0,
@@ -64,13 +65,12 @@ def dir_has_edl(path):
 
 def create_edl_path(path):
     """Convert a file with a ext to .edl ext."""
-    from bw_plex import CONFIG
     if not os.path.exists(path):
-        for key, value in CONFIG.get('remaps'):
-                fp = path.replace(key, value)
-                if os.path.exists(fp):
-                    path = fp
-                    break
+        for key, value in CONFIG.get('remaps', {}).items():
+            fp = path.replace(key, value)
+            if os.path.exists(fp):
+                path = fp
+                break
 
     f_without_ext = os.path.splitext(path)[0]
     edl_path = f_without_ext + '.edl'
@@ -80,6 +80,7 @@ def create_edl_path(path):
 def has_edl(path):
     """Check if we have a edl with the same name as the file."""
     # Check the the video file exist.
+    # This does not handle remaps atm # TODO
     if os.path.isfile(path):
         edl_path = create_edl_path(path)
 
@@ -152,7 +153,7 @@ def edl_to_metadata_file(path):
             else:
                 title = ''
 
-            mf.write(chapter_template % (int(l[0]) * 1000, int(l[1]) * 1000, title))
+            mf.write(chapter_template % (float(l[0]) * 1000, float(l[1]) * 1000, title))
 
     LOG.debug('Created a metadatafile %s', meta_name)
 
@@ -186,7 +187,11 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
 
     cmd = ['ffmpeg', '-i', path, '-i', mf_file, '-map_metadata', '1', '-codec', 'copy', outfile]
 
-    proc = subprocess.Popen(cmd)
+    LOG.debug('writing chapters to file using command %s' , ' '.join(cmd))
+
+    # Silence the output TODO
+    #proc = subprocess.Popen(cmd)
+    proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     code = proc.wait()
     if code != 0:
         LOG.debug('Failed to write_chapters_to_file %s', code)

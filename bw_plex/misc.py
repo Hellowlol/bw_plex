@@ -751,6 +751,17 @@ def choose(msg, items, attr):
     return result
 
 
+def check_real_file_access(path):
+    if os.path.exists(path):
+        return path
+
+    for key, value in CONFIG.get('remaps', {}).items():
+            fp = path.replace(key, value)
+            if os.path.exists(fp):
+                return fp
+
+
+
 if __name__ == '__main__':
     # print(search_tunes('Dexter', 1))
     print(find_offset_ffmpeg(r'X:\Breaking bad\Season 05\breaking.bad.s05e02.720p.hdtv.x264-orenji.mkv'))

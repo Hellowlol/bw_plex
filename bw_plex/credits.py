@@ -32,10 +32,12 @@ try:
 except ImportError:
     from PIL import Image
 
+# b g, r
 
-color = {'yellow': (255, 255, 0),
-         'red': (255, 0, 0),
-         'blue': (0, 0, 255),
+# (255, 0, 0)
+color = {'yellow': (0, 255, 255),
+         'red': (0, 0, 255),
+         'blue': (255, 0, 0),
          'lime': (0, 255, 0),
          'white': (255, 255, 255),
          'fuchsia': (255, 0, 255),
@@ -63,8 +65,9 @@ def crop_img(i, edge=0):
     return new_img[sh:height - sh, sw:width - sw]
 
 
-def decode(scores, geometry, scoreThresh=0.5):
+def decode(scores, geometry, scoreThresh=0.9999):
     # Stolen from https://github.com/opencv/opencv/blob/master/samples/dnn/text_detection.py
+    # scoreTresh is set insanely high as we dont want false positives.
     detections = []
     confidences = []
 
@@ -114,7 +117,12 @@ def decode(scores, geometry, scoreThresh=0.5):
             p3 = (-cosA * w + offset[0], sinA * w + offset[1])
             center = (0.5 * (p1[0] + p3[0]), 0.5 * (p1[1] + p3[1]))
             detections.append((center, (w, h), -1 * angle * 180.0 / math.pi))
+            # This should be the format for non rotation nms boxes
+            #detections.append([int(center[0]), int(center[1]), int(w), int(h)])
             confidences.append(float(score))
+
+    #print(detections)
+    #print(confidences)
 
     # Return detections and confidences
     return [detections, confidences]
@@ -160,7 +168,7 @@ def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no 
     return p > success
 
 
-def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh=0.999, nms_treshhold=0.1):
+def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh=0.5, nms_treshhold=0):
     import cv2
 
     global NET
@@ -196,26 +204,36 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     scores, geometry = NET.forward(features)
     t, _ = NET.getPerfProfile()
     label = 'Inference time: %.2f ms' % (t * 1000.0 / cv2.getTickFrequency())
-    boxes, confidences = decode(scores, geometry, confedence_tresh)
+    boxes, confidences = decode(scores, geometry)
+    print(confidences)
     indices = cv2.dnn.NMSBoxesRotated(boxes, confidences, confedence_tresh, nms_treshhold)
+    # Why the fuck dont you work??
+    # https://github.com/opencv/opencv/issues/12299
+    #indices = cv2.dnn.NMSBoxes(boxes, confidences, confedence_tresh, nms_treshhold)
+    locs = []
 
     if debug is False:
         if isinstance(indices, tuple):
-            return False
+            return []
         else:
-            return True
+            return indices
 
     for i in indices:
-        # get 4 corners of the rotated rect
         vertices = cv2.boxPoints(boxes[i[0]])
         # scale the bounding box coordinates based on the respective ratios
         for j in range(4):
             vertices[j][0] *= rW
             vertices[j][1] *= rH
-        for j in range(4):
-            p1 = (vertices[j][0], vertices[j][1])
-            p2 = (vertices[(j + 1) % 4][0], vertices[(j + 1) % 4][1])
-            cv2.line(frame, p1, p2, (0, 255, 0), 4)
+
+        box = np.int0(vertices)
+        cv2.drawContours(frame, [box], 0, color['blue'], 2)
+        locs.append([box])
+        # print(t)
+        # rects will do for now.
+        # for j in range(4):
+        #     p1 = (vertices[j][0], vertices[j][1])
+        #     p2 = (vertices[(j + 1) % 4][0], vertices[(j + 1) % 4][1])
+        #     cv2.line(frame, p1, p2, (0, 255, 0), 2)
 
     # Display the frame
     if debug:
@@ -225,12 +243,13 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
 
         k = cv2.waitKey(0) & 0xff
         if k == 27:
-            raise DEBUG_STOP('kek')
+            raise DEBUG_STOP
 
     if isinstance(indices, tuple):
-        return 0
+        return []
     else:
-        return len(indices)
+
+        return locs
 
 
 def check_movement(path, debug=True):
@@ -297,25 +316,13 @@ def locate_text(image, debug=False):
     if isinstance(image, str) and os.path.isfile(image):
         image = cv2.imread(image)
 
-    if debug:
-        cv2.imshow('original image', image)
-
     height, width, _ = image.shape
     mser = cv2.MSER_create(4, 10, 8000, 0.8, 0.2, 200, 1.01, 0.003, 5)
     # Convert to gray.
     grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    if debug:
-        cv2.imshow('grey', grey)
-
     # Pull out grahically overlayed text from a video image
     blur = cv2.GaussianBlur(grey, (3, 3), 0)
-    # test media blur
-    # blur = cv2.medianBlur(grey, 1)
-
-    if debug:
-        cv2.imshow('blur', blur)
-
     adapt_threshold = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                             cv2.THRESH_BINARY, 5, -25)
 
@@ -351,9 +358,6 @@ def locate_text(image, debug=False):
         cv2.rectangle(mask, (x - xscaleFactor, y - yscaleFactor),
                       (x + w + xscaleFactor, y + h + yscaleFactor),
                       color['white'], cv2.FILLED)
-
-    if debug:
-        cv2.imshow("Mask", mask)
 
     # Find contours in mask if bounding boxes overlap,
     # they will be joined by this function call
@@ -471,19 +475,23 @@ def find_credits(path, offset=0, fps=None, duration=None,
                 if frame is not None:
                     # recs = locate_text(frame, debug=True)
                     recs = func(frame, debug=debug)
+                    len_recs = len(recs)
+                    #print(len_recs)
 
                     # If we get 1 match we should verify.
                     # now this is pretty harsh but we really
                     # don't want false positives.
-                    if recs == 0:
+                    if len_recs == 0:
                         continue
-                    elif recs == 1:
+                    elif len_recs == 1:
                         t = extract_text(frame)
                         #print(t)
                         if t:
                             frames.append(millisec)
                     else:
                         frames.append(millisec)
+
+                    # check for motion here?
 
                     if check != -1 and len(frames) >= check:
                         break
@@ -516,8 +524,11 @@ def fill_rects(image, rects):
        https://gist.github.com/luipillmann/d76eb4f4eea0320bb35dcd1b2a4575ee
     """
     for rect in rects:
-        x, y, w, h = rect
-        cv2.rectangle(image, (x, y), (x + w, y + h), color['black'], cv2.FILLED)
+        try:
+            x, y, w, h = rect
+            cv2.rectangle(image, (x, y), (x + w, y + h), color['black'], cv2.FILLED)
+        except ValueError:
+            cv2.drawContours(image, rect, 0, color['black'], cv2.FILLED)
 
     return image
 
@@ -577,11 +588,11 @@ if __name__ == '__main__':
         # ffs = img.copy()
         # rects = locate_text(ffs, debug=True)
         # locate_text2(img, debug=True, width=320, height=320, confedence_tresh=0.8, nms_treshhold=0.1)
-        out = r'C:\stuff\GUNDAM BUILD FIGHTERS TRY-Episode 1 - The Boy Who Calls The Wind (ENG sub)-M7fLOQXlPmE.mkv' # 21*60
+        #out = r'C:\stuff\GUNDAM BUILD FIGHTERS TRY-Episode 1 - The Boy Who Calls The Wind (ENG sub)-M7fLOQXlPmE.mkv' # 21*60
         # out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
-        # out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv'
-        t = find_credits(out, offset=21*60, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
-        # print(t)
+        out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv'
+        t = find_credits(out, offset=0, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
+        print(t)
         # print(out)
         # for z in check_movement(out):
         #     print()
@@ -594,4 +605,4 @@ if __name__ == '__main__':
         # cv2.destroyAllWindows()
 
 
-    # test()
+    test()
