@@ -13,14 +13,14 @@ def test_locate_text():
     for f in sorted(files):
         if f.endswith(image_type):
             if 'fail' in f:
-                assert not credits.locate_text(f)
+                assert not len(credits.locate_text(f))
                 if f.endswith('blackbg_greentxt_1_fail.png'):
-                    assert credits.locate_text_east(f)
+                    assert len(credits.locate_text_east(f))
                 else:
-                    assert not credits.locate_text_east(f)
+                    assert not len(credits.locate_text_east(f))
             else:
-                assert credits.locate_text(f)
-                assert credits.locate_text_east(f)
+                assert len(credits.locate_text(f))
+                assert len(credits.locate_text_east(f))
 
 
 def test_extract_text():
