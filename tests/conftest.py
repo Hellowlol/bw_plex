@@ -1,13 +1,13 @@
 import os
 import shutil
 import sys
+import time
 import tempfile
 from datetime import datetime as DT
 
 
 from plexapi.video import Episode, Show, Movie
 from plexapi.media import MediaPart
-# from plexapi.compat import makedirs
 import pytest
 
 fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bw_plex')
@@ -17,8 +17,14 @@ sys.path.insert(1, fp)
 
 import bw_plex
 
-bw_plex.init(folder=os.path.join(tempfile.gettempdir(), 'bw_plex_test_root'), debug=True)
+TEST_ROOT = os.path.join(tempfile.gettempdir(), 'bw_plex_test_root')
 
+# Delete any old test this was this shit keeps filling my disks.
+# cba with travis.
+if 'TRAVIS' not in os.environ and os.path.exists(TEST_ROOT):
+    shutil.rmtree(TEST_ROOT)
+
+bw_plex.init(folder=os.path.join(tempfile.gettempdir(), 'bw_plex_test_root'), debug=True)
 
 # Do not remove these imports..
 import bw_plex.plex as plex

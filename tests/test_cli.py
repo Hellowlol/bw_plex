@@ -68,13 +68,20 @@ def test_check(episode, film, intro_file, cli_runner, tmpdir, monkeypatch, HT, m
     #plex.POOL.close()
     #plex.POOL.join()
 
+    # Lets try again is the added same shit
+    # as the the same info will come each tick.
+    rr = plex.check(data)
+    if rr is not None:
+      rr.get()
+
     with plex.session_scope() as se:
         assert se.query(plex.Processed).filter_by(ratingKey=episode.ratingKey).one()
 
         # lets check that we can export db shit too.
         tmp = str(tmpdir)
         res = cli_runner.invoke(plex.export_db, ['-f', 'json', '-fp', tmp, '-wf'])
-        print(res.output)
+        assert res.exit_code == 0
+        # print(res.output)
 
         fp = os.path.join(tmp, 'Processed.json')
         assert os.path.exists(fp)
@@ -176,71 +183,29 @@ def test_process(cli_runner, monkeypatch, episode, film, media, HT, intro_file, 
     monkeypatch.setattr(plex, 'find_next', lambda k: None)
 
     res = cli_runner.invoke(plex.process, ['-n', 'dexter', '-s', '1', '-t', '2'])
-    #print(res.output)
+    print(res.output)
 
     monkeypatch.setattr(plex, 'PMS', mf)
     res = cli_runner.invoke(plex.process, ['-n', 'Random', '-s', '1', '-sd'])
+    print(res.output)
 
 
 def test_add_theme_to_hashtable(cli_runner, monkeypatch, HT):
     # We just want to check that this doesnt blow up..
     monkeypatch.setattr(plex, 'get_hashtable', HT)
-    cli_runner.invoke(plex.add_theme_to_hashtable, [2, None])
+    ret = cli_runner.invoke(plex.add_theme_to_hashtable, [2, None])
+    assert ret.exit_code == 0
+
 
 
 def test_ffmpeg_process(cli_runner, intro_file):
     res = cli_runner.invoke(plex.ffmpeg_process, [intro_file])
     assert len(res.output)
+    assert res.exit_code == 0
     # In short we miss on this episode as we find the start of the theme, not the end.
     # correct value should be sec ~217.
     # we dont care about the result. This file is already test other places.
 
 
-def test_manually_correct_theme():
+def _test_manually_correct_theme():
     pass
-
-
-# Disable for now. Add this to test_check.
-def _test_timeline(intro_file, HT, monkeypatch, mocker, episode):
-
-    def fetchItem(i):
-        return episode
-    m = mocker.Mock()
-    m.fetchItem = fetchItem
-
-    monkeypatch.setitem(plex.CONFIG, 'theme_source', 'tvtunes')
-    monkeypatch.setattr(plex, 'check_file_access', lambda k: intro_file)
-    monkeypatch.setattr(plex, 'HT', HT)
-    monkeypatch.setattr(plex, 'PMS', m)
-    monkeypatch.setattr(plex, 'find_next', lambda k: None)
-
-    data = {"type": "timeline",
-            "size": 1,
-            "TimelineEntry": [{"identifier": "com.plexapp.plugins.library",
-                               "sectionID": 2,
-                               "itemID": 1337,
-                               "type": 4,
-                               "title": "Dexter S01 E01",
-                               "state": 0,
-                               "mediaState": "created",
-                               "queueSize": 8,
-                               "updatedAt": 1526744644}]
-    }
-
-    deleted_dict = {'type': 'timeline',
-                    'size': 1,
-                    'TimelineEntry': [{'identifier': 'com.plexapp.plugins.library',
-                                       'sectionID': 2,
-                                       'itemID': 2041,
-                                       'parentItemID': 2035,
-                                       'rootItemID': 2032,
-                                       'type': 4,
-                                       'title': '2 Broke Girls S01 E06',
-                                       'state': 9,
-                                       'metadataState': 'deleted',
-                                       'updatedAt': 1526859691}]}
-
-    plex.timeline(data)
-    plex.POOL.close()
-    plex.POOL.join()
-    assert len(HT.get_theme(episode))

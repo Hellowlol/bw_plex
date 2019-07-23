@@ -133,10 +133,6 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
     add_images = False
     edl_file = None
 
-    # Disable for now.
-    # if media.TYPE == 'movie':
-    #    return
-
     # This will download the theme and add it to
     # the hashtable if its missing
     if media.TYPE == 'episode' and theme is None:
@@ -252,7 +248,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
             except NoResultFound:
                 add_images = True
 
-    #if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') is True and add_images:
+    # if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') is True and add_images:
     #    img_hashes = []
         # Check this later TODO
         # for imghash, _, pos in hash_file(check_file_access(media)):  # Add config option of get frames ever n.
@@ -546,7 +542,7 @@ def ffmpeg_process(name, trim, dev, da, dv, pix_th, au_db):  # pragma: no cover
 @click.option('-t', default='scene marker', type=click.Choice(['cut', 'scene marker', 'mute', 'commercial break']),
               help='What type of edl is this')
 @click.option('-sp', '--save_path', default=None)
-def create_edl_from_db(t, save_path):
+def create_edl_from_db(t, save_path):  # pragma: no cover
     with session_scope() as se:
         db_items = se.query(Processed).all()
         for item in db_items:
@@ -878,7 +874,7 @@ def export_db(format, save_path, write_file, show_html):
             click.echo(t)
 
 
-def check_file_access(m):
+def check_file_access(m):  # pragma: no cover
     """Check if we can reach the file directly
        or if we have to download it via PMS.
 
@@ -1388,7 +1384,7 @@ if os.name != 'nt':
     signal.signal(signal.SIGHUP, shutdown_handler)
     signal.signal(signal.SIGINT, shutdown_handler)
 
-else:
+else:  # pragma: no cover
     signal.signal(signal.SIGINT, shutdown_handler)
 
 
@@ -1400,7 +1396,7 @@ def real_main():
     finally:
         pass
         # Make sure we save if we need it.
-        #if HT and HT.dirty:
+        # if HT and HT.dirty:
         #    HT.save()
 
 
