@@ -8,7 +8,6 @@ from datetime import datetime as DT
 from plexapi.video import Episode, Show, Movie
 from plexapi.media import MediaPart
 # from plexapi.compat import makedirs
-from sqlalchemy.orm.exc import NoResultFound
 import pytest
 
 fp = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bw_plex')
