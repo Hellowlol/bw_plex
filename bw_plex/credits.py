@@ -71,7 +71,7 @@ def decode(scores, geometry, scoreThresh=0.9999):
     detections = []
     confidences = []
 
-    #CHECK DIMENSIONS AND SHAPES OF geometry AND scores #
+    # CHECK DIMENSIONS AND SHAPES OF geometry AND scores #
     assert len(scores.shape) == 4, "Incorrect dimensions of scores"
     assert len(geometry.shape) == 4, "Incorrect dimensions of geometry"
     assert scores.shape[0] == 1, "Invalid dimensions of scores"
@@ -128,7 +128,7 @@ def decode(scores, geometry, scoreThresh=0.9999):
     return [detections, confidences]
 
 
-def make_imgz(afile, start=600, dest=None, fps=1):
+def make_imgz(afile, start=600, dest=None, fps=1):  # pragma: no cover
     """Helper to generate images."""
 
     dest_path = dest + '\out%d.jpg'
@@ -252,7 +252,7 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
         return locs
 
 
-def check_movement(path, debug=True):
+def check_movement(path, debug=True):  # pragma: no cover
     """Nothing usefull atm. TODO"""
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -287,13 +287,7 @@ def check_movement(path, debug=True):
             if k == 27:
                 break
 
-    #cv2.destroyAllWindows()
-
-
-def overlap():
-    # TODO
-    # https://stackoverflow.com/questions/48477130/find-area-of-overlapping-rectangles-in-python-cv2-with-a-raw-list-of-points
-    pass
+    # cv2.destroyAllWindows()
 
 
 def locate_text(image, debug=False):
@@ -513,7 +507,7 @@ def find_credits(path, offset=0, fps=None, duration=None,
     return start, end
 
 
-def fill_rects(image, rects):
+def fill_rects(image, rects):  # pragma: no cover
     """This is used to fill the rects (location of credits)
 
        The idea if to mask the credits so we can check if there is any background
