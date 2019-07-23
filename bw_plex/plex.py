@@ -285,7 +285,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 @click.option('--verify_ssl', '-vs', default=False, is_flag=True, help='Enable this to allow insecure connections to PMS')
 @click.option('--default_folder', '-df', default=None, help='Override for the default folder, typically used by dockers.')
 @click.option('--nice', '-n', default=None, type=int, help='Set niceness of the process.')
-def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder, nice):
+def cli(debug, username, password, servername, url, token, config, verify_ssl, default_folder, nice):  # pragma: no cover
     """ Entry point for the CLI."""
     global PMS
     global CONFIG
