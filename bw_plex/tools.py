@@ -9,7 +9,7 @@ from bw_plex.misc import to_time
 from bw_plex.db import session_scope, Reference_Frame
 
 
-def visulize_intro_from_hashes(videofile, hashes, pause=0.01, end=600):
+def visulize_intro_from_hashes(videofile, hashes, pause=0.01, end=600):  # pragma: no cover
     """Play the frames that maches the hashes."""
     import matplotlib.pyplot as plt
     import cv2
@@ -34,7 +34,7 @@ def visulize_intro_from_hashes(videofile, hashes, pause=0.01, end=600):
     plt.show()
 
 
-def play(first, pause=0.02, end=600, key=None):
+def play(first, pause=0.02, end=600, key=None):  # pragma: no cover
     """This is intended to be a player where the user add the video manually select what
        type reframe we should add to the db
 
@@ -157,7 +157,6 @@ def play(first, pause=0.02, end=600, key=None):
             se.add(rf)
 
     match_button.on_clicked(match_event)
-
 
     while cap.isOpened():
         if GOGO:
