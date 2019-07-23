@@ -18,9 +18,9 @@ import time  # For reporting progress time
 import docopt  # For command line interface
 import joblib  # for match
 
-import audfprint_analyze  # The actual analyzer class/code
-import audfprint_match  # Access to match functions, used in command line interface
-import hash_table  # My hash_table implementation
+from . import audfprint_analyze
+from . import audfprint_match #  Access to match functions, used in command line interface
+from . import hash_table  # My hash_table implementation
 
 
 def filename_list_iterator(filelist, wavdir, wavext, listflag):

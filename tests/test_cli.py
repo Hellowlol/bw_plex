@@ -192,15 +192,18 @@ def test_process(cli_runner, monkeypatch, episode, film, media, HT, intro_file, 
 
 def test_add_theme_to_hashtable(cli_runner, monkeypatch, HT):
     # We just want to check that this doesnt blow up..
-    monkeypatch.setattr(plex, 'get_hashtable', HT)
-    ret = cli_runner.invoke(plex.add_theme_to_hashtable, [2, None])
-    assert ret.exit_code == 0
+    def zomg():
+        return HT
+
+    monkeypatch.setattr(plex, 'get_hashtable', zomg)
+    res = cli_runner.invoke(plex.add_theme_to_hashtable, ['--threads', '2'])
+
+    assert res.exit_code == 0
 
 
 
 def test_ffmpeg_process(cli_runner, intro_file):
     res = cli_runner.invoke(plex.ffmpeg_process, [intro_file])
-    assert len(res.output)
     assert res.exit_code == 0
     # In short we miss on this episode as we find the start of the theme, not the end.
     # correct value should be sec ~217.

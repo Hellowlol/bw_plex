@@ -822,8 +822,7 @@ def add_theme_to_hashtable(threads, directory):
     def report(s):  # this shitty reporter they want sucks balls..
         pass  # print(s)
 
-    LOG.debug('Creating hashtable, this might take a while..')
-
+    LOG.debug('Creating hashtable, this might take a while.. adding %s files', len(all_files))
     multiproc_add(a, HT, iter(all_files), report, threads)
     if HT and HT.dirty:
         HT.save(FP_HASHES)
