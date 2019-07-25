@@ -205,11 +205,11 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     t, _ = NET.getPerfProfile()
     label = 'Inference time: %.2f ms' % (t * 1000.0 / cv2.getTickFrequency())
     boxes, confidences = decode(scores, geometry)
-    print(confidences)
+    # print(confidences)
     indices = cv2.dnn.NMSBoxesRotated(boxes, confidences, confedence_tresh, nms_treshhold)
     # Why the fuck dont you work??
     # https://github.com/opencv/opencv/issues/12299
-    #indices = cv2.dnn.NMSBoxes(boxes, confidences, confedence_tresh, nms_treshhold)
+    # indices = cv2.dnn.NMSBoxes(boxes, confidences, confedence_tresh, nms_treshhold)
     locs = []
 
     if debug is False:
