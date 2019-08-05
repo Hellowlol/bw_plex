@@ -368,40 +368,67 @@ def search_tunes(name, rk, url=None):
     # Thanks!
     LOG.debug('Searching search_tunes for %s using rk %s', name, rk)
 
-    titles = ['theme', 'opening', 'main title']
+    titles = ['theme', 'opening', 'main title', 'intro']
     baseurl = 'http://www.televisiontunes.com'
 
-    def real_url(url):
+
+    def check_valid(s, query):
+        txt = s.strip().split(' - ')
+        # So usauly show name - title
+        # sometime its also showname - main title - season
+        if len(txt) >= 2:
+            sname = txt[0].strip()
+            title = txt[1].strip()
+        else:
+            sname = txt[0].strip()
+            title = ''
+
+        if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
+            return True
+
+        return False
+
+    def real_url(url, check_name=None):
         res = requests.get(url)
         sub_soup = BeautifulSoup(res.text, 'html5lib')
+
+        # this is not used but lets leave it for now.
+        if check_name is not None:
+            title_name = sub_soup.find(id="ffx")
+            if not check_valid(title_name.text, check_name):
+                return ''
+
         link = sub_soup.find('a', id='download_song')
         return baseurl + link['href']
 
     result = defaultdict(list)
+    lis = []
 
     if url is None:
         res = requests.get('http://www.televisiontunes.com/search.php', params={'q': name})
-        LOG.debug(res.url)
         if res:
             soup = BeautifulSoup(res.text, 'html5lib')
-
             search_results = soup.select('div.jp-title > ul > li > a')
-            if search_results:
-                for sr in search_results:
-                    txt = sr.text.strip().split(' - ')
-                    if len(txt) == 2:
-                        sname = txt[0].strip()
-                        title = txt[1].strip()
-                    else:
-                        sname = txt[0].strip()
-                        title = ''
+            for sr in search_results:
+                txt = sr.text.strip().split(' - ')
 
-                    # Many of the themes is just listed with the theme names, atm we are rather strict by checking
-                    # if a valid word is in the title, this is omitted many times,
-                    # but we could check the read url and see if it was listed in
-                    # the id #ffx in baseurl + sr['href']
-                    if sname.lower() == name.lower() and title and any([i for i in titles if i and i.lower() in title.lower()]):
-                        result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(baseurl + sr['href']))
+                if len(txt) >= 2:
+                    sname = txt[0].strip()
+                    title = txt[1].strip()
+                else:
+                    sname = txt[0].strip()
+                    title = ''
+
+                if sname.lower() == name.lower() and title == '':
+                    lis.append(sr)
+
+                elif check_valid(' - '.join(txt), name):
+                    lis.append(sr)
+
+            for li in lis:
+                uri = real_url(baseurl + li['href'])
+                if uri:
+                    result['%s__%s__%s' % (name, rk, int(time.time()))].append(uri)
 
     if url and 'televisiontunes' in url:
         result['%s__%s__%s' % (name, rk, int(time.time()))].append(real_url(url))
