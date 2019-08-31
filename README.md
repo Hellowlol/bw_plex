@@ -19,6 +19,7 @@ A tool for skipping intro and outro for plex.
 - process on recently added.
 - control the client to skip intro/outro.
 - start next episode when the credits start.
+- create chapter for intro and outro
 
 ## Install
 You should install this from github as this project isnt stable.
