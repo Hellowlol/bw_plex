@@ -500,7 +500,6 @@ def find_credits(path, offset=0, fps=None, duration=None,
                     cv2.destroyAllWindows()
 
         if frames:
-            LOG.debug(frames)
             start = min(frames) / 1000
             end = max(frames) / 1000
 
