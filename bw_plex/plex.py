@@ -48,25 +48,25 @@ if not is_64bit:  # pragma: no cover
 
 
 def shutdown_handler(sig, stack):  # pragma: no cover
-    LOG.debug('Got a signal %s doing some '
+    LOG.info('Got a signal %s doing some '
               'cleanup before shutting down', sig)
 
     # The events sets method shutsdown
     # the ws connection.
     EVENT.set()
-    LOG.debug('Shutting down ws connection')
+    LOG.info('Shutting down ws connection')
 
     # Make sure we save the hashtable.
     global HT
     if HT and HT.dirty:
-        LOG.debug('Saving the hashtable')
+        LOG.info('Saving the hashtable')
         HT.save()
 
     # We just terminate the damn pool as
     # some of the stuff we are doing can take a really long time,
     # might be ffmpeg that is hugging it or something. dunno, idk.
     POOL.terminate()
-    LOG.debug('Shutting down the POOL')
+    LOG.info('Shutting down the POOL')
     raise SystemExit('Goodbye')
 
 
@@ -1379,6 +1379,7 @@ def set_manual_theme_time(showname, season, episode, type, start, end):  # pragm
 
 
 if os.name != 'nt':
+    LOG.info('Added signal handler.')
     signal.signal(signal.SIGTERM, shutdown_handler)
     signal.signal(signal.SIGHUP, shutdown_handler)
     signal.signal(signal.SIGINT, shutdown_handler)

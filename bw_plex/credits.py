@@ -1,12 +1,9 @@
 from __future__ import division
 
-import glob
 import math
 import os
 import subprocess
-import re
 
-import click
 import numpy as np
 
 from bw_plex import LOG
@@ -52,6 +49,15 @@ EAST_MODEL = os.path.join(os.path.dirname(__file__), 'models', 'frozen_east_text
 
 class DEBUG_STOP(Exception):
     pass
+
+
+def check_stop_in_credits(value, cutoff=1500):
+    """Helper to check if the credits are consecutive."""
+    for i, v in enumerate(np.diff(value, n=1).tolist()):
+        if v > cutoff:
+            return i, v
+
+    return None, None
 
 
 def crop_img(i, edge=0):
