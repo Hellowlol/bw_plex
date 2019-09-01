@@ -1273,7 +1273,7 @@ def check(data):
             with session_scope() as se:
                 try:
                     item = se.query(Processed).filter_by(ratingKey=ratingkey).one()
-                    item.delete()
+                    se.delete(item)
                     LOG.debug('%s was deleted from %s and from media.db', title, PMS.friendlyName)
                 except NoResultFound:
                     LOG.debug('%s was deleted from %s', title, PMS.friendlyName)
