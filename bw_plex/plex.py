@@ -1055,7 +1055,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     correct_client.pc.disconnect(timeout=10)
 
             else:
-                if not ignore_ratingkey(media, CONFIG['general'].get('ignore_intro_ratingkeys')):
+                if not ignore_ratingkey(media, CONFIG['general'].get('ignore_outro_ratingkeys')):
                     if client.product != 'Chromecast':
                         proxy_on_fail(correct_client.stop())
                     else:
