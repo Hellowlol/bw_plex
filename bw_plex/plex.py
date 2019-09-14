@@ -49,7 +49,7 @@ if not is_64bit:  # pragma: no cover
 
 def shutdown_handler(sig, stack):  # pragma: no cover
     LOG.info('Got a signal %s doing some '
-              'cleanup before shutting down', sig)
+             'cleanup before shutting down', sig)
 
     # The events sets method shutsdown
     # the ws connection.
@@ -369,7 +369,7 @@ def check_db(client_name, skip_done):  # pragma: no cover
                 click.echo('Exists in the db but the start of the theme was not found.'
                            ' Check the audio file and run it again. Use cmd manually_correct_theme')
 
-            if item.theme_end != -1:
+            if item.theme_end != -1 and item.type == "episode":
 
                 if (not skip_done and item.correct_theme_start) or not item.correct_theme_start:
 
