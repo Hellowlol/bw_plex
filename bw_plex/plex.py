@@ -1148,6 +1148,7 @@ def check(data):
         ratingkey = int(sess.get('ratingKey'))
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
+        duration = sess.get('duration', 0) / 1000  # converted to sec
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
         no_wait_tick = CONFIG['general'].get('no_wait_tick', 5)
 
@@ -1197,14 +1198,28 @@ def check(data):
                               to_time(progress), to_time(bt), item.credits_start_str, item.credits_end_str)
 
                     if (item.type == 'episode' and CONFIG['tv'].get('check_credits') is True and
-                        CONFIG['tv'].get('check_credits_action') == 'stop' or
+                        CONFIG['tv'].get('check_credits_action') in ('stop', 'seek') or
                         item.type == 'movie' and CONFIG['movie'].get('check_credits') is True and
                         CONFIG['movie'].get('check_credits_action') == 'stop'):
 
                         # todo check for correct credits too
                         if item.credits_start and item.credits_start != -1 and progress >= item.credits_start:
                             LOG.debug('We found the start of the credits.')
-                            return jump(item, sessionkey, item.credits_start, action='stop')
+
+                            if item.type == 'episode':
+                                act = CONFIG['tv'].get('check_credits_action')
+
+                                if act == 'seek':
+                                    # Seek until the end so the playback for next time start
+                                    # This is only to get the countdown in the client
+                                    act_to_time = duration
+                                else:
+                                    act_to_time = item.credits_start + CONFIG['tv'].get('credits_delay', 0)
+                            else:
+                                act = CONFIG['movie'].get('check_credits_action')
+                                act_to_time = item.credits_start + CONFIG['movie'].get('credits_delay', 0)
+
+                            return jump(item, sessionkey, act_to_time, action=act)
 
                     # Let's try to not wait for the next tick.
                     progress = progress + no_wait_tick

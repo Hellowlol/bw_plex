@@ -41,11 +41,12 @@ password = string(default='')
 # This lets bw_plex know that its suppose to analyze the video for credits
 check_credits = boolean(default=False)
 # Setting this to 'stop' will stop playback when credits starts.
-check_credits_action = string(default='')
+# if set to seek it will
+check_credits_action = option('', 'seek', 'stop', default='')
 # This will start the next available episode
 ## NOTE: check_credits_action need to be `stop` for this to work.
 check_credits_start_next_ep = boolean(default=True)
-
+credits_delay = integer(default=0)
 check_credits_sec = integer(default=120)
 check_for_theme_sec = integer(default=600, min=300, max=600)
 check_intro_ffmpeg_sec = integer(default=600)
@@ -62,6 +63,7 @@ create_chapters = boolean(default=False)
 check_credits = boolean(default=False)
 check_credits_action = string(default='')
 check_credits_sec = integer(default=600)
+credits_delay = integer(default=0)
 check_intro_ffmpeg_sec = integer(default=600)
 process_recently_added = boolean(default=False)
 process_deleted = boolean(default=False)
