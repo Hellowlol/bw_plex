@@ -28,8 +28,7 @@ or using a docker ```docker pull hellowlol/bw_plex```
 
 
 ## Usage
-CPU/Memory usage can be rather high, so use a 64 bit python install.
-**Note:** This tool only works on your local network.
+**Note:** This tool only works on your local network and use a 64 bit python install.
 
 ```
 Usage: bw_plex
@@ -67,6 +66,10 @@ You can read the help for the subcommands using --help:
 
 The most common command is:
 ```bw_plex watch --url "http://....." -t "aaabb" ``` you can skip the url and token flags if you edit the config.ini
+
+## Resources
+
+The memory usage and especially the CPU can get very high. If you running bw_plex in a docker on a shared server consider adding resource constraints. For simple cpu constraints you can set the niceness with the nice flag `bw_plex --nice nicenesslevel command` 
 
 ## Configuration File
 
