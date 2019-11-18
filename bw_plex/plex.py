@@ -1148,7 +1148,6 @@ def check(data):
         ratingkey = int(sess.get('ratingKey'))
         sessionkey = int(sess.get('sessionKey'))
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
-        duration = sess.get('duration', 0) / 1000  # converted to sec
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
         no_wait_tick = CONFIG['general'].get('no_wait_tick', 5)
 
@@ -1212,7 +1211,7 @@ def check(data):
                                 if act == 'seek':
                                     # Seek until the end so the playback for next time start
                                     # This is only to get the countdown in the client
-                                    act_to_time = duration
+                                    act_to_time = item.duration / 1000
                                 else:
                                     act_to_time = item.credits_start + CONFIG['tv'].get('credits_delay', 0)
                             else:
