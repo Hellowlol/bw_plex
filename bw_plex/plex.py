@@ -34,8 +34,12 @@ from bw_plex.misc import (analyzer, choose, find_next, find_offset_ffmpeg, find_
 from bw_plex.hashing import hash_file, create_imghash
 
 
+# Serves as simple locks so we dont start processing stuff
+# over and over again on each websocket tick and the user can seek
+# manually if bw_plex misses on the theme or credits.
 IN_PROG = []
 JUMP_LIST = []
+CREDITS_LIST = []
 SHOWS = {}
 HT = None
 # Just we can kill the watch
@@ -924,7 +928,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
        Returns:
             None
     """
-    global JUMP_LIST
+    global JUMP_LIST, CREDITS_LIST
     # Some of this stuff take so time.
     # so we use this to try fix the offset
     # as this is given to client_action as a parameter.
@@ -1134,9 +1138,44 @@ def task(item, sessionkey):
         process_to_db(nxt)
 
 
-def check(data):
-    global JUMP_LIST
+def best_time(item):
+    """Find the best time in the db."""
+    if item.type == 'episode' and item.correct_theme_end and item.correct_theme_end != 1:
+        sec = item.correct_theme_end
 
+    elif item.correct_ffmpeg and item.correct_ffmpeg != 1:
+        sec = item.correct_ffmpeg
+
+    elif item.type == 'episode' and item.theme_end and item.theme_end != -1:
+        sec = item.theme_end
+
+    elif item.ffmpeg_end and item.ffmpeg_end != -1:
+        sec = item.ffmpeg_end
+
+    else:
+        sec = -1
+
+    return sec
+
+
+def jump(item, sessionkey, sec=None, action=None):  # pragma: no cover
+
+    if sec is None:
+        sec = best_time(item)
+
+    if action and sessionkey not in CREDITS_LIST:
+        CREDITS_LIST.append(sessionkey)
+        POOL.apply_async(client_action, args=(sec, sessionkey, action))
+        return
+
+    if action is None and sessionkey not in JUMP_LIST:
+        LOG.debug('Called jump with %s %s %s %s', item.prettyname,
+                  sessionkey, sec, action)
+        JUMP_LIST.append(sessionkey)
+        POOL.apply_async(client_action, args=(sec, sessionkey, action))
+
+
+def check(data):
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
 
@@ -1150,40 +1189,8 @@ def check(data):
         progress = sess.get('viewOffset', 0) / 1000  # converted to sec.
         mode = CONFIG['general'].get('mode', 'skip_only_theme')
         no_wait_tick = CONFIG['general'].get('no_wait_tick', 5)
-
-        def best_time(item):
-            """Find the best time in the db."""
-            if item.type == 'episode' and item.correct_theme_end and item.correct_theme_end != 1:
-                sec = item.correct_theme_end
-
-            elif item.correct_ffmpeg and item.correct_ffmpeg != 1:
-                sec = item.correct_ffmpeg
-
-            elif item.type == 'episode' and item.theme_end and item.theme_end != -1:
-                sec = item.theme_end
-
-            elif item.ffmpeg_end and item.ffmpeg_end != -1:
-                sec = item.ffmpeg_end
-
-            else:
-                sec = -1
-
-            return sec
-
-        def jump(item, sessionkey, sec=None, action=None):  # pragma: no cover
-
-            if sec is None:
-                sec = best_time(item)
-
-            if action:
-                POOL.apply_async(client_action, args=(sec, sessionkey, action))
-                return
-
-            if sessionkey not in JUMP_LIST:
-                LOG.debug('Called jump with %s %s %s %s', item.prettyname,
-                          sessionkey, sec, action)
-                JUMP_LIST.append(sessionkey)
-                POOL.apply_async(client_action, args=(sec, sessionkey, action))
+        # Let's try to not wait for the next tick.
+        fake_progress = progress + no_wait_tick
 
         with session_scope() as se:
             try:
@@ -1191,10 +1198,10 @@ def check(data):
 
                 if item:
                     bt = best_time(item)
-                    LOG.debug('Found %s theme start %s, theme end %s, ffmpeg_end %s progress %s '
-                              'best_time %s credits_start %s credits_end %s', item.prettyname,
+                    LOG.debug('Found %s theme start %s, theme end %s, ffmpeg_end %s progress %s fake_progress %s'
+                              ' best_time %s credits_start %s credits_end %s', item.prettyname,
                               item.theme_start_str, item.theme_end_str, item.ffmpeg_end_str,
-                              to_time(progress), to_time(bt), item.credits_start_str, item.credits_end_str)
+                              to_time(progress), to_time(fake_progress), to_time(bt), item.credits_start_str, item.credits_end_str)
 
                     if (item.type == 'episode' and CONFIG['tv'].get('check_credits') is True and
                         CONFIG['tv'].get('check_credits_action') in ('stop', 'seek') or
@@ -1202,12 +1209,11 @@ def check(data):
                         CONFIG['movie'].get('check_credits_action') == 'stop'):
 
                         # todo check for correct credits too
-                        if item.credits_start and item.credits_start != -1 and progress >= item.credits_start:
+                        if item.credits_start and item.credits_start != -1 and fake_progress >= item.credits_start:
                             LOG.debug('We found the start of the credits.')
 
                             if item.type == 'episode':
                                 act = CONFIG['tv'].get('check_credits_action')
-
                                 if act == 'seek':
                                     # Seek until the end so the playback for next time start
                                     # This is only to get the countdown in the client
@@ -1220,9 +1226,6 @@ def check(data):
 
                             return jump(item, sessionkey, act_to_time, action=act)
 
-                    # Let's try to not wait for the next tick.
-                    progress = progress + no_wait_tick
-
                     # If recap is detected just instantly skip to intro end.
                     # Now this can failed is there is: recap, new episode stuff, intro, new episode stuff
                     # So thats why skip_only_theme is default as its the safest option.
@@ -1233,12 +1236,12 @@ def check(data):
                     if mode == 'skip_only_theme':
                         # For manual corrected themes..
                         if item.type == 'episode' and item.correct_theme_end and item.correct_theme_start:
-                            if progress > item.correct_theme_start and progress < item.correct_theme_end:
+                            if fake_progress > item.correct_theme_start and fake_progress < item.correct_theme_end:
                                 LOG.debug('%s is in the correct time range correct_theme_end', item.prettyname)
                                 return jump(item, sessionkey, item.correct_theme_end)
 
                         elif item.type == 'episode' and item.theme_end and item.theme_start:
-                            if progress > item.theme_start and progress < item.theme_end:
+                            if fake_progress > item.theme_start and fake_progress < item.theme_end:
                                 LOG.debug('%s is in the correct time range theme_end', item.prettyname)
                                 return jump(item, sessionkey, item.theme_end)
 
