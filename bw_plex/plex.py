@@ -607,7 +607,7 @@ def add_hash_frame(name, dur, sample):  # pragma: no cover
             for season in show.seasons():
                 try:
                     all_items.extend(season.episodes()[:sample])
-                except: # pragma: no cover
+                except:  # pragma: no cover
                     pass
     try:
         # This might take a while so lets make it easy to interupt.
@@ -1085,15 +1085,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     if correct_client.platform == 'Chromecast':
                         correct_client.pc.disconnect(timeout=10)
 
-        #else:
-        #    LOG.info('Didnt find the correct client.')
-
-    # The jump list is comment out because if it
-    # wasnt the user cant jump back if we miss.
-    # bw_plex will just keep jumping to best time
-    # over and over again.
-    # JUMP_LIST.remove(sessionkey)
-
 
 @log_exception
 def task(item, sessionkey):
@@ -1408,13 +1399,8 @@ else:  # pragma: no cover
 def real_main():
     try:
         cli()
-    except: # pragma: no cover
+    except:  # pragma: no cover
         raise
-    finally:
-        pass
-        # Make sure we save if we need it.
-        # if HT and HT.dirty:
-        #    HT.save()
 
 
 if __name__ == '__main__':
