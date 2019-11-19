@@ -97,6 +97,12 @@ def migrate(conf):
 
         del conf['general']['level']
 
+    for section in ['movie', 'tv']:
+        for old_key in ['create_edl, edl_action_type']:
+            if old_key in conf[section]:
+                del conf[section][old_key]
+
+
     return conf
 
 

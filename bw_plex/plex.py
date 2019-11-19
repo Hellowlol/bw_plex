@@ -217,6 +217,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               has_recap=recap,
                               location=location
                               )
+                se.add(p)
+                LOG.debug('Added %s to media.db', name)
 
             elif media.TYPE == 'movie' and CONFIG.get('movie', {}).get('create_chapters', False) is True:
                 p = Processed(title=media.title,
@@ -233,9 +235,8 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               updatedAt=media.updatedAt,
                               location=location
                               )
-
-            se.add(p)
-            LOG.debug('Added %s to media.db', name)
+                se.add(p)
+                LOG.debug('Added %s to media.db', name)
 
             if CONFIG['movie']['create_chapters'] and media.TYPE == 'movie':
                 edl.write_chapters_to_file(check_file_access(media), edl.db_to_edl(p))
