@@ -218,7 +218,7 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
                               location=location
                               )
 
-            elif media.TYPE == 'movie':
+            elif media.TYPE == 'movie' and CONFIG.get('movie', {}).get('create_chapters', False) is True:
                 p = Processed(title=media.title,
                               type=media.TYPE,
                               ffmpeg_end=ffmpeg_end,
@@ -236,21 +236,20 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
 
             se.add(p)
             LOG.debug('Added %s to media.db', name)
-            if media.TYPE == 'movie' and CONFIG['movie']['create_edl']:
-                    edl_file = edl.write_edl(location, edl.db_to_edl(p,
-                                                                     type=CONFIG['movie']['edl_action_type']))
 
-            elif media.TYPE == 'episode' and CONFIG['tv']['create_edl']:
-                edl_file = edl.write_edl(location, edl.db_to_edl(p, type=CONFIG['tv']['edl_action_type']))
+            if CONFIG['movie']['create_chapters'] and media.TYPE == 'movie':
+                edl.write_chapters_to_file(check_file_access(media), edl.db_to_edl(p))
+            elif CONFIG['tv']['create_chapters'] and media.TYPE == 'episode':
+                edl.write_chapters_to_file(check_file_access(media), edl.db_to_edl(p))
 
-        if media.TYPE == 'episode':
-            try:
+        #if media.TYPE == 'episode':
+        #    try:
                 # since it will check every ep if will download hashes from every ep. We might get
                 # away with just checking 2-4 eps. Should this be a config option?
                 # we could checkfor grandparentkey and see if we have the required amount
-                se.query(Images).filter_by(ratingKey=media.ratingKey).one()
-            except NoResultFound:
-                add_images = True
+        #        se.query(Images).filter_by(ratingKey=media.ratingKey).one()
+        #    except NoResultFound:
+        #        add_images = True
 
     # if media.TYPE == 'episode' and CONFIG.get('hashing').get('check_frames') is True and add_images:
     #    img_hashes = []
@@ -267,11 +266,6 @@ def process_to_db(media, theme=None, vid=None, start=None, end=None, ffmpeg_end=
         #with session_scope() as ssee:
         #    ssee.add_all(img_hashes)
 
-    if edl_file:
-        if CONFIG['movie']['create_chapters'] and media.TYPE == 'movie':
-            edl.write_chapters_to_file(check_file_access(media), edl_file)
-        elif CONFIG['tv']['create_chapters'] and media.TYPE == 'episode':
-            edl.write_chapters_to_file(check_file_access(media), edl_file)
 
 
 @click.group(help='CLI tool that monitors pms and jumps the client to after the theme.')

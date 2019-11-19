@@ -3,8 +3,7 @@ import shutil
 import subprocess
 import time
 
-from bw_plex import LOG, CONFIG
-from bw_plex.misc import check_real_file_access
+from bw_plex import LOG
 
 
 TYPES = {'cut': 0,
@@ -17,7 +16,7 @@ TYPES.update(dict((v, k) for (k, v) in TYPES.items()))
 
 
 def db_to_edl(item, type=3):
-    elds = []
+    elds = {}
 
     # Add credits
     if (item.correct_theme_start and
@@ -25,100 +24,26 @@ def db_to_edl(item, type=3):
         item.correct_theme_end and
         item.correct_theme_end != -1):
 
-        elds.append([item.correct_theme_start,
-                     item.correct_theme_end,
-                     TYPES[type]])
+        elds["manual intro"] = [item.correct_theme_start, item.correct_theme_end, TYPES[type]]
 
     elif (item.theme_start and
           item.theme_start != -1 and
           item.theme_end and
           item.theme_end != -1):
 
-        elds.append([item.theme_start,
-                     item.theme_end,
-                     TYPES[type]])
+        elds["intro"] = [item.theme_start, item.theme_end, TYPES[type]]
 
     if (item.credits_start and
         item.credits_start != -1 and
         item.credits_end and
         item.credits_end != -1):
 
-        elds.append([item.credits_start,
-                     item.credits_end,
-                     TYPES[type]])
+        elds["credits"] = [item.credits_start, item.credits_end, TYPES[type]]
 
     return elds
 
 
-def dir_has_edl(path):
-    """reuse all folders in root to check if edl exists returns
-       a list off all edls or a empty list"""
-    edls = []
-    for root, _, files in os.walk(path):
-        for fil in files:
-            if fil.endswith('.edl'):
-                fp = os.path.join(root, fil)
-                edls.append(fp)
-
-    return edls
-
-
-def create_edl_path(path):
-    """Convert a file with a ext to .edl ext."""
-    if not os.path.exists(path):
-        for key, value in CONFIG.get('remaps', {}).items():
-            fp = path.replace(key, value)
-            if os.path.exists(fp):
-                path = fp
-                break
-
-    f_without_ext = os.path.splitext(path)[0]
-    edl_path = f_without_ext + '.edl'
-    return edl_path
-
-
-def has_edl(path):
-    """Check if we have a edl with the same name as the file."""
-    # Check the the video file exist.
-    # This does not handle remaps atm # TODO
-    if os.path.isfile(path):
-        edl_path = create_edl_path(path)
-
-        # Lets check if the edl exists if does we should edit it.
-        if os.path.isfile(edl_path):
-            # edit the damn edl
-            return edl_path
-        else:
-            return ''
-
-    return ''
-
-
-def write_edl(path, lines):
-    """Write a edl file.
-
-       path(str): path,
-       lines(list): [[1,2,3]]
-
-       return:
-            path.
-
-    """
-    if not len(lines):
-        return
-
-    path = create_edl_path(path)
-    try:
-        with open(path, 'w+') as f:
-            for line in lines:
-                f.write('%s\n' % '    '.join(str(i) for i in line))
-
-        return path
-    except FileNotFoundError:
-        LOG.error('Failed to write edl. Try adding a adding curret path to remaps in config')
-
-
-def edl_to_metadata_file(path):
+def edl_dict_to_metadata_file(path, eld):
     """Convert a .edl file to a ffmepg metadata file.
        This way we can add chapters to shows as this isnt suppored by plex
 
@@ -138,22 +63,10 @@ def edl_to_metadata_file(path):
 
     meta_name = os.path.splitext(path)[0] + '.metadata'
 
-    with open(path, 'rb') as e:
-        lines = e.readlines()
-        lines = [i.split() for i in lines if i]
-
     with open(meta_name, 'w') as mf:
-        last_en = len(lines) - 1
         mf.write(header)
-        for en, l in enumerate(lines):
-            if en == 0:
-                title = 'first'
-            elif en == last_en:
-                title = 'last'
-            else:
-                title = ''
-
-            mf.write(chapter_template % (float(l[0]) * 1000, float(l[1]) * 1000, title))
+        for key, value in eld.items():
+            mf.write(chapter_template % (float(value[0]) * 1000, float(value[1]) * 1000, key))
 
     LOG.debug('Created a metadatafile %s', meta_name)
 
@@ -176,10 +89,11 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
 
 
     """
-    if input_edl is None:
-        input_edl = has_edl(path)
 
-    mf_file = edl_to_metadata_file(input_edl)
+    if 'https://' or 'http://' in path:
+        LOG.debug("Can't add chapters to as we dont have access to the file on the file system")
+
+    mf_file = edl_dict_to_metadata_file(path, input_edl)
     mf_file = str(mf_file)
 
     outfile, ext = os.path.splitext(path)
@@ -187,10 +101,6 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
 
     cmd = ['ffmpeg', '-i', path, '-i', mf_file, '-map_metadata', '1', '-codec', 'copy', outfile]
 
-    LOG.debug('writing chapters to file using command %s' , ' '.join(cmd))
-
-    # Silence the output TODO
-    #proc = subprocess.Popen(cmd)
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     code = proc.wait()
     if code != 0:
@@ -210,8 +120,8 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
         os.remove(mf_file)
         LOG.debug('Deleted %s', mf_file)
 
+    LOG.debug('writing chapters to file using command %s', ' '.join(cmd))
+
     return path
 
 
-if __name__ == '__main__':
-    edl_to_metadata_file(r'C:\Users\alexa\.config\bw_plex\test.edl')
