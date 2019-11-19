@@ -81,24 +81,24 @@ def test_choose(monkeypatch, mocker):
         m.title = r
         l.append(m)
 
-    with mocker.patch('click.prompt', side_effect=['0']):
-        x = misc.choose('select', l, 'title')
-        assert x[0].title == 0
+    mocker.patch('click.prompt', side_effect=['0'])
+    x = misc.choose('select', l, 'title')
+    assert x[0].title == 0
 
     assert not len(misc.choose('select', [], 'title'))
 
-    with mocker.patch('click.prompt', side_effect=['-1']):
-        last = misc.choose('select', l, 'title')
-        assert last[0].title == 9
+    mocker.patch('click.prompt', side_effect=['-1'])
+    last = misc.choose('select', l, 'title')
+    assert last[0].title == 9
 
-    with mocker.patch('click.prompt', side_effect=['1,7']):
-        some = misc.choose('select', l, 'title')
-        assert some[0].title == 1
-        assert some[1].title == 7
+    mocker.patch('click.prompt', side_effect=['1,7'])
+    some = misc.choose('select', l, 'title')
+    assert some[0].title == 1
+    assert some[1].title == 7
 
-    with mocker.patch('click.prompt', side_effect=['1000', '-1:']):
-        some = misc.choose('select', l, 'title')
-        assert some[0].title == 9
+    mocker.patch('click.prompt', side_effect=['1000', '-1:'])
+    some = misc.choose('select', l, 'title')
+    assert some[0].title == 9
 
 
 def test_to_time():
