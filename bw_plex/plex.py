@@ -977,11 +977,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 LOG.info('User %s is not whitelisted', user)
                 return
 
-            # To stop processing. from func task if we have used to much time..
-            # This will not work if/when credits etc are added. Need a better way.
-            # if offset <= media.viewOffset / 1000:
-            #    LOG.debug('Didnt jump because of offset')
-            #    return
             if client.platform == 'Chromecast' and client.local:
                 LOG.debug('The client is a chromecast and on the local network.')
                 correct_client = client
@@ -993,8 +988,8 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                     cast.wait()
                     correct_client.pc = pc
                 else:
-                    LOG.debug('The client was a chromecast but we could get a plex controller '
-                              'and or the chromecast.')
+                    LOG.debug('The client was a chromecast but we couldnt get a plex controller '
+                              'and/or the chromecast.')
                     return
             else:
                 LOG.info('Checking if we cant find the correct client')
@@ -1047,7 +1042,8 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 else:
                     correct_client.pc.seek(calculated_offset)
 
-                LOG.info('Jumped %s %s to %s %s', user, client.title, calculated_offset, media._prettyfilename())
+                LOG.info('Seeked %s %s to %s %s %s', user, client.title,
+                         calculated_offset, to_time(calculated_offset), media._prettyfilename())
 
                 # We are done, disconnect
                 if correct_client.platform == 'Chromecast':
