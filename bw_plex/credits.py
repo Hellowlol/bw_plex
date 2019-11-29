@@ -14,15 +14,19 @@ try:
     import cv2
 except ImportError:
     cv2 = None
-    LOG.warning('Scanning for credits is not supported. '
-                'Install the package with pip install bw_plex[all] or bw_plex[video]')
+    LOG.warning(
+        "Scanning for credits is not supported. "
+        "Install the package with pip install bw_plex[all] or bw_plex[video]"
+    )
 
 try:
     import pytesseract
 except ImportError:
     pytesseract = None
-    LOG.warning('Extracting text from images is not supported. '
-                'Install the package with pip install bw_plex[all] or bw_plex[video]')
+    LOG.warning(
+        "Extracting text from images is not supported. "
+        "Install the package with pip install bw_plex[all] or bw_plex[video]"
+    )
 
 try:
     import Image
@@ -32,19 +36,22 @@ except ImportError:
 # b g, r
 
 # (255, 0, 0)
-color = {'yellow': (0, 255, 255),
-         'red': (0, 0, 255),
-         'blue': (255, 0, 0),
-         'lime': (0, 255, 0),
-         'white': (255, 255, 255),
-         'fuchsia': (255, 0, 255),
-         'black': (0, 0, 0)
-         }
+color = {
+    "yellow": (0, 255, 255),
+    "red": (0, 0, 255),
+    "blue": (255, 0, 0),
+    "lime": (0, 255, 0),
+    "white": (255, 255, 255),
+    "fuchsia": (255, 0, 255),
+    "black": (0, 0, 0),
+}
 
 
 NET = None
 
-EAST_MODEL = os.path.join(os.path.dirname(__file__), 'models', 'frozen_east_text_detection.pb')
+EAST_MODEL = os.path.join(
+    os.path.dirname(__file__), "models", "frozen_east_text_detection.pb"
+)
 
 
 class DEBUG_STOP(Exception):
@@ -68,7 +75,7 @@ def crop_img(i, edge=0):
     sh = int(height / 100 * edge)
     sw = int(width / 100 * edge)
 
-    return new_img[sh:height - sh, sw:width - sw]
+    return new_img[sh : height - sh, sw : width - sw]
 
 
 def decode(scores, geometry, scoreThresh=0.9999):
@@ -84,8 +91,12 @@ def decode(scores, geometry, scoreThresh=0.9999):
     assert geometry.shape[0] == 1, "Invalid dimensions of geometry"
     assert scores.shape[1] == 1, "Invalid dimensions of scores"
     assert geometry.shape[1] == 5, "Invalid dimensions of geometry"
-    assert scores.shape[2] == geometry.shape[2], "Invalid dimensions of scores and geometry"
-    assert scores.shape[3] == geometry.shape[3], "Invalid dimensions of scores and geometry"
+    assert (
+        scores.shape[2] == geometry.shape[2]
+    ), "Invalid dimensions of scores and geometry"
+    assert (
+        scores.shape[3] == geometry.shape[3]
+    ), "Invalid dimensions of scores and geometry"
     height = scores.shape[2]
     width = scores.shape[3]
     for y in range(0, height):
@@ -101,7 +112,7 @@ def decode(scores, geometry, scoreThresh=0.9999):
             score = scoresData[x]
 
             # If score is lower than threshold score, move to next x
-            if(score < scoreThresh):
+            if score < scoreThresh:
                 continue
 
             # Calculate offset
@@ -116,7 +127,10 @@ def decode(scores, geometry, scoreThresh=0.9999):
             w = x1_data[x] + x3_data[x]
 
             # Calculate offset
-            offset = ([offsetX + cosA * x1_data[x] + sinA * x2_data[x], offsetY - sinA * x1_data[x] + cosA * x2_data[x]])
+            offset = [
+                offsetX + cosA * x1_data[x] + sinA * x2_data[x],
+                offsetY - sinA * x1_data[x] + cosA * x2_data[x],
+            ]
 
             # Find points for rectangle
             p1 = (-sinA * h + offset[0], -cosA * h + offset[1])
@@ -124,11 +138,11 @@ def decode(scores, geometry, scoreThresh=0.9999):
             center = (0.5 * (p1[0] + p3[0]), 0.5 * (p1[1] + p3[1]))
             detections.append((center, (w, h), -1 * angle * 180.0 / math.pi))
             # This should be the format for non rotation nms boxes
-            #detections.append([int(center[0]), int(center[1]), int(w), int(h)])
+            # detections.append([int(center[0]), int(center[1]), int(w), int(h)])
             confidences.append(float(score))
 
-    #print(detections)
-    #print(confidences)
+    # print(detections)
+    # print(confidences)
 
     # Return detections and confidences
     return [detections, confidences]
@@ -137,21 +151,18 @@ def decode(scores, geometry, scoreThresh=0.9999):
 def make_imgz(afile, start=600, dest=None, fps=1):  # pragma: no cover
     """Helper to generate images."""
 
-    dest_path = dest + '\out%d.jpg'
-    fps = 'fps=%s' % fps
+    dest_path = dest + "\out%d.jpg"
+    fps = "fps=%s" % fps
     t = sec_to_hh_mm_ss(start)
 
-    cmd = [
-        'ffmpeg', '-ss', t, '-i',
-        afile, '-vf', fps, dest_path
-    ]
+    cmd = ["ffmpeg", "-ss", t, "-i", afile, "-vf", fps, dest_path]
 
     # fix me
     subprocess.call(cmd)
     return dest
 
 
-def extract_text(img, lang='eng', encoding='utf-8'):
+def extract_text(img, lang="eng", encoding="utf-8"):
     """Very simple way to find the text in a image, it don't work work well for
        natural scene images but it good enoght for clean frames like credits.
 
@@ -164,7 +175,7 @@ def extract_text(img, lang='eng', encoding='utf-8'):
     if isinstance(img, str):
         img = Image.open(img)
 
-    return pytesseract.image_to_string(img, lang=lang).encode(encoding, 'ignore')
+    return pytesseract.image_to_string(img, lang=lang).encode(encoding, "ignore")
 
 
 def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no cover
@@ -174,7 +185,9 @@ def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no 
     return p > success
 
 
-def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh=0.5, nms_treshhold=0):
+def locate_text_east(
+    image, debug=False, width=320, height=320, confedence_tresh=0.5, nms_treshhold=0
+):
     import cv2
 
     global NET
@@ -182,7 +195,7 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     if NET is None:
         NET = cv2.dnn.readNet(EAST_MODEL)
 
-    features = ['feature_fusion/Conv_7/Sigmoid', 'feature_fusion/concat_3']
+    features = ["feature_fusion/Conv_7/Sigmoid", "feature_fusion/concat_3"]
 
     if isinstance(image, str) and os.path.isfile(image):
         image = cv2.imread(image)
@@ -201,7 +214,9 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     rH = height_ / float(height)
 
     # Create a 4D blob from frame.
-    blob = cv2.dnn.blobFromImage(frame, 1.0, (width, height), (123.68, 116.78, 103.94), swapRB=True, crop=False)
+    blob = cv2.dnn.blobFromImage(
+        frame, 1.0, (width, height), (123.68, 116.78, 103.94), swapRB=True, crop=False
+    )
 
     # Run the model
     NET.setInput(blob)
@@ -209,10 +224,12 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
     # Get scores and geometry
     scores, geometry = NET.forward(features)
     t, _ = NET.getPerfProfile()
-    label = 'Inference time: %.2f ms' % (t * 1000.0 / cv2.getTickFrequency())
+    label = "Inference time: %.2f ms" % (t * 1000.0 / cv2.getTickFrequency())
     boxes, confidences = decode(scores, geometry)
     # print(confidences)
-    indices = cv2.dnn.NMSBoxesRotated(boxes, confidences, confedence_tresh, nms_treshhold)
+    indices = cv2.dnn.NMSBoxesRotated(
+        boxes, confidences, confedence_tresh, nms_treshhold
+    )
     # Why the fuck dont you work??
     # https://github.com/opencv/opencv/issues/12299
     # indices = cv2.dnn.NMSBoxes(boxes, confidences, confedence_tresh, nms_treshhold)
@@ -232,7 +249,7 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
             vertices[j][1] *= rH
 
         box = np.int0(vertices)
-        cv2.drawContours(frame, [box], 0, color['blue'], 2)
+        cv2.drawContours(frame, [box], 0, color["blue"], 2)
         locs.append([box])
         # print(t)
         # rects will do for now.
@@ -247,7 +264,7 @@ def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh
         cv2.putText(frame, label, (0, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv2.imshow(kWinName, frame)
 
-        k = cv2.waitKey(0) & 0xff
+        k = cv2.waitKey(0) & 0xFF
         if k == 27:
             raise DEBUG_STOP
 
@@ -262,17 +279,18 @@ def check_movement(path, debug=True):  # pragma: no cover
     """Nothing usefull atm. TODO"""
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    #k = np.zeros((3,3),np.uint8)
-    #fgbg = cv2.createBackgroundSubtractorGMG()
-    #fgbg = cv2.createBackgroundSubtractorMOG2(history=1, varThreshold=2, detectShadows=False)
-    #fgbg = cv2.createBackgroundSubtractorMOG()
+    # k = np.zeros((3,3),np.uint8)
+    # fgbg = cv2.createBackgroundSubtractorGMG()
+    # fgbg = cv2.createBackgroundSubtractorMOG2(history=1, varThreshold=2, detectShadows=False)
+    # fgbg = cv2.createBackgroundSubtractorMOG()
     # (int history=500, double dist2Threshold=400.0, bool detectShadows=true
     fgbg = cv2.createBackgroundSubtractorKNN(1, 200, False)
     frame = None
     r_size = (640, 480)
 
-    for _, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=0,
-                                                               step=0, frame_range=False)):
+    for _, (frame, millisec) in enumerate(
+        video_frame_by_frame(path, offset=0, step=0, frame_range=False)
+    ):
         if frame is not None:
             fgmask = fgbg.apply(frame)
             fgmask = cv2.erode(fgmask, kernel, iterations=20)
@@ -287,9 +305,9 @@ def check_movement(path, debug=True):  # pragma: no cover
                 f = cv2.resize(frame.copy(), r_size)
                 vis = np.concatenate((m, f), axis=1)
 
-                cv2.imshow('frame', vis)
+                cv2.imshow("frame", vis)
 
-            k = cv2.waitKey(0) & 0xff
+            k = cv2.waitKey(0) & 0xFF
             if k == 27:
                 break
 
@@ -323,8 +341,9 @@ def locate_text(image, debug=False):
 
     # Pull out grahically overlayed text from a video image
     blur = cv2.GaussianBlur(grey, (3, 3), 0)
-    adapt_threshold = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                            cv2.THRESH_BINARY, 5, -25)
+    adapt_threshold = cv2.adaptiveThreshold(
+        blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 5, -25
+    )
 
     contours, _ = mser.detectRegions(adapt_threshold)
 
@@ -355,15 +374,19 @@ def locate_text(image, debug=False):
     for box in rects:
         [x, y, w, h] = box
         # Draw filled bounding boxes on mask
-        cv2.rectangle(mask, (x - xscaleFactor, y - yscaleFactor),
-                      (x + w + xscaleFactor, y + h + yscaleFactor),
-                      color['white'], cv2.FILLED)
+        cv2.rectangle(
+            mask,
+            (x - xscaleFactor, y - yscaleFactor),
+            (x + w + xscaleFactor, y + h + yscaleFactor),
+            color["white"],
+            cv2.FILLED,
+        )
 
     # Find contours in mask if bounding boxes overlap,
     # they will be joined by this function call
     rectangles = []
     contours = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    if cv2.__version__.startswith('4'):
+    if cv2.__version__.startswith("4"):
         contours = contours[0]
     else:
         contours = contours[1]
@@ -385,17 +408,17 @@ def locate_text(image, debug=False):
         rect = cv2.boundingRect(contour)
 
         x, y, w, h = rect
-        cv2.rectangle(image, (x, y), (x + w, y + h), color['blue'], 2)
+        cv2.rectangle(image, (x, y), (x + w, y + h), color["blue"], 2)
 
         # Remove small areas and areas that don't have text like features
         # such as a long width.
-        if ((float(w * h) / (width * height)) < 0.006):
+        if (float(w * h) / (width * height)) < 0.006:
             # remove small areas
             if float(w * h) / (width * height) < 0.0018:
                 continue
 
             # remove areas that aren't long
-            if (float(w) / h < 2.5):
+            if float(w) / h < 2.5:
                 continue
 
         else:
@@ -411,7 +434,7 @@ def locate_text(image, debug=False):
 
         rectangles.append(rect)
 
-        cv2.rectangle(image, (x, y), (x + w, y + h), color['fuchsia'], 2)
+        cv2.rectangle(image, (x, y), (x + w, y + h), color["fuchsia"], 2)
 
     if debug:
         cv2.imshow("Final image", image)
@@ -420,8 +443,17 @@ def locate_text(image, debug=False):
     return rectangles
 
 
-def find_credits(path, offset=0, fps=None, duration=None,
-                 check=7, step=1, frame_range=True, debug=False, method='east'):
+def find_credits(
+    path,
+    offset=0,
+    fps=None,
+    duration=None,
+    check=7,
+    step=1,
+    frame_range=True,
+    debug=False,
+    method="east",
+):
     """Find the start/end of the credits and end in a videofile.
        This only check frames so if there is any silence in the video this is simply skipped as
        opencv only handles videofiles.
@@ -453,9 +485,9 @@ def find_credits(path, offset=0, fps=None, duration=None,
     frames = []
     start = -1
     end = -1
-    LOG.debug('Trying to find the credits for %s', path)
+    LOG.debug("Trying to find the credits for %s", path)
 
-    if method == 'east':
+    if method == "east":
         func = locate_text_east
     else:
         func = locate_text
@@ -467,8 +499,11 @@ def find_credits(path, offset=0, fps=None, duration=None,
             fps = cap.get(cv2.CAP_PROP_FPS)
             cap.release()
 
-        for _, (frame, millisec) in enumerate(video_frame_by_frame(path, offset=offset,
-                                                                   step=step, frame_range=frame_range)):
+        for _, (frame, millisec) in enumerate(
+            video_frame_by_frame(
+                path, offset=offset, step=step, frame_range=frame_range
+            )
+        ):
 
             try:
                 # LOG.debug('progress %s', millisec / 1000)
@@ -496,18 +531,18 @@ def find_credits(path, offset=0, fps=None, duration=None,
 
             except DEBUG_STOP:
                 break
-                if hasattr(cv2, 'destroyAllWindows'):
+                if hasattr(cv2, "destroyAllWindows"):
                     cv2.destroyAllWindows()
 
         if frames:
             start = min(frames) / 1000
             end = max(frames) / 1000
 
-        LOG.debug('credits_start %s, credits_end %s', start, end)
+        LOG.debug("credits_start %s, credits_end %s", start, end)
 
     except:  # pragma: no cover
         # We just want to log the exception not halt the entire process to db.
-        LOG.exception('There was a error in find_credits')
+        LOG.exception("There was a error in find_credits")
 
     return start, end
 
@@ -523,18 +558,21 @@ def fill_rects(image, rects):  # pragma: no cover
     for rect in rects:
         try:
             x, y, w, h = rect
-            cv2.rectangle(image, (x, y), (x + w, y + h), color['black'], cv2.FILLED)
+            cv2.rectangle(image, (x, y), (x + w, y + h), color["black"], cv2.FILLED)
         except ValueError:
-            cv2.drawContours(image, rect, 0, color['black'], cv2.FILLED)
+            cv2.drawContours(image, rect, 0, color["black"], cv2.FILLED)
 
     return image
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     def test():
         import logging
+
         # logging.basicConfig(level=logging.DEBUG)
         import cv2
+
         # i = r"C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
         # i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
 
@@ -542,21 +580,27 @@ if __name__ == '__main__':
         # ffs = img.copy()
         # rects = locate_text(ffs, debug=True)
         # locate_text2(img, debug=True, width=320, height=320, confedence_tresh=0.8, nms_treshhold=0.1)
-        #out = r'C:\stuff\GUNDAM BUILD FIGHTERS TRY-Episode 1 - The Boy Who Calls The Wind (ENG sub)-M7fLOQXlPmE.mkv' # 21*60
+        # out = r'C:\stuff\GUNDAM BUILD FIGHTERS TRY-Episode 1 - The Boy Who Calls The Wind (ENG sub)-M7fLOQXlPmE.mkv' # 21*60
         # out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\part.mkv'
-        out = r'C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv'
-        t = find_credits(out, offset=0, fps=None, duration=None, check=600, step=1, frame_range=True, debug=True)
+        out = r"C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\out.mkv"
+        t = find_credits(
+            out,
+            offset=0,
+            fps=None,
+            duration=None,
+            check=600,
+            step=1,
+            frame_range=True,
+            debug=True,
+        )
         print(t)
         # print(out)
         # for z in check_movement(out):
         #     print()
 
-
-
         # f = fill_rects(img, rects)
         # cv2.imshow('ass', f)
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
-
 
     test()

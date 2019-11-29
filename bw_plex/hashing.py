@@ -8,17 +8,17 @@ import numpy as np
 
 from bw_plex.video import video_frame_by_frame
 
-image_type = ('.png', '.jpeg', '.jpg')
+image_type = (".png", ".jpeg", ".jpg")
 
 
 def string_hash(stack):
     """convert a all hashes to one hash."""
-    h = ''.join((str(i) for i in chain(*stack)))
-    return hashlib.md5(h.encode('utf-8')).hexdigest()
+    h = "".join((str(i) for i in chain(*stack)))
+    return hashlib.md5(h.encode("utf-8")).hexdigest()
 
 
 def _binary_array_to_hex(arr):
-    return binascii.hexlify(arr.flatten()).decode('ascii')
+    return binascii.hexlify(arr.flatten()).decode("ascii")
 
 
 class ImageHash(object):
@@ -41,9 +41,13 @@ class ImageHash(object):
 
     def __sub__(self, other):
         if other is None:
-            raise TypeError('Other hash must not be None.')
+            raise TypeError("Other hash must not be None.")
         if self.hash.size != other.hash.size:
-            raise TypeError('ImageHashes must be of the same shape.', self.hash.shape, other.hash.shape)
+            raise TypeError(
+                "ImageHashes must be of the same shape.",
+                self.hash.shape,
+                other.hash.shape,
+            )
         return np.count_nonzero(self.hash != other.hash)
 
     def __eq__(self, other):
@@ -83,12 +87,15 @@ def create_imghash(img):
 
 def hash_file(path, step=1, frame_range=False, end=None):
     import cv2
+
     # dont think this is need. Lets keep it for now.
     if isinstance(path, str) and path.endswith(image_type):
         yield ImageHash(create_imghash(path)), cv2.imread(path, 0), 0
         return
 
-    for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
+    for (h, pos) in video_frame_by_frame(
+        path, frame_range=frame_range, step=step, end=end
+    ):
         hashed_img = create_imghash(h)
         nn = ImageHash(hashed_img)
         yield nn, h, pos
@@ -96,6 +103,7 @@ def hash_file(path, step=1, frame_range=False, end=None):
 
 def hash_image_folder(folder):
     import cv2
+
     result = []
     all_files = []
     for root, _, files in os.walk(folder):
@@ -112,7 +120,9 @@ def hash_image_folder(folder):
     return result, all_files
 
 
-def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
+def find_hashes(
+    needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None
+):
     """ This can be used to find a image in a video or a part of a video.
 
     stack should be i [([hash], pos)] sames goes for the needels.]"""

@@ -6,10 +6,7 @@ import time
 from bw_plex import LOG
 
 
-TYPES = {'cut': 0,
-         'mute': 1,
-         'scene marker': 2,
-         'commercial break': 3}
+TYPES = {"cut": 0, "mute": 1, "scene marker": 2, "commercial break": 3}
 
 
 TYPES.update(dict((v, k) for (k, v) in TYPES.items()))
@@ -19,24 +16,34 @@ def db_to_edl(item, type=3):
     elds = {}
 
     # Add credits
-    if (item.correct_theme_start and
-        item.correct_theme_start != -1 and
-        item.correct_theme_end and
-        item.correct_theme_end != -1):
+    if (
+        item.correct_theme_start
+        and item.correct_theme_start != -1
+        and item.correct_theme_end
+        and item.correct_theme_end != -1
+    ):
 
-        elds["manual intro"] = [item.correct_theme_start, item.correct_theme_end, TYPES[type]]
+        elds["manual intro"] = [
+            item.correct_theme_start,
+            item.correct_theme_end,
+            TYPES[type],
+        ]
 
-    elif (item.theme_start and
-          item.theme_start != -1 and
-          item.theme_end and
-          item.theme_end != -1):
+    elif (
+        item.theme_start
+        and item.theme_start != -1
+        and item.theme_end
+        and item.theme_end != -1
+    ):
 
         elds["intro"] = [item.theme_start, item.theme_end, TYPES[type]]
 
-    if (item.credits_start and
-        item.credits_start != -1 and
-        item.credits_end and
-        item.credits_end != -1):
+    if (
+        item.credits_start
+        and item.credits_start != -1
+        and item.credits_end
+        and item.credits_end != -1
+    ):
 
         elds["credits"] = [item.credits_start, item.credits_end, TYPES[type]]
 
@@ -55,20 +62,25 @@ def edl_dict_to_metadata_file(path, eld):
     """
     # Should we check if this file has metadata/chapters so we dont overwrite it
     # Lets come back to this later.
-    #if not os.path.isfile(path) and path.endswith('.edl'):
+    # if not os.path.isfile(path) and path.endswith('.edl'):
     #    return
-    header = ';FFMETADATA1\ntitle=%s\nartist=Made by bw_plex\n\n' % os.path.splitext(os.path.basename(path))[0]
+    header = (
+        ";FFMETADATA1\ntitle=%s\nartist=Made by bw_plex\n\n"
+        % os.path.splitext(os.path.basename(path))[0]
+    )
 
     chapter_template = """[CHAPTER]\nTIMEBASE=1/1000\nSTART=%s\nEND=%s\ntitle=%s\n\n"""
 
-    meta_name = os.path.splitext(path)[0] + '.metadata'
+    meta_name = os.path.splitext(path)[0] + ".metadata"
 
-    with open(meta_name, 'w') as mf:
+    with open(meta_name, "w") as mf:
         mf.write(header)
         for key, value in eld.items():
-            mf.write(chapter_template % (float(value[0]) * 1000, float(value[1]) * 1000, key))
+            mf.write(
+                chapter_template % (float(value[0]) * 1000, float(value[1]) * 1000, key)
+            )
 
-    LOG.debug('Created a metadatafile %s', meta_name)
+    LOG.debug("Created a metadatafile %s", meta_name)
 
     return meta_name
 
@@ -90,21 +102,34 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
 
     """
 
-    if 'https://' or 'http://' in path:
-        LOG.debug("Can't add chapters to as we dont have access to the file on the file system")
+    if "https://" or "http://" in path:
+        LOG.debug(
+            "Can't add chapters to as we dont have access to the file on the file system"
+        )
 
     mf_file = edl_dict_to_metadata_file(path, input_edl)
     mf_file = str(mf_file)
 
     outfile, ext = os.path.splitext(path)
-    outfile = outfile + '__bw_plex_meta' + ext
+    outfile = outfile + "__bw_plex_meta" + ext
 
-    cmd = ['ffmpeg', '-i', path, '-i', mf_file, '-map_metadata', '1', '-codec', 'copy', outfile]
+    cmd = [
+        "ffmpeg",
+        "-i",
+        path,
+        "-i",
+        mf_file,
+        "-map_metadata",
+        "1",
+        "-codec",
+        "copy",
+        outfile,
+    ]
 
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     code = proc.wait()
     if code != 0:
-        LOG.debug('Failed to write_chapters_to_file %s', code)
+        LOG.debug("Failed to write_chapters_to_file %s", code)
 
     # Try to replace the orginal with the one with have added
     # chapters too.
@@ -118,10 +143,8 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
 
     if cleanup:
         os.remove(mf_file)
-        LOG.debug('Deleted %s', mf_file)
+        LOG.debug("Deleted %s", mf_file)
 
-    LOG.debug('writing chapters to file using command %s', ' '.join(cmd))
+    LOG.debug("writing chapters to file using command %s", " ".join(cmd))
 
     return path
-
-
