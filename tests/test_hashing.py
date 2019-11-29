@@ -28,7 +28,7 @@ def test_find_where_a_img_is_in_video(outro_file):
     for vh, v_frames, i in v_hashes:
         if vh == h:
             # Check that the image if between 47 sec and 49 sec.
-            assert i > 47464 and i < 49425
+            assert i > 47200 and i < 49425
 
 
 def test_find_partial_video_inside_another(intro_file):
@@ -44,6 +44,6 @@ def test_find_partial_video_inside_another(intro_file):
         sms_sec = math.floor(sms / 1000)
         pms_sec = math.floor(pms / 1000)
 
-        assert sms_sec >= 60 and sms_sec <= 180
+        assert sms_sec >= 59 and sms_sec <= 180
         assert pms_sec >= 0 and pms_sec <= 120
         # print('%r %s %s' % (straw, misc.sec_to_hh_mm_ss(sms_sec), misc.sec_to_hh_mm_ss(pms_sec)))
