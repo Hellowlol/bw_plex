@@ -8,10 +8,13 @@ import numpy as np
 
 from bw_plex.video import video_frame_by_frame
 
+from numpy import ndarray
+from typing import Iterator, List, Tuple, Union
+
 image_type = ('.png', '.jpeg', '.jpg')
 
 
-def string_hash(stack):
+def string_hash(stack: List[List[int]]) -> str:
     """convert a all hashes to one hash."""
     h = ''.join((str(i) for i in chain(*stack)))
     return hashlib.md5(h.encode('utf-8')).hexdigest()
@@ -26,7 +29,7 @@ class ImageHash(object):
     Hash encapsulation. Can be used for dictionary keys and comparisons.
     """
 
-    def __init__(self, binary_array):
+    def __init__(self, binary_array: ndarray) -> None:
         self.hash = binary_array.flatten()
         self.pos = []
 
@@ -46,7 +49,7 @@ class ImageHash(object):
             raise TypeError('ImageHashes must be of the same shape.', self.hash.shape, other.hash.shape)
         return np.count_nonzero(self.hash != other.hash)
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'ImageHash') -> bool:
         if other is None:
             return False
         return np.array_equal(self.hash, other.hash)
@@ -71,7 +74,7 @@ class ImageHash(object):
         return self.hash.reshape(*args)
 
 
-def create_imghash(img):
+def create_imghash(img: Union[ndarray, str]) -> ndarray:
     """Create a phash"""
     import cv2
 
@@ -81,7 +84,7 @@ def create_imghash(img):
     return cv2.img_hash.pHash(img)
 
 
-def hash_file(path, step=1, frame_range=False, end=None):
+def hash_file(path: str, step: int = 1, frame_range: bool = False, end: None = None) -> Iterator[Tuple[ImageHash, ndarray, float]]:
     import cv2
     # dont think this is need. Lets keep it for now.
     if isinstance(path, str) and path.endswith(image_type):
@@ -94,7 +97,7 @@ def hash_file(path, step=1, frame_range=False, end=None):
         yield nn, h, pos
 
 
-def hash_image_folder(folder):
+def hash_image_folder(folder: str) -> Tuple[List[Tuple[ImageHash, ndarray, int]], List[str]]:
     import cv2
     result = []
     all_files = []
@@ -112,7 +115,7 @@ def hash_image_folder(folder):
     return result, all_files
 
 
-def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
+def find_hashes(needels: Union[List[Tuple[ImageHash, ndarray, int]], List[Tuple[ImageHash, ndarray, float]]], stacks: List[Tuple[ImageHash, ndarray, float]], ignore_black_frames: bool = True, no_dupe_frames: bool = True, thresh: None = None) -> Iterator[Union[Tuple[ImageHash, float, int, int, int, int], Tuple[ImageHash, float, int, float, int, int]]]:
     """ This can be used to find a image in a video or a part of a video.
 
     stack should be i [([hash], pos)] sames goes for the needels.]"""

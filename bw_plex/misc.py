@@ -26,7 +26,14 @@ from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
 from bw_plex.audio import convert_and_trim, has_recap_audio
 
 
-def ignore_ratingkey(item, key):
+from bw_plex.audfprint.audfprint_analyze import Analyzer
+from bw_plex.audfprint.audfprint_match import Matcher
+from bw_plex.audfprint.hash_table import HashTable
+from typing import Callable, DefaultDict, List, Optional, Union
+from unittest.mock import MagicMock, Mock
+
+
+def ignore_ratingkey(item: MagicMock, key: List[int]) -> bool:
     """Helper to check if this is in a ignorelist"""
     if item.TYPE == 'movie':
         return item.ratingKey in key
@@ -84,7 +91,7 @@ def users_pms(pms, user):  # pragma: no cover
     return users_pms
 
 
-def find_next(media):
+def find_next(media: MagicMock) -> None:
     """Find what ever you have that is next ep."""
     LOG.debug('Check if we can find the next media item.')
     if media.TYPE == 'movie':
@@ -100,7 +107,7 @@ def find_next(media):
     LOG.debug('Failed to find the next media item of %s', media.grandparentTitle)
 
 
-def to_time(sec):
+def to_time(sec: Union[float, int]) -> str:
     if sec == -1:
         return '00:00'
 
@@ -108,7 +115,7 @@ def to_time(sec):
     return '%02d:%02d' % (m, s)
 
 
-def sec_to_hh_mm_ss(sec):
+def sec_to_hh_mm_ss(sec: int) -> str:
     return time.strftime('%H:%M:%S', time.gmtime(sec))
 
 
@@ -133,7 +140,7 @@ def to_ms(ip_str): # FIX ME
     return sec * 1000
 
 
-def analyzer():
+def analyzer() -> Analyzer:
     from bw_plex.audfprint.audfprint_analyze import Analyzer
 
     a = Analyzer()
@@ -145,7 +152,7 @@ def analyzer():
     return a
 
 
-def matcher():
+def matcher() -> Matcher:
     from bw_plex.audfprint.audfprint_match import Matcher
     m = Matcher()
     m.find_time_range = True
@@ -162,7 +169,7 @@ def matcher():
     return m
 
 
-def find_theme_start_end(wav, hashtable, check_if_missing=False):
+def find_theme_start_end(wav: str, hashtable: HashTable, check_if_missing: bool = False):
     an = analyzer()
     match = matcher()
     start_time = -1
@@ -191,7 +198,7 @@ def find_theme_start_end(wav, hashtable, check_if_missing=False):
     return start_time, end_time
 
 
-def calc_offset(final_video, final_audio, dev=7, cutoff=15):
+def calc_offset(final_video: List[List[float]], final_audio: List[List[float]], dev: int = 7, cutoff: int = 15) -> float:
     """Helper to find matching time ranges between audio silence and blackframes.
        It simply returns the first matching blackframes with silence.
 
@@ -257,7 +264,7 @@ def calc_offset(final_video, final_audio, dev=7, cutoff=15):
     return -1
 
 
-def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.3, duration_video=0.5, pix_th=0.10, au_db=50):
+def find_offset_ffmpeg(afile: str, trim: int = 600, dev: int = 7, duration_audio: float = 0.3, duration_video: float = 0.5, pix_th: float = 0.10, au_db: int = 50) -> float:
     """Find a list of time range for black detect and silence detect.duration_video
 
        Args:
@@ -324,7 +331,7 @@ def find_offset_ffmpeg(afile, trim=600, dev=7, duration_audio=0.3, duration_vide
     return calc_offset(final_video, final_audio)
 
 
-def get_valid_filename(s):
+def get_valid_filename(s: str) -> str:
 
     def remove_accents(input_str):
         try:
@@ -351,7 +358,7 @@ def get_valid_filename(s):
         return clean_tail
 
 
-def search_tunes(name, rk, url=None):
+def search_tunes(name: str, rk: int, url: None = None) -> DefaultDict[str, List[str]]:
     """Search televisontunes for a show theme song.
 
        Args:
@@ -440,7 +447,7 @@ def search_tunes(name, rk, url=None):
     return result
 
 
-def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
+def search_for_theme_youtube(name: str, rk: int = 1337, save_path: Optional[str] = None, url: Optional[str] = None):
     import youtube_dl
 
     LOG.debug('Searching youtube for name %s rk %s save_path %s url %s ' % (name, rk, save_path, url))
@@ -507,7 +514,7 @@ def search_for_theme_youtube(name, rk=1337, save_path=None, url=None):
     return t + '.wav'
 
 
-def download_theme(media, ht, theme_source=None, url=None):
+def download_theme(media: Mock, ht: HashTable, theme_source: Optional[str] = None, url: Optional[str] = None) -> List[str]:
     if media.TYPE == 'show':
         name = media.title
         rk = media.ratingKey
@@ -568,7 +575,7 @@ def download_theme(media, ht, theme_source=None, url=None):
     return final
 
 
-def get_hashtable():
+def get_hashtable() -> HashTable:
     LOG.debug('Getting hashtable')
     from bw_plex.audfprint.hash_table import HashTable
 
@@ -698,7 +705,7 @@ def download_subtitle(episode):
     return all_subs
 
 
-def to_sec(t):
+def to_sec(t: Union[str, int]) -> int:
     try:
         m, s = t.split(':')
         return int(m) * 60 + int(s)
@@ -706,7 +713,7 @@ def to_sec(t):
         return int(t)
 
 
-def has_recap_subtitle(episode, phrase):
+def has_recap_subtitle(episode: MagicMock, phrase: List[str]) -> bool:
     if not phrase:
         LOG.debug('There are no phrase, add a phrase in your config to check for recaps.')
         return False
@@ -740,7 +747,7 @@ def has_recap(episode, phrase, audio=None):
     return False
 
 
-def choose(msg, items, attr):
+def choose(msg: str, items: Union[List[MagicMock], List[Mock]], attr: Union[Callable, str]) -> Union[List[MagicMock], List[Mock]]:
     result = []
 
     if not len(items):

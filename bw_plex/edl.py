@@ -3,7 +3,22 @@ import shutil
 import subprocess
 import time
 
+from typing import Optional, List
+
+from mypy_extensions import TypedDict
 from bw_plex import LOG
+
+
+class EldTypedDict(TypedDict):
+    intro: List[int]
+    credits: List[int]
+    manual_intro: List[int]
+
+
+class InputEdlTypedDict(TypedDict):
+    intro: List[int]
+    credits: List[int]
+    manual_intro: List[int]
 
 
 TYPES = {'cut': 0,
@@ -43,7 +58,7 @@ def db_to_edl(item, type=3):
     return elds
 
 
-def edl_dict_to_metadata_file(path, eld):
+def edl_dict_to_metadata_file(path: str, eld: 'EldTypedDict') -> str:
     """Convert a .edl file to a ffmepg metadata file.
        This way we can add chapters to shows as this isnt suppored by plex
 
@@ -73,7 +88,7 @@ def edl_dict_to_metadata_file(path, eld):
     return meta_name
 
 
-def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
+def write_chapters_to_file(path: str, input_edl: Optional['InputEdlTypedDict'] = None, replace: bool = True, cleanup: bool = True) -> str:
     """Use ffmpeg to add chapters to a videofile.mf_file
 
 
@@ -123,5 +138,3 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
     LOG.debug('writing chapters to file using command %s', ' '.join(cmd))
 
     return path
-
-

@@ -10,6 +10,8 @@ from bw_plex import LOG
 from bw_plex.video import video_frame_by_frame
 from bw_plex.misc import sec_to_hh_mm_ss
 
+from numpy import float32, float64, ndarray
+from typing import Any, List, Tuple, Union
 try:
     import cv2
 except ImportError:
@@ -60,7 +62,7 @@ def check_stop_in_credits(value, cutoff=1500):
     return None, None
 
 
-def crop_img(i, edge=0):
+def crop_img(i: ndarray, edge: int = 0) -> ndarray:
     """ crop the image edge % pr side."""
     new_img = i.copy()
     height = new_img.shape[0]
@@ -71,7 +73,7 @@ def crop_img(i, edge=0):
     return new_img[sh:height - sh, sw:width - sw]
 
 
-def decode(scores, geometry, scoreThresh=0.9999):
+def decode(scores: ndarray, geometry: ndarray, scoreThresh: float = 0.9999) -> Union[List[Union[List[Tuple[Tuple[float64, float64], Tuple[float32, float32], float64]], List[float]]], List[List[Any]]]:
     # Stolen from https://github.com/opencv/opencv/blob/master/samples/dnn/text_detection.py
     # scoreTresh is set insanely high as we dont want false positives.
     detections = []
@@ -151,7 +153,7 @@ def make_imgz(afile, start=600, dest=None, fps=1):  # pragma: no cover
     return dest
 
 
-def extract_text(img, lang='eng', encoding='utf-8'):
+def extract_text(img: Union[ndarray, str], lang: str = 'eng', encoding: str = 'utf-8') -> bytes:
     """Very simple way to find the text in a image, it don't work work well for
        natural scene images but it good enoght for clean frames like credits.
 
@@ -174,7 +176,7 @@ def calc_success(rectangles, img_height, img_width, success=0.9):  # pragma: no 
     return p > success
 
 
-def locate_text_east(image, debug=False, width=320, height=320, confedence_tresh=0.5, nms_treshhold=0):
+def locate_text_east(image: Union[ndarray, str], debug: bool = False, width: int = 320, height: int = 320, confedence_tresh: float = 0.5, nms_treshhold: int = 0) -> ndarray:
     import cv2
 
     global NET
@@ -296,7 +298,7 @@ def check_movement(path, debug=True):  # pragma: no cover
     # cv2.destroyAllWindows()
 
 
-def locate_text(image, debug=False):
+def locate_text(image: Union[ndarray, str], debug: bool = False) -> List[Tuple[int, int, int, int]]:
     """Locate where and if there are text in the images.
 
        Args:
@@ -420,8 +422,8 @@ def locate_text(image, debug=False):
     return rectangles
 
 
-def find_credits(path, offset=0, fps=None, duration=None,
-                 check=7, step=1, frame_range=True, debug=False, method='east'):
+def find_credits(path: str, offset: int = 0, fps: None = None, duration: None = None,
+                 check: int = 7, step: int = 1, frame_range: bool = True, debug: bool = False, method: str = 'east') -> Tuple[float, float]:
     """Find the start/end of the credits and end in a videofile.
        This only check frames so if there is any silence in the video this is simply skipped as
        opencv only handles videofiles.

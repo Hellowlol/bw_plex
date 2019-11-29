@@ -3,6 +3,8 @@ import shutil
 import subprocess
 import tempfile
 
+from typing import Optional
+
 
 from bw_plex import THEMES, CONFIG, LOG
 
@@ -15,7 +17,7 @@ except ImportError:
                 'Install the package using pip install bw_plex[audio] or bw_plex[all]')
 
 
-def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
+def convert_and_trim(afile: str, fs: int = 8000, trim: None = None, theme: bool = False, filename: Optional[str] = None) -> str:
     tmp = tempfile.NamedTemporaryFile(mode='r+b',
                                       prefix='offset_',
                                       suffix='.wav')

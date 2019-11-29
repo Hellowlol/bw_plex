@@ -7,6 +7,9 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from . import DB_PATH
 
+from datetime import datetime
+from sqlalchemy.orm.session import Session
+from typing import Iterator, List, Tuple, Optional
 eng = None
 session_factory = None
 sess = None
@@ -76,7 +79,7 @@ class Processed(Base):
     ffmpeg_end_str = Column('ffmpeg_end_str', String, nullable=True)
     correct_ffmpeg = Column('correct_ffmpeg', Integer, nullable=True)  # This for manual override.
 
-    def _to_tuple(self, keys=None):
+    def _to_tuple(self, keys: Optional[List[str]] = None) -> Tuple[int, str, str, str, int, float, str, float, str, None, None, str, int, int, str, datetime, bool, int, str, None, None, int, str, float, str, None]:
         if keys is None:
             keys = [i for i in self.__dict__.keys() if not i.startswith('_')]
 
@@ -94,7 +97,7 @@ def db_init():
 
 
 @contextmanager
-def session_scope():
+def session_scope() -> Iterator[Session]:
     """Provide a transactional scope around a series of operations."""
     session = sess()
     try:

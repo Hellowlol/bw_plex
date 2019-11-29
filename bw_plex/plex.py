@@ -37,6 +37,9 @@ from bw_plex.hashing import hash_file, create_imghash
 # Serves as simple locks so we dont start processing stuff
 # over and over again on each websocket tick and the user can seek
 # manually if bw_plex misses on the theme or credits.
+from typing import Dict
+
+
 IN_PROG = []
 JUMP_LIST = []
 CREDITS_LIST = []
@@ -1120,7 +1123,7 @@ def task(item, sessionkey):
         process_to_db(nxt)
 
 
-def best_time(item):
+def best_time(item: Processed) -> float:
     """Find the best time in the db."""
     if item.type == 'episode' and item.correct_theme_end and item.correct_theme_end != 1:
         sec = item.correct_theme_end
@@ -1157,7 +1160,7 @@ def jump(item, sessionkey, sec=None, action=None):  # pragma: no cover
         POOL.apply_async(client_action, args=(sec, sessionkey, action))
 
 
-def check(data):
+def check(data) -> None:
     if data.get('type') == 'playing' and data.get(
             'PlaySessionStateNotification'):
 

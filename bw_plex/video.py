@@ -2,7 +2,11 @@
 from bw_plex import LOG
 
 
-def video_frame_by_frame(path, offset=0, frame_range=None, step=1, end=None):
+from numpy import ndarray
+from typing import Iterator, Tuple, Union, Optional
+
+
+def video_frame_by_frame(path: str, offset: int = 0, frame_range: Optional[bool] = None, step: int = 1, end: None = None) -> Iterator[Union[Tuple[ndarray, float], Tuple[None, float]]]:
     """ Returns a video files frame by frame.by
         Args:
             path (str): path to the video file
