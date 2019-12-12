@@ -924,6 +924,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             None
     """
     global JUMP_LIST, CREDITS_LIST
+    browsers = ["Chrome", "Microsoft Edge", "Firefox"]
     # Some of this stuff take so time.
     # so we use this to try fix the offset
     # as this is given to client_action as a parameter.
@@ -1008,13 +1009,15 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
 
             if correct_client and correct_client.platform != 'Chromecast':
                 try:
-                    if correct_client._baseurl:
+                    # Browsers seems to fail to connect so many times
+                    # lets just stop trying and proxy the commands via the server.
+                    if correct_client._baseurl and correct_client.name not in browsers:
                         LOG.info('Connectiong to %s', correct_client.title)
                         correct_client.connect()
                     else:
                         # Some clients might not have a _baseurl like the lg
                         # lets try, to proxy this but i dont have a lg to test with.
-                        LOG.debug('Client hasnt a _baseurl enabling proxyThroughServer')
+                        LOG.debug('Client hasnt a _baseurl or is a browser, enabling proxyThroughServer')
                         correct_client.proxyThroughServer()
                 except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL):
                     # Lets just skip this for now and some "clients"
