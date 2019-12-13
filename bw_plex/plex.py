@@ -924,7 +924,6 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             None
     """
     global JUMP_LIST, CREDITS_LIST
-    browsers = ["Chrome", "Microsoft Edge", "Firefox"]
     # Some of this stuff take so time.
     # so we use this to try fix the offset
     # as this is given to client_action as a parameter.
@@ -1011,7 +1010,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 try:
                     # Browsers seems to fail to connect so many times
                     # lets just stop trying and proxy the commands via the server.
-                    if correct_client._baseurl and correct_client.name not in browsers:
+                    if correct_client._baseurl and correct_client.product != "Plex Web":
                         LOG.info('Connectiong to %s', correct_client.title)
                         correct_client.connect()
                     else:
