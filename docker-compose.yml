@@ -12,7 +12,7 @@ services:
       # Replace with your Plex media path
       - /mnt/unionfs/Media:/mnt/unionfs/Media
     environment:
-      - url=https://YOURE_URL
-      - token:YOURE_TOKEN
+      - url=https://YOUR_URL
+      - token:YOUR_TOKEN
       - TZ=America/Los_Angeles
-    command: bash -c "bw_plex --url https://YOURE_URL -t YOURE_TOKEN -df /config watch"
+    command: bash -c "bw_plex --url https://YOUR_URL -t YOUR_TOKEN -df /config watch"
