@@ -982,7 +982,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 correct_client = client
                 # getting the player can take some time, in my shallow tests
                 # it takes like 5 sec.
-                pc, cast = log_exception(get_chromecast_player(client.address, 'Chromecast'))
+                pc, cast = log_exception(get_chromecast_player)(client.address, 'Chromecast')
                 if pc and cast:
                     # Block until the cromecast is ready.
                     cast.wait()

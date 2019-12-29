@@ -271,12 +271,12 @@ def get_chromecast_player(host=None, name=None):  # pragma: no cover
     except pychromecast.ChromecastConnectionError:
         chromecasts = pychromecast.get_chromecasts()
         if len(chromecasts) == 1:
-            cast = chromecasts[0]    
+            cast = chromecasts[0]
         elif len(chromecasts) > 1:
             cast = next(cc for cc in chromecasts if cc.device.friendly_name == name)
         else:
             LOG.warning("Could'nt find any chromecast on you network")
-            return
+            return None, None
 
     pc = PlexController()
     cast.register_handler(pc)
