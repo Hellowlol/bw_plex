@@ -1246,20 +1246,24 @@ def check(data):
         metadata_state = timeline.get('metadataState')
 
         if (metadata_type in (1, 4) and state == 0 and
-            metadata_state == 'created' and
-            identifier == 'com.plexapp.plugins.library'):
-
+            metadata_state == 'created' and identifier == 'com.plexapp.plugins.library'):
             LOG.debug('%s was added to %s', title, PMS.friendlyName)
+
             # Youtubedl can fail if we batch add loads of eps at the same time if there is no
             # theme.
             if (metadata_type == 1 and not CONFIG['movie'].get('process_recently_added') or
-                metadata_state == 4 and not CONFIG['tv'].get('process_recently_added')):
+                metadata_type == 4 and not CONFIG['tv'].get('process_recently_added')):
                 LOG.debug("Didn't start to process %s is process_recently_added is disabled", title)
                 return
 
             if ratingkey not in IN_PROG:
                 IN_PROG.append(ratingkey)
-                ep = PMS.fetchItem(int(ratingkey))
+                try:
+                    ep = PMS.fetchItem(int(ratingkey))
+                except plexapi.exceptions.BadRequest:
+                    # See https://github.com/Hellowlol/bw_plex/issues/114
+                    LOG.exception("Didn't start to process %s", ratingkey)
+                    return
                 ret = POOL.apply_async(process_to_db, args=(ep,))
                 return ret
 
@@ -1267,7 +1271,7 @@ def check(data):
               metadata_state == 'deleted'):
 
             if (metadata_type == 1 and not CONFIG['movie'].get('process_deleted') or
-                metadata_state == 4 and not CONFIG['tv'].get('process_deleted')):
+                metadata_type == 4 and not CONFIG['tv'].get('process_deleted')):
                 LOG.debug("Didn't start to process %s is process_deleted is disabled for", title)
                 return
 
