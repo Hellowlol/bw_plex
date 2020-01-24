@@ -929,12 +929,15 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
     # as this is given to client_action as a parameter.
     called = time.time()
     LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
-
+    
+    @log_exception
     def proxy_on_fail(func):
 
         @wraps(func)
-        def inner():
+        def inner(*args, **kwargs):
             try:
+                if args:
+                    return func(*args)
                 return func()
             except (plexapi.exceptions.BadRequest, requests.exceptions.ConnectionError,
                     requests.exceptions.Timeout, requests.exceptions.TooManyRedirects,
@@ -1040,7 +1043,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                 LOG.debug('calculated_offset %s %s' % (calculated_offset, calculated_offset / 1000))
 
                 if correct_client.platform != 'Chromecast':
-                    proxy_on_fail(correct_client.seekTo(calculated_offset * 1000))
+                    proxy_on_fail(correct_client.seekTo)(calculated_offset * 1000)
                 else:
                     correct_client.pc.seek(calculated_offset)
 
@@ -1054,7 +1057,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
             else:
                 if not ignore_ratingkey(media, CONFIG['general'].get('ignore_outro_ratingkeys')):
                     if client.product != 'Chromecast':
-                        proxy_on_fail(correct_client.stop())
+                        proxy_on_fail(correct_client.stop)()
                     else:
                         correct_client.pc.stop()
 
@@ -1066,7 +1069,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
                         if nxt:
                             if correct_client.platform != 'Chromecast':
                                 LOG.info('Start playback on %s with %s', user, nxt._prettyfilename())
-                                proxy_on_fail(correct_client.playMedia(nxt))
+                                proxy_on_fail(correct_client.playMedia)(nxt)
                             else:
                                 correct_client.pc.play_media(nxt)
                                 # this does not work the playback does not start, need to figure
