@@ -38,10 +38,10 @@ def test_find_credits_frame_range_false(outro_file):
 def test_find_credits_east(outro_file):
     start, end = credits.find_credits(outro_file, frame_range=True, check=9999)
     assert math.floor(start) in (3.0, 4.0)
-    assert math.floor(end) in (58, 59)
+    assert math.floor(end) in (57, 58, 59)
 
 
 def test_find_credits(outro_file):
     start, end = credits.find_credits(outro_file, frame_range=True, check=9999, method='normal')
     assert math.floor(start) in (3.0, 4.0)
-    assert math.floor(end) in (58, 59)
+    assert math.floor(end) in (57, 58, 59)
