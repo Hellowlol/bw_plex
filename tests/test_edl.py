@@ -2,10 +2,11 @@ import json
 import os
 import shutil
 import subprocess
+
 from conftest import edl
 
 
-def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch, mock):
+def test_write_chapters_to_file(intro_file, tmpdir, monkeypatch):
     def check_chapter(cmd):
         text = subprocess.check_output(cmd)
         chapter_info = json.loads(text)
