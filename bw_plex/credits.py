@@ -5,10 +5,9 @@ import os
 import subprocess
 
 import numpy as np
-
 from bw_plex import LOG
-from bw_plex.video import video_frame_by_frame
 from bw_plex.misc import sec_to_hh_mm_ss
+from bw_plex.video import video_frame_by_frame
 
 try:
     import cv2
@@ -532,9 +531,9 @@ def fill_rects(image, rects):  # pragma: no cover
 
 if __name__ == '__main__':
     def test():
-        import logging
+        # import logging
         # logging.basicConfig(level=logging.DEBUG)
-        import cv2
+        # import cv2
         # i = r"C:\Users\steff\Documents\GitHub\bw_plex\tests\test_data\blacktext_whitebg_2.png"
         # i = r'C:\Users\alexa\.config\bw_plex\third_images\out165.jpg'
 
@@ -550,8 +549,6 @@ if __name__ == '__main__':
         # print(out)
         # for z in check_movement(out):
         #     print()
-
-
 
         # f = fill_rects(img, rects)
         # cv2.imshow('ass', f)

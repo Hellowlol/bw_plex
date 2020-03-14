@@ -1,2 +1,3 @@
 ignore:
   - "bw_plex/tools.py"
+  - "bw_plex/chromecast.py"
