@@ -18,13 +18,13 @@ TYPES.update(dict((v, k) for (k, v) in TYPES.items()))
 def db_to_edl(item, type=3):
     elds = {}
 
-    # Add credits
     if (item.correct_theme_start and
         item.correct_theme_start != -1 and
         item.correct_theme_end and
         item.correct_theme_end != -1):
 
         elds["manual intro"] = [item.correct_theme_start, item.correct_theme_end, TYPES[type]]
+        elds["manual intro end"] = [item.correct_theme_end, item.correct_theme_end, 2]
 
     elif (item.theme_start and
           item.theme_start != -1 and
@@ -32,13 +32,14 @@ def db_to_edl(item, type=3):
           item.theme_end != -1):
 
         elds["intro"] = [item.theme_start, item.theme_end, TYPES[type]]
-
+        elds["intro end"] = [item.theme_end, item.theme_end, 2]
     if (item.credits_start and
         item.credits_start != -1 and
         item.credits_end and
         item.credits_end != -1):
 
         elds["credits"] = [item.credits_start, item.credits_end, TYPES[type]]
+        elds["credits end"] = [item.credits_end, item.credits_end, 2]
 
     return elds
 
@@ -123,5 +124,3 @@ def write_chapters_to_file(path, input_edl=None, replace=True, cleanup=True):
     LOG.debug('writing chapters to file using command %s', ' '.join(cmd))
 
     return path
-
-
