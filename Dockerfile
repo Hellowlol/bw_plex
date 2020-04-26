@@ -38,7 +38,7 @@ ENV PATH="/app/bw_plex/bin:$PATH"
 VOLUME /config
 
 
-CMD ["sh", "-c", "bw_plex --url ${url} -t ${token} -df /config watch"]
+CMD ["bw_plex", "-df", "/config", "watch"]
 
 
 # To build (Docker image):
