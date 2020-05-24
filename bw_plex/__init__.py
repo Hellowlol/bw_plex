@@ -1,12 +1,8 @@
-import os
 import logging
-from logging.handlers import RotatingFileHandler
+import os
 import sys
-
+from logging.handlers import RotatingFileHandler
 from multiprocessing.pool import ThreadPool as Pool
-
-from plexapi.compat import string_type
-
 
 DEFAULT_FOLDER = None
 THEMES = None
@@ -65,7 +61,7 @@ class RedactFilter(logging.Filter):
         return True
 
     def redact(self, msg):
-        msg = isinstance(msg, string_type) and msg or str(msg)
+        msg = isinstance(msg, str) and msg or str(msg)
         for pattern in self.secrets:
             msg = msg.replace(pattern, "<hidden>")
         return msg
