@@ -3,8 +3,7 @@ import shutil
 import subprocess
 import tempfile
 
-
-from bw_plex import THEMES, CONFIG, LOG
+from bw_plex import CONFIG, LOG, THEMES
 
 # Try to import the optional package.
 try:
@@ -120,3 +119,63 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
         pass
 
     return False
+
+
+def create_raw_fp(path, maxlength=maxlength):
+    # Add error handling.
+    fpcalc = os.environ.get(FPCALC_ENVVAR, "fpcalc")
+    command = [fpcalc, "-raw", "-overlap", "-length", str(maxlength), "%s" % path]
+    #command = [fpcalc, "-raw", "-length", str(maxlength), "%s" % path]
+    try:
+        with open(os.devnull, "wb") as devnull:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=devnull)
+            output, _ = proc.communicate()
+    except OSError as exc:
+        if exc.errno == errno.ENOENT:
+            return "to fpcalc found in path."
+
+    duration = fp = None
+    for line in output.splitlines():
+        try:
+            parts = line.split(b"=", 1)
+        except ValueError:
+            return "malformed fpcalc output"
+        if parts[0] == b"DURATION":
+            try:
+                duration = float(parts[1])
+            except ValueError:
+                return "shit"
+        elif parts[0] == b"FINGERPRINT":
+            fp = parts[1]
+
+    if duration is None or fp is None:
+        return "missing fpcalc output for %s" % path
+    dur = float(duration)
+    hashes = [int(i) for i in fp.split(b",")]
+    return dur, hashes, len(hashes) / maxlength
+
+
+
+def create_audio_fingerprint_from_folder(path, ext=None):
+    """Create finger print for a folder"""
+    # https://oxygene.sk/2011/01/how-does-chromaprint-work/
+    fs = find_files(path, ext)
+    result = defaultdict(dict)
+
+    for file_to_check in fs:
+        try:
+            duration, fp, hps = create_raw_fp(file_to_check)
+            result[file_to_check] = {
+                "duration": duration,
+                "fp": fp,
+                "id": file_to_check,
+                "hps": hps
+            }
+
+        except ValueError:
+            #  Just print the error from fpcalc for now, need to improve this
+            x = create_raw_fp(file_to_check)
+            print(x)
+            continue
+
+    return result

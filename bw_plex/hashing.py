@@ -1,11 +1,9 @@
 import binascii
-import os
 import hashlib
-
-from itertools import chain
+import os
+from itertools import Counter, chain
 
 import numpy as np
-
 from bw_plex.video import video_frame_by_frame
 
 image_type = ('.png', '.jpeg', '.jpg')
@@ -148,3 +146,40 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, 
                     # number in needels.
                     # number in stack.
                     yield straw, pos, i, npos, n, tt
+
+
+
+def hamming(x, y):
+    """Hamming for a np array"""
+
+    try:
+        x_start, x_value = x
+    except ValueError:
+        return np.count_nonzero(x != y)
+    y_value, y_value = y
+    k = np.count_nonzero(x_value != y_value)
+    return k
+
+
+def ham_np(item, data, cutoff=1):
+    """Hamming one hash vs a 2array"""
+    binarydiff = data != item.reshape((1, -1))
+    hammingdiff = binarydiff.sum(axis=1)
+    closest_hash_idx = np.where(hammingdiff <= cutoff)
+
+    closestdbHash = data[closest_hash_idx]
+    return closestdbHash, closest_hash_idx
+
+
+def find_common_intro_hashes_fpcalc(data, cutoff=None):
+    """Find common hashes from fp calc thats over the cut off value."""
+
+    if cutoff is None:
+        cutoff = len(data)
+    res = []
+    for key, value in data.items():
+        h = list(set(value["fp"]))
+        res.extend(h)
+
+    res = Counter(res)
+    return [k for k, v in res.items() if v >= cutoff]
