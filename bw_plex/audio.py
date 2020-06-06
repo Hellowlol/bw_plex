@@ -1,7 +1,9 @@
+import errno
 import os
 import shutil
 import subprocess
 import tempfile
+from collections import defaultdict
 
 from bw_plex import CONFIG, LOG, THEMES
 
@@ -12,6 +14,23 @@ except ImportError:
     speech_recognition = None
     LOG.warning('Failed to import speech_recognition this is required to check for recaps in audio. '
                 'Install the package using pip install bw_plex[audio] or bw_plex[all]')
+
+
+FPCALC_ENVVAR = "fpcalc"
+
+
+def find_files(path, ext=None):
+    if ext is None:
+        ext = (".mkv",)
+
+    fs = []
+    for root_, dirs, files in os.walk(path):
+        for f in files:
+            # print(f)
+            fp = os.path.join(root_, f)
+            if fp.endswith(ext):
+                fs.append(fp)
+    return fs
 
 
 def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
@@ -68,6 +87,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
 
 
 def convert_and_trim_to_mp3(afile, fs=8000, trim=None, outfile=None):  # pragma: no cover
+    """Convert a file to mp3 in fs sample rate."""
     if outfile is None:
         tmp = tempfile.NamedTemporaryFile(mode='r+b', prefix='offset_',
                                           suffix='.mp3')
@@ -121,7 +141,8 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
     return False
 
 
-def create_raw_fp(path, maxlength=maxlength):
+def create_raw_fp(path, maxlength=600):
+    """Create a raw audio fingrerprint using fpcalc."""
     # Add error handling.
     fpcalc = os.environ.get(FPCALC_ENVVAR, "fpcalc")
     command = [fpcalc, "-raw", "-overlap", "-length", str(maxlength), "%s" % path]
@@ -179,3 +200,14 @@ def create_audio_fingerprint_from_folder(path, ext=None):
             continue
 
     return result
+
+
+
+if __name__ == "__main__":
+    pass
+
+    """"
+    data =
+
+
+    """

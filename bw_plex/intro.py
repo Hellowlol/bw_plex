@@ -3,6 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 from bw_plex import LOG
+from bw_plex.audio import create_audio_fingerprint_from_folder
 from bw_plex.hashing import find_common_intro_hashes_fpcalc, ham_np
 from bw_plex.misc import sec_to_hh_mm_ss
 from more_itertools import unzip
@@ -39,10 +40,13 @@ def keep(it):
     # we get a large increase at the start.
     # I want to precheck this with a low ness as
     # this is usally the netflix intro.
-    smooth, idx = is_smooth(it[:50], ness=10)
-    if smooth is False:
-        LOG.debug("Cropped %s", it[: idx + 1])
-        it = it[idx + 1 :]
+    # We should check if thats the start..
+    # Check for junk the first 6-7 sec
+    if any(i for i in it[:50] if i < 50):
+        smooth, idx = is_smooth(it[:50], ness=10)
+        if smooth is False:
+            LOG.debug("Cropped %s", it[: idx + 1])
+            it = it[idx + 1 :]
 
     for i, v in enumerate(it):
         try:
@@ -142,8 +146,6 @@ def find_intros_fpcalc(data, base=None, cutoff=1):
         base = data.pop(base_name)
         numer_of_hashes_intro_search_intro = len(base["fp"])
 
-    d = defaultdict(list)
-
     for i, base_fp in enumerate(base["fp"]):
         for key, value in data.items():
             # Make sure we dont test against the same
@@ -174,6 +176,7 @@ def find_intros_fpcalc(data, base=None, cutoff=1):
                         intros[key]["hashes"] = []
 
                     intros[key]["hashes"].append(base_fp)
+                    intros[key]["hps"] = value["hps"]
 
                     if "timings" not in intros[base["id"]]:
                         intros[base["id"]]["timings"] = []
@@ -183,6 +186,7 @@ def find_intros_fpcalc(data, base=None, cutoff=1):
 
                     intros[base["id"]]["timings"].append(i)
                     intros[base["id"]]["hashes"].append(base_fp)
+                    intros[base["id"]]["hps"] = base["hps"]
 
     for k in sorted(intros.keys()):
         LOG.debug("%s %s", k, list(sorted(intros[k]["timings"])))
@@ -190,17 +194,15 @@ def find_intros_fpcalc(data, base=None, cutoff=1):
     return intros
 
 
-
 def special_sauce_fpcalc(data):
     D = defaultdict(dict)
     for intro in sorted(data):
-        n_hash = len(data[intro]["hashes"])
         T = keep(data[intro]["timings"])
 
         start = min(T) / data[intro]["hps"]
         end = max(T) / data[intro]["hps"]
-        raw_start = min(data[intro]["timings"])
-        raw_end = max(data[intro]["timings"])
+        # raw_start = min(data[intro]["timings"])
+        # raw_end = max(data[intro]["timings"])
         # print(len(data[intro]["timings"]))
 
         LOG.info(
@@ -218,16 +220,14 @@ def special_sauce_fpcalc(data):
 
 
 
-"""
-fpcalc example
-audio_fingerprints = create_audio_fingerprint_from_folder(path_to_a_season)
-data = find_intros_fpcalc(audio_fingerprints)
-result = special_sauce_fpcalc(data)
 
-"""
-
-"""
-TODO videoframes example.
-# Just need to add some multiprocessing first
-
-"""
+if __name__ == "__main__":
+    # Example usage :)
+    print("start")
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    path_to_a_season =  r"C:\stuff\s13eps\dexter"
+    audio_fingerprints = create_audio_fingerprint_from_folder(path_to_a_season)
+    data = find_intros_fpcalc(audio_fingerprints)
+    #print(data)
+    result = special_sauce_fpcalc(data)

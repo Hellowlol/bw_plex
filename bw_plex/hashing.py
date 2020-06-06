@@ -1,7 +1,8 @@
 import binascii
 import hashlib
 import os
-from itertools import Counter, chain
+from collections import Counter
+from itertools import chain
 
 import numpy as np
 from bw_plex.video import video_frame_by_frame

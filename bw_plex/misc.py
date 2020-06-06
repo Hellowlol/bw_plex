@@ -2,28 +2,24 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 
+import itertools
 import os
 import re
 import subprocess
 import time
-import itertools
 import unicodedata
-
 from collections import defaultdict
 
 import click
+import pysubs2
 import requests
 from bs4 import BeautifulSoup
-
+from bw_plex import CONFIG, FP_HASHES, LOG, THEMES
+from bw_plex.audio import convert_and_trim, has_recap_audio
 from plexapi.myplex import MyPlexAccount
 from plexapi.server import PlexServer
-
-import pysubs2
-from pysubs2.ssafile import SSAFile
 from pysubs2.formats import FILE_EXTENSION_TO_FORMAT_IDENTIFIER
-
-from bw_plex import THEMES, CONFIG, LOG, FP_HASHES
-from bw_plex.audio import convert_and_trim, has_recap_audio
+from pysubs2.ssafile import SSAFile
 
 
 def ignore_ratingkey(item, key):
@@ -786,6 +782,8 @@ def check_real_file_access(path):
             fp = path.replace(key, value)
             if os.path.exists(fp):
                 return fp
+
+
 
 
 
