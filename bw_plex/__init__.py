@@ -15,6 +15,7 @@ DB_PATH = None
 CONFIG = None
 PMS = None
 POOL = None
+MEMORY = None
 
 
 subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
@@ -105,7 +106,7 @@ def arg_extract(keys=None):
 
 
 def init(folder=None, debug=False, config=None):
-    global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL
+    global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL, MEMORY
 
     DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
 
@@ -123,6 +124,8 @@ def init(folder=None, debug=False, config=None):
     os.makedirs(DEFAULT_FOLDER, exist_ok=True)
     os.makedirs(THEMES, exist_ok=True)
     os.makedirs(TEMP_THEMES, exist_ok=True)
+
+    MEMORY = Memory(location=DEFAULT_FOLDER, verbose=0)
 
     from bw_plex.config import read_or_make
     CONFIG = read_or_make(INI_FILE)

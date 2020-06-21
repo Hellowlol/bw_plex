@@ -145,8 +145,8 @@ def create_raw_fp(path, maxlength=600):
     """Create a raw audio fingrerprint using fpcalc."""
     # Add error handling.
     fpcalc = os.environ.get(FPCALC_ENVVAR, "fpcalc")
-    command = [fpcalc, "-raw", "-overlap", "-length", str(maxlength), "%s" % path]
-    #command = [fpcalc, "-raw", "-length", str(maxlength), "%s" % path]
+    #command = [fpcalc, "-raw", "-overlap", "-length", str(maxlength), "%s" % path]
+    command = [fpcalc, "-raw", "-length", str(maxlength), "%s" % path]
     try:
         with open(os.devnull, "wb") as devnull:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=devnull)

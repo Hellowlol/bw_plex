@@ -1,23 +1,27 @@
 import binascii
 import hashlib
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 from itertools import chain
 
 import numpy as np
+from bw_plex import MEMORY
+from bw_plex.audio import create_raw_fp
+from bw_plex.misc import find_files
 from bw_plex.video import video_frame_by_frame
+from joblib import Parallel, delayed, parallel_backend
 
-image_type = ('.png', '.jpeg', '.jpg')
+image_type = (".png", ".jpeg", ".jpg")
 
 
 def string_hash(stack):
     """convert a all hashes to one hash."""
-    h = ''.join((str(i) for i in chain(*stack)))
-    return hashlib.md5(h.encode('utf-8')).hexdigest()
+    h = "".join((str(i) for i in chain(*stack)))
+    return hashlib.md5(h.encode("utf-8")).hexdigest()
 
 
 def _binary_array_to_hex(arr):
-    return binascii.hexlify(arr.flatten()).decode('ascii')
+    return binascii.hexlify(arr.flatten()).decode("ascii")
 
 
 class ImageHash(object):
@@ -40,9 +44,13 @@ class ImageHash(object):
 
     def __sub__(self, other):
         if other is None:
-            raise TypeError('Other hash must not be None.')
+            raise TypeError("Other hash must not be None.")
         if self.hash.size != other.hash.size:
-            raise TypeError('ImageHashes must be of the same shape.', self.hash.shape, other.hash.shape)
+            raise TypeError(
+                "ImageHashes must be of the same shape.",
+                self.hash.shape,
+                other.hash.shape,
+            )
         return np.count_nonzero(self.hash != other.hash)
 
     def __eq__(self, other):
@@ -82,12 +90,15 @@ def create_imghash(img):
 
 def hash_file(path, step=1, frame_range=False, end=None):
     import cv2
+
     # dont think this is need. Lets keep it for now.
     if isinstance(path, str) and path.endswith(image_type):
         yield ImageHash(create_imghash(path)), cv2.imread(path, 0), 0
         return
 
-    for (h, pos) in video_frame_by_frame(path, frame_range=frame_range, step=step, end=end):
+    for (h, pos) in video_frame_by_frame(
+        path, frame_range=frame_range, step=step, end=end
+    ):
         hashed_img = create_imghash(h)
         nn = ImageHash(hashed_img)
         yield nn, h, pos
@@ -95,6 +106,7 @@ def hash_file(path, step=1, frame_range=False, end=None):
 
 def hash_image_folder(folder):
     import cv2
+
     result = []
     all_files = []
     for root, _, files in os.walk(folder):
@@ -111,7 +123,9 @@ def hash_image_folder(folder):
     return result, all_files
 
 
-def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None):
+def find_hashes(
+    needels, stacks, ignore_black_frames=True, no_dupe_frames=True, thresh=None
+):
     """ This can be used to find a image in a video or a part of a video.
 
     stack should be i [([hash], pos)] sames goes for the needels.]"""
@@ -149,7 +163,6 @@ def find_hashes(needels, stacks, ignore_black_frames=True, no_dupe_frames=True, 
                     yield straw, pos, i, npos, n, tt
 
 
-
 def hamming(x, y):
     """Hamming for a np array"""
 
@@ -184,3 +197,64 @@ def find_common_intro_hashes_fpcalc(data, cutoff=None):
 
     res = Counter(res)
     return [k for k, v in res.items() if v >= cutoff]
+
+
+def create_audio_fingerprint_from_folder(path, ext=None):
+    """Create finger print for a folder"""
+    if isinstance(path, list):
+        fs = path
+    else:
+        fs = find_files(path, ext)
+
+    result = defaultdict(dict)
+
+    for file_to_check in fs:
+        try:
+            duration, fp, hps = create_raw_fp(file_to_check)
+            result[file_to_check] = {
+                "duration": duration,
+                "fp": fp,
+                "id": file_to_check,
+                "hps": hps,
+            }
+
+        except ValueError:
+            #  Just print the error from fpcalc for now, need to improve this
+            x = create_raw_fp(file_to_check)
+            print(x)
+            continue
+
+    return result
+
+
+def create_video_fingerprint_from_folder(path, ext=None):
+    """Creates a videofingerprint from folder or files."""
+    if isinstance(path, list):
+        fs = path
+    else:
+        fs = find_files(path, ext)
+
+    result = defaultdict(dict)
+
+    # We inline the cache as we dont work it to rerun
+    # every time we add a new file.
+    @MEMORY.cache
+    def create_video_fingerprint_from_file(path):
+        hashes = []
+        result = {}
+
+        for nn, _, pos in hash_file(path, step=1, end=600, frame_range=False):
+            hashes.append((pos, nn.hash))
+
+        result[path] = {"duration": 600, "fp": hashes, "id": path}
+        return result
+
+    with parallel_backend("loky", n_jobs=2):
+        results = Parallel()(
+            delayed(create_video_fingerprint_from_file)(path) for path in fs
+        )
+
+        for item in results:
+            result.update(item)
+
+    return result

@@ -1,74 +1,40 @@
+import json
+import logging
 import math
+import os
 from collections import defaultdict
 
 import numpy as np
-from bw_plex import LOG
+from bw_plex import DEFAULT_FOLDER, LOG, MEMORY
 from bw_plex.audio import create_audio_fingerprint_from_folder
 from bw_plex.hashing import find_common_intro_hashes_fpcalc, ham_np
-from bw_plex.misc import sec_to_hh_mm_ss
+from bw_plex.misc import grouper, measure, ms_to_hh_mm_ms, sec_to_hh_mm_ss
 from more_itertools import unzip
 
+_LOGGER = logging.getLogger(__name__)
 
-def is_smooth(data, ness=1):
-    """Check if the diff between this less then ness."""
-    res = []
-    for i, e in enumerate(data):
-        try:
-            if abs(data[i + 1] - e) <= ness:
-                res.append(True)
-            else:
-                res.append(False)
-                break
-        except IndexError:
-            if abs(data[i - 1] - e) <= ness:
-                res.append(True)
-            else:
-                res.append(False)
-    try:
-        first_false = res.index(False)
-        return False, first_false
-    except ValueError:
-        return True, len(res)
+if MEMORY is None:
+    pass
 
 
-def keep(it):
-    """ helper to remove remove stuff"""
-    res = []
-    it = list(sorted(list(set(it))))
+def keep(it, ness, name=None):
+    result = grouper(it, ness)
+    result = sorted(result, key=len, reverse=True)
 
-    # Keep stripping for the start until
-    # we get a large increase at the start.
-    # I want to precheck this with a low ness as
-    # this is usally the netflix intro.
-    # We should check if thats the start..
-    # Check for junk the first 6-7 sec
-    if any(i for i in it[:50] if i < 50):
-        smooth, idx = is_smooth(it[:50], ness=10)
-        if smooth is False:
-            LOG.debug("Cropped %s", it[: idx + 1])
-            it = it[idx + 1 :]
+    _LOGGER.debug("%s", os.path.basename(name))
+    _LOGGER.debug("Orginal: %s", it)
+    if len(result):
 
-    for i, v in enumerate(it):
-        try:
-            # Check the last value vs the next one
-            part = [res[-1], v]
-            sm, idxx = is_smooth(part, 100)
-            if sm:
-                res.append(v)
-            else:
-                break
+        selected = result[0]
+        dropped = result[1:]
+        _LOGGER.debug("Using: %s", [(i, ms_to_hh_mm_ms(i/8.04 * 1000)) for i in selected])
+        for d in dropped:
+            _LOGGER.debug("Dropped: %s", [(i, ms_to_hh_mm_ms(i/8.04 * 1000)) for i in d])
 
-        except IndexError:
-            part = it[i : i + 2]
-            smooth, idxx = is_smooth(part, 100)
-            if smooth is True:
-                res.append(v)
-            else:
-                if len(res) == 0:
-                    continue
-                break
+        return selected
 
-    return res
+    _LOGGER.debug("Didnt find anything usefull %s", it)
+
 
 
 def find_intros_frames(data, base=None, intro_hashes=None):
@@ -111,7 +77,7 @@ def find_common_intro_hashes_frames(data, base=None, cutoff=None):
     """Extact all common hashes from a season that is in """
     if cutoff is None:
         cutoff = math.floor(len(data.keys()) / 100 * 70)
-        LOG.debug("Using cutoff %s", cutoff)
+        LOG.debug("Hashes has to be in %s items", cutoff)
 
     d = {}
     # Extract all hashes for all eps
@@ -135,7 +101,20 @@ def find_common_intro_hashes_frames(data, base=None, cutoff=None):
     return res, d
 
 
-def find_intros_fpcalc(data, base=None, cutoff=1):
+@measure
+@MEMORY.cache
+def find_intros_fpcalc(data: dict, base=None, cutoff: int = 1) -> dict:
+    """find intros using fpcalc
+
+       Arguments:
+            data: dict
+            base: dict
+            cutoff: int
+
+        returns:
+            dict
+
+    """
     intros = defaultdict(dict)
 
     common_hashes = find_common_intro_hashes_fpcalc(data)
@@ -155,6 +134,7 @@ def find_intros_fpcalc(data, base=None, cutoff=1):
             # LOG.debug("Checking %s", key)
             for ii, fp in enumerate(value["fp"]):
                 # Use the int.bit_count() in py 3.10
+                # or use gmpy to speedup
                 if bin(base_fp ^ fp).count("1") <= cutoff:
                     # if base_fp == fp and base_name != key:
                     if base_fp in common_hashes:
@@ -188,16 +168,20 @@ def find_intros_fpcalc(data, base=None, cutoff=1):
                     intros[base["id"]]["hashes"].append(base_fp)
                     intros[base["id"]]["hps"] = base["hps"]
 
-    for k in sorted(intros.keys()):
-        LOG.debug("%s %s", k, list(sorted(intros[k]["timings"])))
-
     return intros
 
 
 def special_sauce_fpcalc(data):
+    """Helper to remove unwanted timings"""
     D = defaultdict(dict)
     for intro in sorted(data):
         T = keep(data[intro]["timings"])
+        tmi = [
+            sec_to_hh_mm_ss(i / data[intro]["hps"])
+            for i in sorted(data[intro]["timings"])
+        ]
+        LOG.debug("RAW %s %s", intro, tmi)
+        LOG.debug("Using %s", [sec_to_hh_mm_ss(i / data[intro]["hps"]) for i in T])
 
         start = min(T) / data[intro]["hps"]
         end = max(T) / data[intro]["hps"]
@@ -218,16 +202,93 @@ def special_sauce_fpcalc(data):
 
     return D
 
+def test_vs_plex(show, method="audio"):
+    pms = PlexServer() #
 
+    show = pms.library.section("TV Shows").get(show)
+
+    season = show.seasons()[0]
+    _LOGGER.debug("Season has %s episodes", len(season.episodes()))
+    episodes = [e for e in season.episodes() if e.hasIntroMarker is True]
+    _LOGGER.debug("%s episodes has intro markers", len(episodes))
+    # Only uses epsideos that has markers
+    ep_files = []
+
+    items = {}
+
+    for e in episodes:
+        fs = list(e.iterParts())[0].file
+        new_name = fs.replace("/tvseries/", "W://")
+        ep_files.append(new_name)
+        items[new_name] = e
+
+    f_video, f_audio = measure(_find_offset_ffmpeg)(fs)
+
+    print(ep_files)
+
+    if method == "audio":
+        data = create_audio_fingerprint_from_folder(ep_files)
+        _LOGGER.debug("Got %s audio fingerprints", len(data))
+
+        print('\n\n')
+        print(json.dumps(data, indent=4))
+        print('\n\n')
+
+        data = find_intros(data)
+        sau = special_sauce_fpcalc(data)
+
+    elif method == "video":
+        data = create_video_fingerprint_from_folder(ep_files)
+
+        print('\n\n')
+        print(json.dumps(data, indent=4))
+        print('\n\n')
+
+        data = find_intros_np(data)
+        sau = special_sauce2(data)
+
+    for k, v in sau.items():
+        pms_ep = items.get(k)
+        if pms_ep:
+            markers = pms_ep.markers[0]
+            start = markers.start
+            end = markers.end
+            print(
+                "[pms] intro in %s start %s T %s (plex %s) dev %s, end %s  T %s (plex %s) dev %s"
+                % (
+                    os.path.basename(k),
+                    ms_to_hh_mm_ms(sau[k]["start"] * 1000),
+                    sau[k]["raw_start"],
+                    ms_to_hh_mm_ms(start),
+                    round(abs(sau[k]["start"] * 1000 - start), 4),
+                    ms_to_hh_mm_ms(sau[k]["end"] * 1000),
+                    sau[k]["raw_end"],
+                    ms_to_hh_mm_ms(end),
+                    round(abs(sau[k]["end"] * 1000 - end), 4),
+                )
+            )
+
+
+test_vs_plex("Marvel's Daredevil", method="audio")
 
 
 if __name__ == "__main__":
     # Example usage :)
     print("start")
     import logging
+
     logging.basicConfig(level=logging.DEBUG)
-    path_to_a_season =  r"C:\stuff\s13eps\dexter"
-    audio_fingerprints = create_audio_fingerprint_from_folder(path_to_a_season)
+    # path_to_a_season =  r"C:\stuff\s13eps\dexter"
+    path_to_a_season = (
+        r"W:\star trek deep space nine\Star.Trek.DS9.S03.x264.ac3.5.1-MEECH"
+    )
+
+    # @memory.cache
+    # def f(path):
+    #    return create_audio_fingerprint_from_folder(path)
+
+    audio_fingerprints = measure(create_audio_fingerprint_from_folder)(path_to_a_season)
     data = find_intros_fpcalc(audio_fingerprints)
-    #print(data)
+    # print(data)
     result = special_sauce_fpcalc(data)
+    print("end")
