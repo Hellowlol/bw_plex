@@ -210,7 +210,7 @@ def create_audio_fingerprint_from_folder(path, ext=None):
 
     for file_to_check in fs:
         try:
-            duration, fp, hps = create_raw_fp(file_to_check)
+            duration, fp, hps = MEMORY.cache(create_raw_fp)(file_to_check)
             result[file_to_check] = {
                 "duration": duration,
                 "fp": fp,

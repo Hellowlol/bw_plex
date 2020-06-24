@@ -3,18 +3,64 @@ import logging
 import math
 import os
 from collections import defaultdict
+from operator import itemgetter
 
 import numpy as np
 from bw_plex import DEFAULT_FOLDER, LOG, MEMORY
 from bw_plex.audio import create_audio_fingerprint_from_folder
 from bw_plex.hashing import find_common_intro_hashes_fpcalc, ham_np
-from bw_plex.misc import grouper, measure, ms_to_hh_mm_ms, sec_to_hh_mm_ss
+from bw_plex.misc import (_find_offset_ffmpeg, get_pms, grouper, measure,
+                          ms_to_hh_mm_ms, sec_to_hh_mm_ss)
 from more_itertools import unzip
 
 _LOGGER = logging.getLogger(__name__)
 
-if MEMORY is None:
-    pass
+logging.basicConfig(level=logging.DEBUG)
+
+
+def find_closest_scene(it, ep_start, ep_end, type="start", cutoff=4):
+    it = list(sorted(it))
+
+    _LOGGER.debug("ORG: %s", it)
+    result = []
+    result_start = []
+    result_end = []
+    for item in it:
+        start, end, duration = item
+
+        ep_start_scene_start_diff = abs(start - ep_start)
+        ep_start_scene_end_diff = abs(end - ep_start)
+
+        ep_end_scene_start_diff = abs(start - ep_end)
+        ep_end_scene_end_diff = abs(end - ep_end)
+
+        if ep_start_scene_start_diff < cutoff and ep_start_scene_end_diff < cutoff:
+            result_start.append(
+                [
+                    start,
+                    end,
+                    duration,
+                    ep_start_scene_start_diff,
+                    ep_start_scene_end_diff,
+                ]
+            )
+        elif ep_end_scene_start_diff < cutoff and ep_end_scene_end_diff < cutoff:
+            result_end.append(
+                [start, end, duration, ep_end_scene_start_diff, ep_end_scene_end_diff]
+            )
+
+    scene_start = sorted(result_start, key=itemgetter(3))
+    scene_end = sorted(result_end, key=itemgetter(4))
+    _LOGGER.debug("Scene start: %s", scene_start)
+    _LOGGER.debug("Scene end: %s", scene_end)
+    try:
+        selected_start = scene_start[0][0]
+        selected_end = scene_end[0][1]
+        _LOGGER.debug("Picked start %s (%s)and end %s (%s)", selected_start, ep_start, selected_end, ep_end)
+        return selected_start, selected_end
+    except IndexError:
+        _LOGGER.debug("Failed to get a scene")
+        return ep_start, ep_end
 
 
 def keep(it, ness, name=None):
@@ -27,14 +73,18 @@ def keep(it, ness, name=None):
 
         selected = result[0]
         dropped = result[1:]
-        _LOGGER.debug("Using: %s", [(i, ms_to_hh_mm_ms(i/8.04 * 1000)) for i in selected])
+        _LOGGER.debug(
+            "Using: %s", [(i, ms_to_hh_mm_ms(i / 8.04 * 1000)) for i in selected]
+        )
         for d in dropped:
-            _LOGGER.debug("Dropped: %s", [(i, ms_to_hh_mm_ms(i/8.04 * 1000)) for i in d])
+            #pass
+            _LOGGER.debug(
+                "Dropped: %s", [(i, ms_to_hh_mm_ms(i / 8.04 * 1000)) for i in d]
+            )
 
         return selected
 
     _LOGGER.debug("Didnt find anything usefull %s", it)
-
 
 
 def find_intros_frames(data, base=None, intro_hashes=None):
@@ -175,26 +225,33 @@ def special_sauce_fpcalc(data):
     """Helper to remove unwanted timings"""
     D = defaultdict(dict)
     for intro in sorted(data):
-        T = keep(data[intro]["timings"])
-        tmi = [
-            sec_to_hh_mm_ss(i / data[intro]["hps"])
-            for i in sorted(data[intro]["timings"])
-        ]
-        LOG.debug("RAW %s %s", intro, tmi)
-        LOG.debug("Using %s", [sec_to_hh_mm_ss(i / data[intro]["hps"]) for i in T])
-
+        T = keep(data[intro]["timings"], 100, intro)
         start = min(T) / data[intro]["hps"]
         end = max(T) / data[intro]["hps"]
-        # raw_start = min(data[intro]["timings"])
-        # raw_end = max(data[intro]["timings"])
-        # print(len(data[intro]["timings"]))
+        raw_start = min(data[intro]["timings"])
+        raw_end = max(data[intro]["timings"])
+        # Try to find a scene shift using start and end as a guide line.
+        # This the most correct is start and end, but this is the intro, we want to skip
+        # any boring fade to black etc.
+        f_v, f_a = MEMORY.cache(_find_offset_ffmpeg)(intro)
+
+        scene_start, scene_end = find_closest_scene(f_v, start, end)
 
         LOG.info(
             "[AUDIO] intro in %s start %s, end %s"
-            % (intro, sec_to_hh_mm_ss(start), sec_to_hh_mm_ss(end))
+            % (intro, sec_to_hh_mm_ss(scene_start), sec_to_hh_mm_ss(scene_end))
         )
-        D[intro]["start"] = start
-        D[intro]["end"] = end
+        LOG.debug(
+            "start %s scene_start %s end %s scene_end %s",
+            ms_to_hh_mm_ms(start * 1000),
+            ms_to_hh_mm_ms(scene_start * 1000),
+            ms_to_hh_mm_ms(end * 1000),
+            ms_to_hh_mm_ms(scene_end * 1000),
+        )
+        D[intro]["start"] = scene_start
+        D[intro]["end"] = scene_end
+        D[intro]["raw_start"] = raw_start
+        D[intro]["raw_end"] = raw_end
 
         if end - start < 15:
             print("Intro is shorter then 15 sec")
@@ -202,19 +259,28 @@ def special_sauce_fpcalc(data):
 
     return D
 
+
 def test_vs_plex(show, method="audio"):
-    pms = PlexServer() #
+    from plexapi.server import PlexServer
+
+    pms = PlexServer()
+    print(pms.friendlyName)
 
     show = pms.library.section("TV Shows").get(show)
+    print(show)
 
     season = show.seasons()[0]
     _LOGGER.debug("Season has %s episodes", len(season.episodes()))
-    episodes = [e for e in season.episodes() if e.hasIntroMarker is True]
+
+    episodes = [e for e in season.episodes() if e.hasIntroMarker]
     _LOGGER.debug("%s episodes has intro markers", len(episodes))
     # Only uses epsideos that has markers
     ep_files = []
 
     items = {}
+
+    if not len(episodes):
+        return
 
     for e in episodes:
         fs = list(e.iterParts())[0].file
@@ -222,27 +288,24 @@ def test_vs_plex(show, method="audio"):
         ep_files.append(new_name)
         items[new_name] = e
 
-    f_video, f_audio = measure(_find_offset_ffmpeg)(fs)
-
-    print(ep_files)
-
     if method == "audio":
+        print(ep_files)
         data = create_audio_fingerprint_from_folder(ep_files)
         _LOGGER.debug("Got %s audio fingerprints", len(data))
 
-        print('\n\n')
+        print("\n\n")
         print(json.dumps(data, indent=4))
-        print('\n\n')
+        print("\n\n")
 
-        data = find_intros(data)
+        data = find_intros_fpcalc(data)
         sau = special_sauce_fpcalc(data)
 
     elif method == "video":
         data = create_video_fingerprint_from_folder(ep_files)
 
-        print('\n\n')
+        print("\n\n")
         print(json.dumps(data, indent=4))
-        print('\n\n')
+        print("\n\n")
 
         data = find_intros_np(data)
         sau = special_sauce2(data)
@@ -269,26 +332,27 @@ def test_vs_plex(show, method="audio"):
             )
 
 
-test_vs_plex("Marvel's Daredevil", method="audio")
-
-
 if __name__ == "__main__":
     # Example usage :)
     print("start")
-    import logging
+    test_vs_plex("Westworld", method="audio")
 
-    logging.basicConfig(level=logging.DEBUG)
     # path_to_a_season =  r"C:\stuff\s13eps\dexter"
-    path_to_a_season = (
-        r"W:\star trek deep space nine\Star.Trek.DS9.S03.x264.ac3.5.1-MEECH"
-    )
+    # path_to_a_season = (
+    #    r"W:\star trek deep space nine\Star.Trek.DS9.S03.x264.ac3.5.1-MEECH"
+    # )
 
     # @memory.cache
     # def f(path):
     #    return create_audio_fingerprint_from_folder(path)
+    # test_vs_plex("Dexter", method="audio")
+    # f_v, f_a = _find_offset_ffmpeg(r"C:\stuff\s13eps\dexter\itn-dexter.s02e02.720p.mkv")
+    # print(f_v)
+    # print(f_a)
+    ##find_closest_scene
 
-    audio_fingerprints = measure(create_audio_fingerprint_from_folder)(path_to_a_season)
-    data = find_intros_fpcalc(audio_fingerprints)
+    # audio_fingerprints = measure(create_audio_fingerprint_from_folder)(path_to_a_season)
+    # data = find_intros_fpcalc(audio_fingerprints)
     # print(data)
-    result = special_sauce_fpcalc(data)
-    print("end")
+    # result = special_sauce_fpcalc(data)
+    # print("end")

@@ -307,6 +307,7 @@ def _find_offset_ffmpeg(
     duration_video=0.5,
     pix_th=0.10,
     au_db=50,
+    offset=0,
 ):
     """Find a list of time range for black detect and silence detect.duration_video
 
@@ -327,22 +328,47 @@ def _find_offset_ffmpeg(
     v = "blackdetect=d=%s:pix_th=%s" % (duration_video, pix_th)
     a = "silencedetect=n=-%sdB:d=%s" % (au_db, duration_audio)
 
-    cmd = [
-        "ffmpeg",
-        "-i",
-        afile,
-        "-t",
-        str(trim),
-        "-vf",
-        v,
-        "-af",
-        a,
-        "-f",
-        "null",
-        "-",
-    ]
+    if os.name == "nt":
+        afile = '"%s"' % afile
 
-    LOG.debug("Calling find_offset_ffmpeg with command %s", " ".join(cmd))
+        cmd = [
+            "ffmpeg",
+            "-ss",
+            str(offset),
+            "-t",
+            str(trim),
+            "-i",
+            afile,
+            "-vf",
+            v,
+            "-af",
+            a,
+            "-f",
+            "null",
+            "-",
+        ]
+
+        cmd = ' '.join(cmd)
+
+    else:
+        cmd = [
+            "ffmpeg",
+            "-ss",
+            str(offset),
+            "-t",
+            str(trim),
+            "-i",
+            afile,
+            "-vf",
+            v,
+            "-af",
+            a,
+            "-f",
+            "null",
+            "-",
+        ]
+
+    LOG.debug("Calling find_offset_ffmpeg with command %s", cmd)
 
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -393,6 +419,7 @@ def find_offset_ffmpeg(
     duration_video=0.5,
     pix_th=0.10,
     au_db=50,
+    offset=0
 ):
     final_video, final_audio = _find_offset_ffmpeg(
         afile,
@@ -402,6 +429,7 @@ def find_offset_ffmpeg(
         duration_video=duration_video,
         pix_th=pix_th,
         au_db=au_db,
+        offset=offset
     )
 
     return calc_offset(final_video, final_audio)
@@ -917,8 +945,6 @@ def find_files(path, ext=None):
             if fp.endswith(ext):
                 fs.append(fp)
     return fs
-
-
 
 
 def measure(func):

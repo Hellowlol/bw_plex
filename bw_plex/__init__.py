@@ -4,7 +4,8 @@ import sys
 from logging.handlers import RotatingFileHandler
 from multiprocessing.pool import ThreadPool as Pool
 
-DEFAULT_FOLDER = None
+from joblib import Memory
+
 THEMES = None
 TEMP_THEMES = None
 FP_HASHES = None
@@ -15,7 +16,17 @@ DB_PATH = None
 CONFIG = None
 PMS = None
 POOL = None
-MEMORY = None
+
+
+
+DEFAULT_FOLDER = os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
+MEMORY = Memory(location=DEFAULT_FOLDER, verbose=0)
+
+if os.path.isdir(DEFAULT_FOLDER) and not os.access(DEFAULT_FOLDER, os.W_OK):
+    print('You default folder is not writeable')
+    sys.exit()
+
+
 
 
 subcommands = ['watch', 'add_theme_to_hashtable', 'check_db', 'export_db',
@@ -108,7 +119,7 @@ def arg_extract(keys=None):
 def init(folder=None, debug=False, config=None):
     global DEFAULT_FOLDER, THEMES, TEMP_THEMES, LOG_FILE, INI_FILE, INI_FILE, DB_PATH, CONFIG, FP_HASHES, POOL, MEMORY
 
-    DEFAULT_FOLDER = folder or os.environ.get('bw_plex_default_folder') or os.path.expanduser('~/.config/bw_plex')
+    DEFAULT_FOLDER = folder or DEFAULT_FOLDER
 
     if os.path.isdir(DEFAULT_FOLDER) and not os.access(DEFAULT_FOLDER, os.W_OK):
         print('You default folder is not writeable')
@@ -125,6 +136,8 @@ def init(folder=None, debug=False, config=None):
     os.makedirs(THEMES, exist_ok=True)
     os.makedirs(TEMP_THEMES, exist_ok=True)
 
+    # leave this, intented to overwrite incase someone want to use a another
+    # location while still running intro as a script.
     MEMORY = Memory(location=DEFAULT_FOLDER, verbose=0)
 
     from bw_plex.config import read_or_make

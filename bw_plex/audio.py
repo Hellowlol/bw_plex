@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 
-from bw_plex import CONFIG, LOG, THEMES
+from bw_plex import CONFIG, LOG, MEMORY, THEMES
 
 # Try to import the optional package.
 try:
@@ -42,7 +42,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
     tmp.close()
     tmp_name = "%s" % tmp_name
 
-    if os.name == 'nt' and '://' not in afile:
+    if os.name == 'nt' and not afile.startswith(("http", "https")):
         q_file = '"%s"' % afile
     else:
         q_file = afile
@@ -59,7 +59,7 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
             str(fs), '-ss', '0', '-t', str(trim), '-acodec', 'pcm_s16le',
             tmp_name
         ]
-
+    print(' '.join(cmd))
     LOG.debug('calling ffmpeg with %s' % ' '.join(cmd))
 
     if os.name == 'nt':
@@ -67,13 +67,15 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
 
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
     _, e = psox.communicate()
+    #print(_)
+    #print(e)
 
     if not psox.returncode == 0:  # pragma: no cover
         LOG.exception(e)
         raise Exception("FFMpeg failed")
 
     # Check if we passed a url.
-    if '://' in afile and filename:
+    if afile.startswith(("http", "https")) and filename:
         filename = filename + '.wav'
         afile = os.path.join(THEMES, filename)
 
@@ -142,6 +144,74 @@ def has_recap_audio(audio, phrase=None, thresh=1, duration=30):
 
 
 def create_raw_fp(path, maxlength=600):
+    fpcalc = os.environ.get(FPCALC_ENVVAR, "fpcalc")
+    #command = [fpcalc, "-raw", "-overlap", "-length", str(maxlength), "%s" % path]
+
+    def run_cmd(path):
+        command = [fpcalc, "-raw", "-length", str(maxlength), "%s" % path]
+        LOG.debug(' '.join(command))
+        try:
+            with open(os.devnull, "wb") as devnull:
+                proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=devnull)
+                output, _ = proc.communicate(timeout=60)
+                return output
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        except OSError as exc:
+            if exc.errno == errno.ENOENT:
+                raise NoBackendError("fpcalc not found")
+
+    output = run_cmd(path)
+
+    def parse_output(output, path):
+        duration = fp = None
+        for line in output.splitlines():
+            try:
+                parts = line.split(b"=", 1)
+            except ValueError:
+                return "malformed fpcalc output"
+            if parts[0] == b"DURATION":
+                try:
+                    duration = float(parts[1])
+                except ValueError:
+                    return "shit"
+            elif parts[0] == b"FINGERPRINT":
+                fp = parts[1]
+
+        if duration is None or fp is None:
+            # THis can fail if audio is dts so some other crappy shit.
+            return "missing fpcalc output for %s" % path
+
+        dur = float(duration)
+        hashes = [int(i) for i in fp.split(b",")]
+        return (dur, hashes, len(hashes) / maxlength)
+
+    if output is None:
+        LOG.debug("Failed to ZOMG")
+
+    out = parse_output(output, path)
+    if out is None:
+        return
+
+    if isinstance(out, tuple):
+        return out
+    else:
+        LOG.debug("Failed to read the video %s file directly, converting to .wav and retrying", path)
+        temp_wave = convert_and_trim(path, trim=maxlength)
+        output = run_cmd(temp_wave)
+        out = parse_output(output, temp_wave)
+        if isinstance(out, tuple):
+            # Do some clean up.
+            try:
+                os.remove(temp_wave)
+            except:
+                pass
+            return out
+        else:
+            return "crap"
+
+
+def create_raw_fp_org(path, maxlength=600):
     """Create a raw audio fingrerprint using fpcalc."""
     # Add error handling.
     fpcalc = os.environ.get(FPCALC_ENVVAR, "fpcalc")
@@ -153,7 +223,7 @@ def create_raw_fp(path, maxlength=600):
             output, _ = proc.communicate()
     except OSError as exc:
         if exc.errno == errno.ENOENT:
-            return "to fpcalc found in path."
+            return "no fpcalc found in path."
 
     duration = fp = None
     for line in output.splitlines():
@@ -170,6 +240,7 @@ def create_raw_fp(path, maxlength=600):
             fp = parts[1]
 
     if duration is None or fp is None:
+        print(output)
         return "missing fpcalc output for %s" % path
     dur = float(duration)
     hashes = [int(i) for i in fp.split(b",")]
@@ -180,12 +251,16 @@ def create_raw_fp(path, maxlength=600):
 def create_audio_fingerprint_from_folder(path, ext=None):
     """Create finger print for a folder"""
     # https://oxygene.sk/2011/01/how-does-chromaprint-work/
-    fs = find_files(path, ext)
+    if isinstance(path, list):
+        fs = path
+    else:
+        fs = find_files(path, ext)
+
     result = defaultdict(dict)
 
     for file_to_check in fs:
         try:
-            duration, fp, hps = create_raw_fp(file_to_check)
+            duration, fp, hps = MEMORY.cache(create_raw_fp)(file_to_check)
             result[file_to_check] = {
                 "duration": duration,
                 "fp": fp,
