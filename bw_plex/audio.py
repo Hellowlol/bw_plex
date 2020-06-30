@@ -59,7 +59,6 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
             str(fs), '-ss', '0', '-t', str(trim), '-acodec', 'pcm_s16le',
             tmp_name
         ]
-    print(' '.join(cmd))
     LOG.debug('calling ffmpeg with %s' % ' '.join(cmd))
 
     if os.name == 'nt':
@@ -67,8 +66,6 @@ def convert_and_trim(afile, fs=8000, trim=None, theme=False, filename=None):
 
     psox = subprocess.Popen(cmd, stderr=subprocess.PIPE)
     _, e = psox.communicate()
-    #print(_)
-    #print(e)
 
     if not psox.returncode == 0:  # pragma: no cover
         LOG.exception(e)
@@ -208,44 +205,7 @@ def create_raw_fp(path, maxlength=600):
                 pass
             return out
         else:
-            return "crap"
-
-
-def create_raw_fp_org(path, maxlength=600):
-    """Create a raw audio fingrerprint using fpcalc."""
-    # Add error handling.
-    fpcalc = os.environ.get(FPCALC_ENVVAR, "fpcalc")
-    #command = [fpcalc, "-raw", "-overlap", "-length", str(maxlength), "%s" % path]
-    command = [fpcalc, "-raw", "-length", str(maxlength), "%s" % path]
-    try:
-        with open(os.devnull, "wb") as devnull:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=devnull)
-            output, _ = proc.communicate()
-    except OSError as exc:
-        if exc.errno == errno.ENOENT:
-            return "no fpcalc found in path."
-
-    duration = fp = None
-    for line in output.splitlines():
-        try:
-            parts = line.split(b"=", 1)
-        except ValueError:
-            return "malformed fpcalc output"
-        if parts[0] == b"DURATION":
-            try:
-                duration = float(parts[1])
-            except ValueError:
-                return "shit"
-        elif parts[0] == b"FINGERPRINT":
-            fp = parts[1]
-
-    if duration is None or fp is None:
-        print(output)
-        return "missing fpcalc output for %s" % path
-    dur = float(duration)
-    hashes = [int(i) for i in fp.split(b",")]
-    return dur, hashes, len(hashes) / maxlength
-
+            return "crap" # <- fix me
 
 
 def create_audio_fingerprint_from_folder(path, ext=None):

@@ -16,7 +16,11 @@ from more_itertools import unzip
 
 _LOGGER = logging.getLogger(__name__)
 
-logging.basicConfig(level=logging.DEBUG)
+
+
+
+def hammer_time():
+    pass
 
 
 
@@ -194,7 +198,9 @@ def find_intros_fpcalc(data: dict, base=None, cutoff: int = 1) -> dict:
     common_hashes = find_common_intro_hashes_fpcalc(data)
     LOG.debug("common hashes %s", common_hashes)
     if base is None:
-        base_name = list(data.keys())[0]
+        # We dont want the first episode as, sometime when there are no intro
+        # its usually in the first episode of the season/pilot.
+        base_name = list(data.keys())[2]
         LOG.info("Using %s as base", base_name)
         base = data.pop(base_name)
         numer_of_hashes_intro_search_intro = len(base["fp"])
@@ -299,7 +305,7 @@ def test_vs_plex(show, method="audio"):
     show = pms.library.section("TV Shows").get(show)
     print(show)
 
-    season = show.seasons()[6]
+    season = show.seasons()[0]
     _LOGGER.debug("Season has %s episodes", len(season.episodes()))
 
     episodes = [e for e in season.episodes() if e.hasIntroMarker]
@@ -352,6 +358,35 @@ def test_vs_plex(show, method="audio"):
 
 
 if __name__ == "__main__":
-    # Example usage :)
+
     print("start")
-    test_vs_plex("Dexter", method="video")
+    # Example usage to check vs plex.
+    # Uncomment this to debug
+    logging.basicConfig(level=logging.DEBUG)
+    #test_vs_plex("Person of interest", method="audio")
+
+    # If you need to run this shit manually
+    # you have 2 different methods to detect intros with 0 ties to plex
+
+    def find_intro_from_folder(path_to_folder_that_only_has_the_same_season_of_a_show, method="audio"):
+        if method == "audio":
+            # If it fails to find anything its usaully because of a bad base,
+            data = create_audio_fingerprint_from_folder(path_to_folder_that_only_has_the_same_season_of_a_show)
+            data = find_intros_fpcalc(data)
+        elif method == "video":
+            data = create_video_fingerprint_from_folder(path_to_folder_that_only_has_the_same_season_of_a_show)
+            data = find_intros_frames(data)
+        else:
+            print("invalid method")
+            return
+
+        sau = special_sauce(data)
+
+        for key, value in sau.items():
+            print("%s intro start at: %s ends at: %s" % (os.path.basename(key), ms_to_hh_mm_ms(value["start"] * 1000), ms_to_hh_mm_ms(value["end"] * 1000)))
+
+        return sau
+
+
+    find_intro_from_folder(r"C:\stuff\s13eps\person of interest", method="video")
+    #print("end")
