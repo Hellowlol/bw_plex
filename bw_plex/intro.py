@@ -8,7 +8,8 @@ from operator import itemgetter
 import numpy as np
 from bw_plex import DEFAULT_FOLDER, LOG, MEMORY
 from bw_plex.audio import create_audio_fingerprint_from_folder
-from bw_plex.hashing import find_common_intro_hashes_fpcalc, ham_np
+from bw_plex.hashing import (create_video_fingerprint_from_folder,
+                             find_common_intro_hashes_fpcalc, ham_np)
 from bw_plex.misc import (_find_offset_ffmpeg, get_pms, grouper, measure,
                           ms_to_hh_mm_ms, sec_to_hh_mm_ss)
 from more_itertools import unzip
@@ -18,11 +19,12 @@ _LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 
-def find_closest_scene(it, ep_start, ep_end, type="start", cutoff=4):
+
+def find_closest_scene(it, ep_start, ep_end, type="start", cutoff=7):
     it = list(sorted(it))
 
     _LOGGER.debug("ORG: %s", it)
-    result = []
+    _LOGGER.debug("start: %s end: %s", ep_start, ep_end)
     result_start = []
     result_end = []
     for item in it:
@@ -56,7 +58,7 @@ def find_closest_scene(it, ep_start, ep_end, type="start", cutoff=4):
     try:
         selected_start = scene_start[0][0]
         selected_end = scene_end[0][1]
-        _LOGGER.debug("Picked start %s (%s)and end %s (%s)", selected_start, ep_start, selected_end, ep_end)
+        _LOGGER.debug("Picked start %s |%s (%s) and end %s |%s (%s)", selected_start, ms_to_hh_mm_ms(selected_start*1000), ep_start, selected_end, ms_to_hh_mm_ms(selected_end*1000), ep_end)
         return selected_start, selected_end
     except IndexError:
         _LOGGER.debug("Failed to get a scene")
@@ -77,9 +79,31 @@ def keep(it, ness, name=None):
             "Using: %s", [(i, ms_to_hh_mm_ms(i / 8.04 * 1000)) for i in selected]
         )
         for d in dropped:
-            #pass
             _LOGGER.debug(
                 "Dropped: %s", [(i, ms_to_hh_mm_ms(i / 8.04 * 1000)) for i in d]
+            )
+
+        return selected
+
+    _LOGGER.debug("Didnt find anything usefull %s", it)
+
+
+def keep_hashes(it, ness, name=None):
+    result = grouper(it, ness)
+    result = sorted(result, key=len, reverse=True)
+
+    _LOGGER.debug("%s", os.path.basename(name))
+    _LOGGER.debug("Orginal: %s", it)
+    if len(result):
+
+        selected = result[0]
+        dropped = result[1:]
+        _LOGGER.debug(
+            "Using: %s", [(i, ms_to_hh_mm_ms(i)) for i in selected]
+        )
+        for d in dropped:
+            _LOGGER.debug(
+                "Dropped: %s", [(i, ms_to_hh_mm_ms(i)) for i in d]
             )
 
         return selected
@@ -102,11 +126,11 @@ def find_intros_frames(data, base=None, intro_hashes=None):
         intro_hashes, _ = find_common_intro_hashes_frames(data, None)
 
     for key, value in data.items():
-        t, arr = unzip(value["fp"])
-        timings = np.array(t)
+        timings = np.array([i[0] for i in value["fp"]])
+        arr = np.array([i[1] for i in value["fp"]])
 
         for ih in intro_hashes:
-            res, idx = ham_np(ih, np.array(arr))
+            res, idx = ham_np(ih, arr)
 
             if res.size > 0:
                 for k, ffs in zip(timings[idx], arr[idx]):
@@ -221,26 +245,32 @@ def find_intros_fpcalc(data: dict, base=None, cutoff: int = 1) -> dict:
     return intros
 
 
-def special_sauce_fpcalc(data):
+def special_sauce(data):
     """Helper to remove unwanted timings"""
     D = defaultdict(dict)
     for intro in sorted(data):
-        T = keep(data[intro]["timings"], 100, intro)
-        start = min(T) / data[intro]["hps"]
-        end = max(T) / data[intro]["hps"]
+
+        try:
+            # Uses fpcalc
+            T = keep(data[intro]["timings"], 100, intro)
+            start = min(T) / data[intro]["hps"]
+            end = max(T) / data[intro]["hps"]
+        except KeyError:
+            # Uses videofingerprint
+            T = keep_hashes(data[intro]["timings"], 7000, intro)
+            # Convert to the timings to seconds as this is whats used by fpcalc.
+            T = [i / 1000 for i in T]
+            start = min(T)
+            end = max(T)
+
         raw_start = min(data[intro]["timings"])
         raw_end = max(data[intro]["timings"])
         # Try to find a scene shift using start and end as a guide line.
-        # This the most correct is start and end, but this is the intro, we want to skip
-        # any boring fade to black etc.
-        f_v, f_a = MEMORY.cache(_find_offset_ffmpeg)(intro)
-
+        # The start and end is the most correct way, but since we want the skip fade
+        # to black and shit like this we try to find the end of the previous scene.
+        f_v, f_a = MEMORY.cache(_find_offset_ffmpeg)(intro, offset=start-10, trim=end - start + 10)
         scene_start, scene_end = find_closest_scene(f_v, start, end)
 
-        LOG.info(
-            "[AUDIO] intro in %s start %s, end %s"
-            % (intro, sec_to_hh_mm_ss(scene_start), sec_to_hh_mm_ss(scene_end))
-        )
         LOG.debug(
             "start %s scene_start %s end %s scene_end %s",
             ms_to_hh_mm_ms(start * 1000),
@@ -269,7 +299,7 @@ def test_vs_plex(show, method="audio"):
     show = pms.library.section("TV Shows").get(show)
     print(show)
 
-    season = show.seasons()[0]
+    season = show.seasons()[6]
     _LOGGER.debug("Season has %s episodes", len(season.episodes()))
 
     episodes = [e for e in season.episodes() if e.hasIntroMarker]
@@ -289,26 +319,15 @@ def test_vs_plex(show, method="audio"):
         items[new_name] = e
 
     if method == "audio":
-        print(ep_files)
         data = create_audio_fingerprint_from_folder(ep_files)
         _LOGGER.debug("Got %s audio fingerprints", len(data))
-
-        print("\n\n")
-        print(json.dumps(data, indent=4))
-        print("\n\n")
-
         data = find_intros_fpcalc(data)
-        sau = special_sauce_fpcalc(data)
+        sau = special_sauce(data)
 
     elif method == "video":
         data = create_video_fingerprint_from_folder(ep_files)
-
-        print("\n\n")
-        print(json.dumps(data, indent=4))
-        print("\n\n")
-
-        data = find_intros_np(data)
-        sau = special_sauce2(data)
+        data = find_intros_frames(data)
+        sau = special_sauce(data)
 
     for k, v in sau.items():
         pms_ep = items.get(k)
@@ -335,24 +354,4 @@ def test_vs_plex(show, method="audio"):
 if __name__ == "__main__":
     # Example usage :)
     print("start")
-    test_vs_plex("Westworld", method="audio")
-
-    # path_to_a_season =  r"C:\stuff\s13eps\dexter"
-    # path_to_a_season = (
-    #    r"W:\star trek deep space nine\Star.Trek.DS9.S03.x264.ac3.5.1-MEECH"
-    # )
-
-    # @memory.cache
-    # def f(path):
-    #    return create_audio_fingerprint_from_folder(path)
-    # test_vs_plex("Dexter", method="audio")
-    # f_v, f_a = _find_offset_ffmpeg(r"C:\stuff\s13eps\dexter\itn-dexter.s02e02.720p.mkv")
-    # print(f_v)
-    # print(f_a)
-    ##find_closest_scene
-
-    # audio_fingerprints = measure(create_audio_fingerprint_from_folder)(path_to_a_season)
-    # data = find_intros_fpcalc(audio_fingerprints)
-    # print(data)
-    # result = special_sauce_fpcalc(data)
-    # print("end")
+    test_vs_plex("Dexter", method="video")

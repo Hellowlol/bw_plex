@@ -319,12 +319,17 @@ def _find_offset_ffmpeg(
             duration_video(float): Duration of the blackdetect
             pix_th(float): param of blackdetect
             au_db(int): param audio silence.
+            offset (int): sec, if given starts 10 sec before offset and 10 after trim
 
 
        Returns:
             int
 
     """
+
+    if offset < 0:
+        offset = 0
+
     v = "blackdetect=d=%s:pix_th=%s" % (duration_video, pix_th)
     a = "silencedetect=n=-%sdB:d=%s" % (au_db, duration_audio)
 
@@ -395,14 +400,23 @@ def _find_offset_ffmpeg(
 
             if len(temp_silence) == 3:
                 k = temp_silence[:]
-                kk = [float(i) for i in k]
+                # Fixup for offset
+                if offset:
+                    kk = [float(i) + offset for i in k[:2]]
+                    kk.append(float(k[-1]))
+                else:
+                    kk = [float(i) + offset for i in k]
                 final_audio.append(kk)
                 temp_silence[:] = []
 
             video_res = re.findall(black_reg, line)
 
             if video_res:
-                f = [float(i) for i in video_res]
+                if offset:
+                    f = [float(i) + offset for i in video_res[:2]]
+                    f.append(float(video_res[-1]))
+                else:
+                    f = [float(i) for i in video_res]
                 final_video.append(f)
 
         else:

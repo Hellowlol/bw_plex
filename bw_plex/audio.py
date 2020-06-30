@@ -153,7 +153,7 @@ def create_raw_fp(path, maxlength=600):
         try:
             with open(os.devnull, "wb") as devnull:
                 proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=devnull)
-                output, _ = proc.communicate(timeout=60)
+                output, _ = proc.communicate(timeout=120)
                 return output
         except subprocess.TimeoutExpired:
             proc.kill()

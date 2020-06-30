@@ -4,35 +4,33 @@
 import itertools
 import logging
 import os
-import tempfile
-import struct
 import signal
-import time
+import struct
+import tempfile
 import threading
+import time
 import webbrowser
-
 from collections import defaultdict
 from functools import wraps
 
+import bw_plex.edl as edl
 import click
 import plexapi
-from lomond import WebSocket
-from lomond.persist import persist
-
 import requests
-from sqlalchemy.orm.exc import NoResultFound
-
-from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
+from bw_plex import CONFIG, FP_HASHES, INI_FILE, LOG, PMS, POOL, THEMES, Pool
 from bw_plex.audio import convert_and_trim
+from bw_plex.chromecast import get_chromecast_player
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
-from bw_plex.chromecast import get_chromecast_player
-from bw_plex.db import session_scope, Processed, Images, Reference_Frame
-import bw_plex.edl as edl
-from bw_plex.misc import (analyzer, choose, find_next, find_offset_ffmpeg, find_theme_start_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms)
-from bw_plex.hashing import hash_file, create_imghash
-
+from bw_plex.db import Images, Processed, Reference_Frame, session_scope
+from bw_plex.hashing import create_imghash, hash_file
+from bw_plex.misc import (analyzer, choose, download_theme, find_next,
+                          find_offset_ffmpeg, find_theme_start_end,
+                          get_hashtable, get_pms, has_recap, ignore_ratingkey,
+                          to_ms, to_sec, to_time)
+from lomond import WebSocket
+from lomond.persist import persist
+from sqlalchemy.orm.exc import NoResultFound
 
 # Serves as simple locks so we dont start processing stuff
 # over and over again on each websocket tick and the user can seek
@@ -929,7 +927,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
     # as this is given to client_action as a parameter.
     called = time.time()
     LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
-    
+
     @log_exception
     def proxy_on_fail(func):
 
