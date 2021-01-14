@@ -12,7 +12,7 @@ psutil
 srt
 sqlalchemy
 configobj
-youtube-dl
+youtube-dl>=2021.1.8
 beautifulsoup4
 html5lib
 tablib
