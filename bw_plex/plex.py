@@ -4,35 +4,33 @@
 import itertools
 import logging
 import os
-import tempfile
-import struct
 import signal
-import time
+import struct
+import tempfile
 import threading
+import time
 import webbrowser
-
 from collections import defaultdict
 from functools import wraps
 
+import bw_plex.edl as edl
 import click
 import plexapi
-from lomond import WebSocket
-from lomond.persist import persist
-
 import requests
-from sqlalchemy.orm.exc import NoResultFound
-
-from bw_plex import FP_HASHES, CONFIG, THEMES, LOG, INI_FILE, PMS, POOL, Pool
+from bw_plex import CONFIG, FP_HASHES, INI_FILE, LOG, PMS, POOL, THEMES, Pool
 from bw_plex.audio import convert_and_trim
+from bw_plex.chromecast import get_chromecast_player
 from bw_plex.config import read_or_make
 from bw_plex.credits import find_credits
-from bw_plex.chromecast import get_chromecast_player
-from bw_plex.db import session_scope, Processed, Images, Reference_Frame
-import bw_plex.edl as edl
-from bw_plex.misc import (analyzer, choose, find_next, find_offset_ffmpeg, find_theme_start_end,
-                          get_pms, get_hashtable, has_recap, to_sec, to_time, download_theme, ignore_ratingkey, to_ms)
-from bw_plex.hashing import hash_file, create_imghash
-
+from bw_plex.db import Images, Processed, Reference_Frame, session_scope
+from bw_plex.hashing import create_imghash, hash_file
+from bw_plex.misc import (analyzer, choose, download_theme, find_next,
+                          find_offset_ffmpeg, find_theme_start_end,
+                          get_hashtable, get_pms, has_recap, ignore_ratingkey,
+                          to_ms, to_sec, to_time)
+from lomond import WebSocket
+from lomond.persist import persist
+from sqlalchemy.orm.exc import NoResultFound
 
 # Serves as simple locks so we dont start processing stuff
 # over and over again on each websocket tick and the user can seek
@@ -730,6 +728,60 @@ def create_config(fp=None):  # pragma: no cover
 
 
 @cli.command()
+def benchmark():
+    """Compare bw_plex db vs plex own intro detection."""
+    global PMS
+
+    # Find all episodes with intros
+    eps = []
+    logging.basicConfig(level=logging.WARNING)
+    click.echo("bench")
+
+    import datetime
+
+    def ms_to_hh_mm_ms(ms):
+        r = datetime.datetime.utcfromtimestamp(ms / 1000)
+        f = r.strftime("%H:%M:%S.%f")
+        return f[:-2]
+
+    eps = []
+    for section in PMS.library.sections():
+        if section.TYPE == "show":
+            eps.extend(section.search(libtype="episode"))
+
+    with session_scope() as se:
+        # Find all episodes of this show.
+        items = se.query(Processed).filter_by(type="episode")
+        items_rk = [i.ratingKey for i in items]
+
+        plex_items_that_is_processed = [i for i in eps if i.ratingKey in items_rk]
+        plex_items_that_is_processed_with_intros = [i for i in plex_items_that_is_processed if i.hasIntroMarker]
+
+        for item in items:
+            for ep in plex_items_that_is_processed_with_intros:
+                if int(item.ratingKey) == int(ep.ratingKey):
+                    if item.theme_start != -1 and item.theme_end != -1:
+                        theme_start = item.theme_start * 1000
+                        theme_end = item.theme_end * 1000
+
+                        plex_start = ep.markers[0].start
+                        plex_end = ep.markers[0].start
+
+                        diff_start = abs(theme_start - plex_start)
+                        diff_end = abs(theme_end - plex_end)
+
+                        if diff_start > 4000:
+                            diff_color = "green"
+                        else:
+                            diff_color = "red"
+
+                        msg = "%s bw_plex start: %s (%s) diff %s end: %s (%s) diff %s" % (ep._prettyfilename(), ms_to_hh_mm_ms(theme_start),
+                            ms_to_hh_mm_ms(plex_start), round(diff_start,2), ms_to_hh_mm_ms(theme_end), ms_to_hh_mm_ms(plex_end), round(diff_end, 2))
+
+                        click.secho("%s" % msg, color=diff_color)
+
+
+@cli.command()
 @click.argument('name')
 @click.argument('url')
 @click.option('-t', '--type', default=None, type=click.Choice(['manual', 'tvtunes', 'plex', 'youtube', 'all']))
@@ -929,7 +981,7 @@ def client_action(offset=None, sessionkey=None, action='jump'):  # pragma: no co
     # as this is given to client_action as a parameter.
     called = time.time()
     LOG.info('Called client_action with %s %s %s %s', offset, to_time(offset), sessionkey, action)
-    
+
     @log_exception
     def proxy_on_fail(func):
 
