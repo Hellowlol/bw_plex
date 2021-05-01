@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="1">
+  <Date>2019-6-18</Date>
+  <Beta>False</Beta>
+  <Category>MediaServer:Video</Category>
+  <Name>BingeWatch for Plex</Name>
+  <Project>https://github.com/Hellowlol/bw_plex/</Project>
+  <Changes>
+NONE
+  </Changes>
+  <Overview>
+    Bingewatch tool to get rid of intro's and outro's 
+  </Overview>
+  <Description>
+  </Description>
+  <Registry>https://hub.docker.com/r/hellowlol/bw_plex</Registry>
+  <GitHub>https://github.com/CDeLeon94/UnraidDockerTemplates/</GitHub>
+  <Repository>hellowlol/bw_plex</Repository>
+  <BindTime>true</BindTime>
+  <Privileged>false</Privileged>
+  <Environment>
+     <Variable>
+      <Name>url</Name>
+      <Value>http://192.168.0.5:32400/</Value>
+      <Description>The URL for your Plex Server</Description>
+    </Variable>
+    <Variable>
+      <Name>token</Name>
+      <Value>XXXXXXXXXXXXXXX</Value>
+      <Description>The TOKEN for your Plex Server, find it using this guide: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/</Description>
+    </Variable>
+  </Environment>
+  <Networking>
+    <Mode>bridge</Mode>
+  </Networking>
+  <Data>
+    <Volume>
+      <HostDir>/mnt/user/appdata/BingeWatchForPlex</HostDir>
+      <ContainerDir>/config</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+  </Data>
+
+  <Network Default="bridge">bridge</Network>
+</Container>
