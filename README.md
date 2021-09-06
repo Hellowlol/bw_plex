@@ -24,7 +24,13 @@ A tool for skipping intro and outro for plex.
 ## Install
 You should install this from github as this project isnt stable.
 ```pip install -e git+https://github.com/Hellowlol/bw_plex.git#egg=bw_plex```
-or using a docker ```docker pull hellowlol/bw_plex```. You may also need to `pip install Pillow`.
+or using a docker ```docker pull hellowlol/bw_plex```. You may also need to `pip install Pillow wheel`.
+
+*If* you have issues with `scipy` on FreeNAS, running
+```
+pkg install python3 py37-pip git lapack gcc libstdc++_stldoc_4.2.2 fortran-utils py37-wheel py37-llmvlite py37-numba py37-matplotlib py37-sqlite3
+```
+worked.  This is obtained from a similar issue around `scipy` on Apline linux [here](https://github.com/scipy/scipy/issues/9481#issuecomment-565184118), and from issues with `llmvlite`, `numba`, and `matplotlib` dependencies.  Obviously having to install these manually isn't ideal, but installing them using your package manager (rather than using `pip`) is best for figuring out any dependencies they have on your system.
 
 
 ## Usage
@@ -86,3 +92,23 @@ We then check if this episode has a recap using subtitles and audio where we loo
 Depending on your settings we will then allow playback until the theme start or just jump straight to intro end if we also should skip recaps.
 
 Since this is a rather slow process we also start processing the next episode so next time you watch the same show we instantly seek the client to the end of the theme.
+
+## FAQ:
+
+#### Why is `bw_plex` not working?
+
+Check if Advertise as player "Allow other Plex apps to fling content to this device and control it remotely" is checked.  Ensure you are using the latest versions of Plex and/or your Plex client.  Ensure you are running Python 3.  (You can run this manually if you have both Python 2 and 3 installed: `python3 -m bw_plex watch foo`).
+
+If all else fails, please consider submitting a [bug report](https://github.com/Hellowlol/bw_plex/issues/new).  *Please ensure you attach a log to this report.*
+
+#### How can I enable whole show / season processing with `bw_plex`?
+The prompt support python slicing. The format is `start:end:step`.  So say you want all episodes you just do `::` instead of a number.
+I also added a way to just list the number you want: `1, 5, 9`  So the command would be
+```
+bw_plex process --name foo ::
+```
+or
+```
+bw_plex process --name foo 1, 5, 9
+```
+
