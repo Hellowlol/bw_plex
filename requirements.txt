@@ -18,7 +18,7 @@ html5lib
 tablib
 lomond>=0.3.3
 PyChromecast>=3.2.2
-pysubs2>=0.2.4
+pysubs2>=1.8.1
 
 # Any more i have forgotten?
 # just pip until your have fixed the errors xD
